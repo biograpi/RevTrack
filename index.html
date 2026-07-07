@@ -226,7 +226,6 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
     </div>
     <div id="regForm" style="display:none">
       <div class="auth-field"><label>სახელი გვარი</label><input type="text" id="regName" placeholder="სახელი გვარი"></div>
-      <div class="auth-field"><label>კომპანია / პოზიცია</label><input type="text" id="regCompany" placeholder="არქიტექტი, კონსტრუქტორი..."></div>
       <div class="auth-field"><label>ელ. ფოსტა</label><input type="email" id="regEmail" placeholder="name@company.ge"></div>
       <div class="auth-field"><label>პაროლი</label><input type="password" id="regPass" placeholder="მინ. 6 სიმბოლო"></div>
       <div class="auth-err" id="regErr"></div>
@@ -921,7 +920,6 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
 document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btnLogin').click(); });
 document.getElementById('btnReg').addEventListener('click', async () => {
   const name = document.getElementById('regName').value.trim();
-  const company = document.getElementById('regCompany').value.trim();
   const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
   const err = document.getElementById('regErr'); err.style.display='none';
