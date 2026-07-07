@@ -520,7 +520,7 @@ onAuthStateChanged(auth, async user => {
   if (ADMIN_EMAILS.includes(user.email)) {
     role = 'admin';
     if (!uDoc.exists()) {
-      await setDoc(doc(db,'users',user.uid),{name:user.displayName||user.email,email:user.email,role:'admin',approved:true,company:'',createdAt:serverTimestamp()});
+      await setDoc(doc(db,'users',user.uid),{name:user.displayName||user.email,email:user.email,role:'admin',approved:true,createdAt:serverTimestamp()});
     } else if (uDoc.data().role !== 'admin') {
       await updateDoc(doc(db,'users',user.uid),{role:'admin',approved:true});
     }
@@ -928,7 +928,7 @@ document.getElementById('btnReg').addEventListener('click', async () => {
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await updateProfile(cred.user, {displayName: name});
-    await setDoc(doc(db,'users',cred.user.uid), {name,email,company,role:'member',approved:false,createdAt:serverTimestamp()});
+    await setDoc(doc(db,'users',cred.user.uid), {name,email,role:'member',approved:false,createdAt:serverTimestamp()});
     await signOut(auth);
     switchTab('login');
     showToast('რეგისტრაცია წარმატებულია! Admin დაამტკიცებს.');
@@ -951,7 +951,7 @@ document.getElementById('btnGlobalUsers').addEventListener('click', async () => 
   panel.innerHTML = users.length ? users.map(u => `
     <div class="user-row">
       <div class="user-info">
-        <div class="ue">${esc(u.name)} ${u.company?`<span style="color:var(--ink-light);font-size:12px">· ${esc(u.company)}</span>`:''}</div>
+        <div class="ue">${esc(u.name)}</div>
         <div class="um">${esc(u.email)}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
