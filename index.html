@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RevTrack</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --ink:#1a1a2e; --ink-mid:#3d3d5c; --ink-light:#7c7c9a;
+  --rule:#e2e2ec; --bg:#f7f7fb; --white:#fff;
+  --accent:#2563eb; --accent-lo:#dbeafe;
+  --warn:#dc2626; --warn-lo:#fee2e2;
+  --ok:#16a34a; --ok-lo:#dcfce7;
+  --amber:#d97706; --amber-lo:#fef3c7;
+  --purple:#7c3aed; --purple-lo:#ede9fe;
+  --shadow-sm:0 1px 3px rgba(26,26,46,.08);
+  --shadow-md:0 4px 16px rgba(26,26,46,.12);
+  --r:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ── AUTH ── */
+.auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--ink)}
+.auth-box{background:white;border-radius:12px;padding:36px 32px;width:340px;box-shadow:var(--shadow-md)}
+.auth-logo{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:500;color:var(--accent);letter-spacing:.06em;margin-bottom:4px}
+.auth-sub{font-size:13px;color:var(--ink-light);margin-bottom:22px}
+.auth-tabs{display:flex;margin-bottom:20px;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.auth-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:500;cursor:pointer;color:var(--ink-light);background:var(--bg);border:none;font-family:inherit}
+.auth-tab.active{background:var(--accent);color:white}
+.auth-field{margin-bottom:13px}
+.auth-field label{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin-bottom:5px}
+.auth-field input{width:100%;border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px;font-family:inherit;font-size:14px;color:var(--ink)}
+.auth-field input:focus{outline:none;border-color:var(--accent)}
+.auth-err{color:var(--warn);font-size:12px;margin-bottom:10px;display:none}
+.auth-note{font-size:12px;color:var(--ink-light);margin-top:12px;text-align:center;line-height:1.6}
+
+/* ── PROJECTS SCREEN ── */
+.projects-screen{display:none;min-height:100vh;background:var(--ink)}
+.projects-header{padding:24px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.1)}
+.projects-logo{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;color:var(--accent);letter-spacing:.04em}
+.projects-user{font-size:13px;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:10px}
+.projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
+.project-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:20px;cursor:pointer;transition:all .15s}
+.project-card:hover{background:rgba(255,255,255,.1);border-color:var(--accent)}
+.project-card-name{font-size:15px;font-weight:500;color:white;margin-bottom:6px}
+.project-card-meta{font-size:12px;color:rgba(255,255,255,.4)}
+.project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:10px}
+.role-admin{background:var(--accent);color:white}
+.role-manager{background:var(--purple);color:white}
+.role-commenter{background:var(--ok-lo);color:var(--ok)}
+.role-viewer{background:rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
+.btn-new-project{background:var(--accent);color:white;border:none;border-radius:10px;padding:20px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;text-align:left;transition:background .15s}
+.btn-new-project:hover{background:#1d4ed8}
+
+/* ── HEADER ── */
+header{background:var(--ink);color:white;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--accent)}
+.header-left{display:flex;align-items:center;gap:12px}
+.header-logo{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;letter-spacing:.04em;color:var(--accent);text-transform:uppercase;cursor:pointer}
+.header-sep{color:rgba(255,255,255,.2);font-size:16px}
+.project-name-hdr{font-size:13px;color:rgba(255,255,255,.7);cursor:pointer}
+.project-name-hdr:hover{color:white}
+.header-right{display:flex;align-items:center;gap:8px}
+.user-chip{font-size:12px;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:6px}
+.role-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase}
+.btn-hdr{background:rgba(255,255,255,.1);border:none;border-radius:var(--r);color:white;cursor:pointer;padding:6px 12px;font-size:12px;font-family:inherit;transition:background .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-hdr:hover{background:rgba(255,255,255,.2)}
+
+/* ── TOOLBAR ── */
+.toolbar{background:white;border-bottom:1px solid var(--rule);padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
+.filter-group{display:flex;align-items:center;gap:8px;flex:1;min-width:200px;flex-wrap:wrap}
+.search-box{border:1px solid var(--rule);border-radius:var(--r);padding:7px 12px;font-family:inherit;font-size:13px;width:190px;background:var(--bg);color:var(--ink)}
+.search-box:focus{outline:none;border-color:var(--accent)}
+select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--ink);cursor:pointer}
+.btn-primary{background:var(--accent);color:white;border:none;border-radius:var(--r);padding:8px 15px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s;white-space:nowrap}
+.btn-primary:hover{background:#1d4ed8}
+.btn-secondary{background:white;color:var(--ink-mid);border:1px solid var(--rule);border-radius:var(--r);padding:7px 13px;font-family:inherit;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.stats-row{display:flex;gap:8px;flex-shrink:0}
+.stat-chip{font-size:12px;font-weight:500;padding:4px 10px;border-radius:20px;white-space:nowrap}
+.stat-chip.open{background:var(--warn-lo);color:var(--warn)}
+.stat-chip.progress{background:var(--amber-lo);color:var(--amber)}
+.stat-chip.closed{background:var(--ok-lo);color:var(--ok)}
+
+/* ── TABLE ── */
+.table-wrap{padding:20px 24px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:white;border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden}
+thead tr{background:var(--ink);color:rgba(255,255,255,.85)}
+th{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:11px 14px;text-align:left;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:white}
+th.sort-asc::after{content:' ↑'}
+th.sort-desc::after{content:' ↓'}
+tbody tr{border-bottom:1px solid var(--rule);transition:background .1s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f0f4ff}
+td{padding:11px 14px;vertical-align:middle;font-size:13px;color:var(--ink-mid)}
+td.num-cell{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--ink);width:64px}
+td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
+.desc-short{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.disc-tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
+.disc-arch{background:#e0e7ff;color:#3730a3}
+.disc-struct{background:#fce7f3;color:#9d174d}
+.disc-mep{background:#d1fae5;color:#065f46}
+.disc-fire{background:#fee2e2;color:#991b1b}
+.disc-other{background:var(--rule);color:var(--ink-mid)}
+.status-dot{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;white-space:nowrap}
+.status-dot::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.status-dot.open{color:var(--warn)}.status-dot.open::before{background:var(--warn)}
+.status-dot.progress{color:var(--amber)}.status-dot.progress::before{background:var(--amber)}
+.status-dot.closed{color:var(--ok)}.status-dot.closed::before{background:var(--ok)}
+.priority-flag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.priority-high{background:var(--warn-lo);color:var(--warn)}
+.priority-med{background:var(--amber-lo);color:var(--amber)}
+.priority-low{background:var(--ok-lo);color:var(--ok)}
+.person-chip{display:inline-block;background:var(--accent-lo);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
+.action-cell{display:flex;gap:5px}
+.btn-edit,.btn-del{border:none;border-radius:4px;padding:5px 8px;cursor:pointer;font-size:12px;transition:all .15s}
+.btn-edit{background:var(--accent-lo);color:var(--accent)}.btn-edit:hover{background:var(--accent);color:white}
+.btn-del{background:var(--warn-lo);color:var(--warn)}.btn-del:hover{background:var(--warn);color:white}
+.empty-state{text-align:center;padding:60px 24px;color:var(--ink-light)}
+.empty-icon{font-size:44px;margin-bottom:10px}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,26,46,.55);z-index:200;padding:20px;overflow-y:auto;align-items:flex-start;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:white;border-radius:10px;width:100%;max-width:680px;box-shadow:var(--shadow-md);margin:auto;overflow:hidden}
+.modal-header{background:var(--ink);color:white;padding:15px 20px;display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:15px;font-weight:500}
+.modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;line-height:1;padding:0 4px}
+.modal-close:hover{color:white}
+.modal-body{padding:20px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.form-full{grid-column:1/-1}
+.field label{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg);transition:border-color .15s;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);background:white}
+.field textarea{min-height:80px}
+.link-input-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.link-input-row input{flex:1;border:1px solid var(--rule);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:12px;background:var(--bg);color:var(--ink)}
+.link-input-row input:focus{outline:none;border-color:var(--accent);background:white}
+.btn-link-rm{background:var(--warn-lo);color:var(--warn);border:none;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.btn-link-rm:hover{background:var(--warn);color:white}
+.btn-add-link{background:var(--accent-lo);color:var(--accent);border:none;border-radius:var(--r);padding:7px 12px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;margin-top:4px}
+.btn-add-link:hover{background:var(--accent);color:white}
+.modal-footer{padding:13px 20px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:10px}
+
+/* ── DETAIL ── */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:15px}
+.detail-section{margin-bottom:14px}
+.detail-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-light);margin-bottom:4px}
+.detail-val{font-size:14px;color:var(--ink)}
+
+/* ── COMMENTS ── */
+.comments-section{margin-top:18px;border-top:1px solid var(--rule);padding-top:15px}
+.comment-item{display:flex;gap:9px;margin-bottom:12px}
+.comment-avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-lo);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.comment-bubble{flex:1;background:var(--bg);border-radius:0 8px 8px 8px;padding:9px 12px;border:1px solid var(--rule)}
+.comment-meta{font-size:11px;color:var(--ink-light);margin-bottom:3px;display:flex;justify-content:space-between}
+.comment-author{font-weight:600;color:var(--ink-mid)}
+.comment-text{font-size:13px;color:var(--ink)}
+.comment-input-row{display:flex;gap:8px;margin-top:10px;align-items:flex-end}
+.comment-input-row textarea{flex:1;border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;font-family:inherit;font-size:13px;resize:none;min-height:56px;color:var(--ink)}
+.comment-input-row textarea:focus{outline:none;border-color:var(--accent)}
+.no-comments{font-size:13px;color:var(--ink-light);text-align:center;padding:14px 0}
+.viewer-note{font-size:12px;color:var(--ink-light);text-align:center;padding:10px;background:var(--bg);border-radius:var(--r);margin-top:10px}
+
+/* ── USERS PANEL ── */
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--rule);gap:10px}
+.user-info .ue{font-size:13px;font-weight:500;color:var(--ink)}
+.user-info .um{font-size:12px;color:var(--ink-light)}
+
+/* ── PROJECT FORM ── */
+.member-search-row{display:flex;gap:8px;margin-bottom:8px}
+.member-search-row input{flex:1;border:1px solid var(--rule);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--ink)}
+.member-search-row input:focus{outline:none;border-color:var(--accent)}
+.member-list{max-height:160px;overflow-y:auto;border:1px solid var(--rule);border-radius:var(--r);background:var(--bg)}
+.member-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--rule);font-size:13px}
+.member-item:last-child{border-bottom:none}
+.member-item select{border:1px solid var(--rule);border-radius:4px;padding:3px 6px;font-family:inherit;font-size:12px;background:white}
+
+/* ── VIEWER BANNER ── */
+.viewer-banner{background:var(--amber-lo);border-bottom:1px solid var(--amber);padding:8px 24px;font-size:13px;color:var(--amber);display:flex;align-items:center;gap:8px}
+
+/* ── MISC ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.share-box{background:var(--bg);border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--ink-mid);word-break:break-all;margin-top:8px;cursor:pointer;transition:background .15s}
+.share-box:hover{background:var(--accent-lo)}
+
+@media(max-width:700px){
+  .form-grid,.detail-grid{grid-template-columns:1fr}
+  .stats-row{display:none}
+  .search-box{width:140px}
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ AUTH ══ -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">RevTrack</div>
+    <div class="auth-sub">პროექტის რევიზიების სისტემა</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">შესვლა</button>
+      <button class="auth-tab" id="tabReg" onclick="switchTab('reg')">რეგისტრაცია</button>
+    </div>
+    <div id="loginForm">
+      <div class="auth-field"><label>ელ. ფოსტა</label><input type="email" id="loginEmail" placeholder="name@company.ge"></div>
+      <div class="auth-field"><label>პაროლი</label><input type="password" id="loginPass" placeholder="••••••••"></div>
+      <div class="auth-err" id="loginErr"></div>
+      <button class="btn-primary" style="width:100%;justify-content:center" id="btnLogin">შესვლა</button>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+        <div style="flex:1;height:1px;background:var(--rule)"></div>
+        <span style="font-size:12px;color:var(--ink-light)">ან</span>
+        <div style="flex:1;height:1px;background:var(--rule)"></div>
+      </div>
+      <button id="btnGuestView" style="width:100%;margin-top:12px;padding:9px;border:1px solid var(--rule);border-radius:var(--r);background:var(--bg);color:var(--ink-mid);font-family:inherit;font-size:13px;cursor:pointer;">
+        👁 სტუმრად ნახვა (რეგისტრაციის გარეშე)
+      </button>
+    </div>
+    <div id="regForm" style="display:none">
+      <div class="auth-field"><label>სახელი გვარი</label><input type="text" id="regName" placeholder="სახელი გვარი"></div>
+      <div class="auth-field"><label>კომპანია / პოზიცია</label><input type="text" id="regCompany" placeholder="არქიტექტი, კონსტრუქტორი..."></div>
+      <div class="auth-field"><label>ელ. ფოსტა</label><input type="email" id="regEmail" placeholder="name@company.ge"></div>
+      <div class="auth-field"><label>პაროლი</label><input type="password" id="regPass" placeholder="მინ. 6 სიმბოლო"></div>
+      <div class="auth-err" id="regErr"></div>
+      <button class="btn-primary" style="width:100%;justify-content:center" id="btnReg">რეგისტრაცია</button>
+      <div class="auth-note">რეგისტრაციის შემდეგ Admin დაამტკიცებს და პროექტს მიამაგრებს</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PROJECTS ══ -->
+<div class="projects-screen" id="projectsScreen">
+  <div class="projects-header">
+    <div class="projects-logo">RevTrack</div>
+    <div class="projects-user">
+      <span id="projScreenUser"></span>
+      <button class="btn-hdr" id="btnProjLogout">გამოსვლა</button>
+    </div>
+  </div>
+  <div class="projects-grid" id="projectsGrid"></div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="appScreen" style="display:none">
+
+<div class="viewer-banner" id="viewerBanner" style="display:none">
+  👁 დათვალიერების რეჟიმი — კომენტარისთვის გთხოვთ დარეგისტრირდეთ
+</div>
+
+<header>
+  <div class="header-left">
+    <span class="header-logo" id="btnBackProjects">RevTrack</span>
+    <span class="header-sep">/</span>
+    <span class="project-name-hdr" id="hdrProjectName">პროექტი</span>
+  </div>
+  <div class="header-right">
+    <span class="user-chip">
+      <span id="hdrUserName"></span>
+      <span class="role-badge" id="hdrRoleBadge"></span>
+    </span>
+    <button class="btn-hdr" id="btnManageProject" style="display:none">⚙ პროექტი</button>
+    <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები</button>
+    <button class="btn-hdr" id="btnShare">🔗 გაზიარება</button>
+    <button class="btn-hdr" id="btnAppLogout" style="display:none">გამოსვლა</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="filter-group">
+    <input type="search" class="search-box" id="searchInput" placeholder="🔍  საძიებო...">
+    <select class="fsel" id="filterDisc">
+      <option value="">ყველა დისციპლინა</option>
+      <option value="arch">არქიტექტურა</option>
+      <option value="struct">კონსტრუქცია</option>
+      <option value="mep">MEP</option>
+      <option value="fire">სახანძრო</option>
+      <option value="other">სხვა</option>
+    </select>
+    <select class="fsel" id="filterStatus">
+      <option value="">ყველა სტატუსი</option>
+      <option value="open">გახსნილი</option>
+      <option value="progress">მიმდინარე</option>
+      <option value="closed">დახურული</option>
+    </select>
+    <select class="fsel" id="filterPriority">
+      <option value="">ყველა პრიორიტეტი</option>
+      <option value="high">მაღალი</option>
+      <option value="med">საშუალო</option>
+      <option value="low">დაბალი</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button class="btn-primary" id="btnAddIssue" style="display:none">+ საკითხი</button>
+    <div class="stats-row">
+      <span class="stat-chip open" id="cntOpen">0 გახსნილი</span>
+      <span class="stat-chip progress" id="cntProgress">0 მიმდინარე</span>
+      <span class="stat-chip closed" id="cntClosed">0 დახურული</span>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th data-col="num">#</th>
+      <th data-col="disc">დისციპლინა</th>
+      <th data-col="title">საკითხი</th>
+      <th data-col="priority">პრიორიტეტი</th>
+      <th data-col="status">სტატუსი</th>
+      <th data-col="person">პასუხისმგებელი</th>
+      <th>💬</th>
+      <th data-col="date">თარიღი</th>
+      <th id="actionsHead" style="display:none"></th>
+    </tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+</div>
+
+<!-- ══ MODALS ══ -->
+
+<!-- Issue -->
+<div class="modal-overlay" id="issueModal">
+  <div class="modal">
+    <div class="modal-header"><h2 id="modalTitle">ახალი საკითხი</h2><button class="modal-close" onclick="cm('issueModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>ნომერი</label><input id="fNum" readonly style="background:var(--rule);cursor:not-allowed"></div>
+        <div class="field"><label>თარიღი</label><input type="date" id="fDate"></div>
+        <div class="field"><label>დისციპლინა</label>
+          <select id="fDisc"><option value="arch">არქიტექტურა</option><option value="struct">კონსტრუქცია</option><option value="mep">MEP</option><option value="fire">სახანძრო</option><option value="other">სხვა</option></select>
+        </div>
+        <div class="field"><label>პრიორიტეტი</label>
+          <select id="fPriority"><option value="high">მაღალი</option><option value="med">საშუალო</option><option value="low">დაბალი</option></select>
+        </div>
+        <div class="field form-full"><label>სათაური</label><input id="fTitle" placeholder="საკითხის მოკლე სათაური"></div>
+        <div class="field form-full"><label>დეტალური აღწერა</label><textarea id="fDesc" placeholder="სად არის, რა პრობლემაა..."></textarea></div>
+        <div class="field"><label>სტატუსი</label>
+          <select id="fStatus"><option value="open">გახსნილი</option><option value="progress">მიმდინარე</option><option value="closed">დახურული</option></select>
+        </div>
+        <div class="field"><label>პასუხისმგებელი</label><input id="fPerson" placeholder="სახელი / კომპანია"></div>
+        <div class="field form-full">
+          <label>ლინკები (OneDrive, Google Drive...)</label>
+          <div id="linkInputsContainer"></div>
+          <button type="button" class="btn-add-link" id="btnAddLink">+ ლინკის დამატება</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="cm('issueModal')">გაუქმება</button>
+      <button class="btn-primary" id="saveIssue">შენახვა</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header"><h2 id="detailTitle">საკითხი</h2><button class="modal-close" onclick="cm('detailModal')">✕</button></div>
+    <div class="modal-body" id="detailBody"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="cm('detailModal')">დახურვა</button>
+      <button class="btn-primary" id="detailEditBtn" style="display:none">✏ რედაქტირება</button>
+    </div>
+  </div>
+</div>
+
+<!-- Global Users (admin) -->
+<div class="modal-overlay" id="usersModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header"><h2>👥 ყველა მომხმარებელი</h2><button class="modal-close" onclick="cm('usersModal')">✕</button></div>
+    <div class="modal-body" id="usersPanel">იტვირთება...</div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cm('usersModal')">დახურვა</button></div>
+  </div>
+</div>
+
+<!-- Project manage -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><h2 id="projectModalTitle">პროექტი</h2><button class="modal-close" onclick="cm('projectModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="field form-full"><label>პროექტის სახელი</label><input id="pName" placeholder="პროექტი N123"></div>
+        <div class="field form-full"><label>აღწერა</label><input id="pDesc" placeholder="მოკლე აღწერა"></div>
+      </div>
+      <div class="detail-label" style="margin-bottom:8px">გუნდის წევრები</div>
+      <div class="member-search-row">
+        <input id="memberSearch" placeholder="მომხმარებლის ძებნა...">
+      </div>
+      <div class="member-list" id="memberList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="cm('projectModal')">გაუქმება</button>
+      <button class="btn-primary" id="saveProject">შენახვა</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header"><h2>🔗 გაზიარება</h2><button class="modal-close" onclick="cm('shareModal')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--ink-mid);margin-bottom:8px">ეს ლინკით ნებისმიერი <strong>ნახავს</strong> პროექტს რეგისტრაციის გარეშე (Viewer):</p>
+      <div class="share-box" id="shareLink" onclick="copyShare()">დააწკაპე კოპირებისთვის</div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cm('shareModal')">დახურვა</button></div>
+  </div>
+</div>
+
+<!-- New project -->
+<div class="modal-overlay" id="newProjModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h2>+ ახალი პროექტი</h2><button class="modal-close" onclick="cm('newProjModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="field" style="margin-bottom:14px"><label>სახელი</label><input id="npName" placeholder="პროექტი N123"></div>
+      <div class="field"><label>აღწერა</label><input id="npDesc" placeholder="მოკლე აღწერა (არასავალდებულო)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="cm('newProjModal')">გაუქმება</button>
+      <button class="btn-primary" id="saveNewProj">შექმნა</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Guest project picker -->
+<div class="modal-overlay" id="guestModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><h2>👁 პროექტის არჩევა</h2><button class="modal-close" onclick="cm('guestModal')">&#x2715;</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--ink-mid);margin-bottom:14px">აირჩიე პროექტი სტუმრად სანახავად:</p>
+      <div id="guestProjectList">იტვირთება...</div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cm('guestModal')">გაუქმება</button></div>
+  </div>
+</div>
+
+<!-- ══ FIREBASE ══ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
+  onSnapshot, orderBy, query, serverTimestamp, increment, where }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA461TKgKROBwZ1l4YKdMW5QuA0M4tgxMM",
+  authDomain: "revtrack-f8341.firebaseapp.com",
+  projectId: "revtrack-f8341",
+  storageBucket: "revtrack-f8341.firebasestorage.app",
+  messagingSenderId: "161101410039",
+  appId: "1:161101410039:web:02e0a0d745f3690e622df2"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const ADMIN_EMAILS = ['biograpirev@gmail.com']; // ← admins
+
+// ── STATE ──
+let currentUser = null;
+let currentRole = 'viewer';
+let currentProjectId = null;
+let currentProjectData = null;
+let issues = {};
+let allUsers = {};
+let unsubIssues = null;
+let editingId = null;
+let pendingLinks = [];
+let currentDetailId = null;
+let sortCol = 'num', sortDir = 'asc';
+let isViewerMode = false; // anonymous viewer via ?p=
+
+// ── HELPERS ──
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const showToast = msg => { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); };
+window.cm = id => document.getElementById(id).classList.remove('open');
+const om = id => document.getElementById(id).classList.add('open');
+const initials = n => (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+
+const discL = {arch:'არქიტექტურა',struct:'კონსტრუქცია',mep:'MEP',fire:'სახანძრო',other:'სხვა'};
+const prioL = {high:'მაღალი',med:'საშუალო',low:'დაბალი'};
+const statL = {open:'გახსნილი',progress:'მიმდინარე',closed:'დახურული'};
+
+window.switchTab = tab => {
+  document.getElementById('loginForm').style.display = tab==='login'?'':'none';
+  document.getElementById('regForm').style.display = tab==='reg'?'':'none';
+  document.getElementById('tabLogin').className = 'auth-tab'+(tab==='login'?' active':'');
+  document.getElementById('tabReg').className = 'auth-tab'+(tab==='reg'?' active':'');
+};
+
+// ── URL PARAM ──
+function getUrlProject(){ return new URLSearchParams(location.search).get('p'); }
+
+// ── AUTH STATE ──
+onAuthStateChanged(auth, async user => {
+  const urlPid = getUrlProject();
+
+  if (!user) {
+    // check viewer mode
+    if (urlPid) {
+      await openProjectAsViewer(urlPid);
+    } else {
+      showAuth();
+    }
+    return;
+  }
+
+  const uDoc = await getDoc(doc(db,'users',user.uid));
+  let role = 'member';
+  if (ADMIN_EMAILS.includes(user.email)) {
+    role = 'admin';
+    if (!uDoc.exists()) {
+      await setDoc(doc(db,'users',user.uid),{name:user.displayName||user.email,email:user.email,role:'admin',approved:true,company:'',createdAt:serverTimestamp()});
+    } else if (uDoc.data().role !== 'admin') {
+      await updateDoc(doc(db,'users',user.uid),{role:'admin',approved:true});
+    }
+  } else if (uDoc.exists()) {
+    const d = uDoc.data();
+    if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული'); await signOut(auth); return; }
+    role = d.role || 'member';
+  } else {
+    showToast('მომხმარებელი ვერ მოიძებნა'); await signOut(auth); return;
+  }
+
+  currentUser = user;
+  currentRole = role;
+  isViewerMode = false;
+
+  // load all users for admin
+  if (role === 'admin') await loadAllUsers();
+
+  if (urlPid) {
+    await openProject(urlPid);
+  } else {
+    await showProjects();
+  }
+});
+
+// ── SHOW AUTH ──
+function showAuth() {
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('projectsScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'none';
+}
+
+// ── VIEWER MODE ──
+async function openProjectAsViewer(pid) {
+  isViewerMode = true;
+  currentUser = null;
+  currentRole = 'viewer';
+  const pd = await getDoc(doc(db,'projects',pid));
+  if (!pd.exists()) { showAuth(); return; }
+  currentProjectId = pid;
+  currentProjectData = {id:pid,...pd.data()};
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('projectsScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('viewerBanner').style.display = 'flex';
+  document.getElementById('hdrProjectName').textContent = pd.data().name || 'პროექტი';
+  document.getElementById('hdrUserName').textContent = 'სტუმარი';
+  document.getElementById('hdrRoleBadge').textContent = 'Viewer';
+  document.getElementById('hdrRoleBadge').className = 'role-badge role-viewer';
+  document.getElementById('btnAddIssue').style.display = 'none';
+  document.getElementById('actionsHead').style.display = 'none';
+  document.getElementById('btnManageProject').style.display = 'none';
+  document.getElementById('btnGlobalUsers').style.display = 'none';
+  document.getElementById('btnAppLogout').style.display = 'none';
+  document.getElementById('btnBackProjects').style.cursor = 'default';
+  subscribeIssues(pid);
+}
+
+// ── SHOW PROJECTS ──
+async function showProjects() {
+  if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('projectsScreen').style.display = 'block';
+  document.getElementById('projScreenUser').textContent = currentUser.displayName || currentUser.email;
+
+  const grid = document.getElementById('projectsGrid');
+  grid.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px">იტვირთება...</div>';
+
+  let projects = [];
+  if (currentRole === 'admin') {
+    const snap = await getDocs(collection(db,'projects'));
+    projects = snap.docs.map(d=>({id:d.id,...d.data()}));
+  } else {
+    const snap = await getDocs(query(collection(db,'projects'), where('memberIds','array-contains',currentUser.uid)));
+    projects = snap.docs.map(d=>({id:d.id,...d.data()}));
+  }
+
+  let html = '';
+  if (currentRole === 'admin') {
+    html += `<button class="btn-new-project" onclick="openNewProject()">+ ახალი პროექტი</button>`;
+  }
+  if (!projects.length) {
+    html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${currentRole==='admin'?'შექმენი პირველი პროექტი':'პროექტი არ მინიჭია — დაელოდე Admin-ს'}</div>`;
+  } else {
+    projects.forEach(p => {
+      let myRole = currentRole === 'admin' ? 'admin' : (p.members||{})[currentUser.uid] || 'viewer';
+      const roleLabel = myRole==='admin'?'Admin':myRole==='manager'?'Manager':myRole==='commenter'?'Commenter':'Viewer';
+      html += `<div class="project-card" onclick="openProject('${p.id}')">
+        <div class="project-card-name">${esc(p.name)}</div>
+        <div class="project-card-meta">${esc(p.desc||'')}</div>
+        <span class="project-card-role role-${myRole}">${roleLabel}</span>
+      </div>`;
+    });
+  }
+  grid.innerHTML = html;
+}
+
+// ── OPEN PROJECT ──
+async function openProject(pid) {
+  const pd = await getDoc(doc(db,'projects',pid));
+  if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
+  currentProjectId = pid;
+  currentProjectData = {id:pid,...pd.data()};
+
+  let myRole = currentRole;
+  if (currentRole !== 'admin') {
+    myRole = (currentProjectData.members||{})[currentUser.uid] || 'viewer';
+    currentRole = myRole;
+  }
+
+  const canEdit = myRole==='admin'||myRole==='manager';
+  const canComment = myRole==='admin'||myRole==='manager'||myRole==='commenter';
+  const roleLabel = myRole==='admin'?'Admin':myRole==='manager'?'Manager':myRole==='commenter'?'Commenter':'Viewer';
+
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('projectsScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('viewerBanner').style.display = 'none';
+  document.getElementById('hdrProjectName').textContent = currentProjectData.name || 'პროექტი';
+  document.getElementById('hdrUserName').textContent = currentUser.displayName || currentUser.email;
+  document.getElementById('hdrRoleBadge').textContent = roleLabel;
+  document.getElementById('hdrRoleBadge').className = 'role-badge role-'+myRole;
+  document.getElementById('btnAddIssue').style.display = canEdit?'flex':'none';
+  document.getElementById('actionsHead').style.display = canEdit?'':'none';
+  document.getElementById('btnManageProject').style.display = myRole==='admin'?'flex':'none';
+  document.getElementById('btnGlobalUsers').style.display = myRole==='admin'?'flex':'none';
+  document.getElementById('btnAppLogout').style.display = 'flex';
+  document.getElementById('btnShare').style.display = 'flex';
+
+  // share link
+  const shareUrl = location.origin + location.pathname + '?p=' + pid;
+  document.getElementById('shareLink').textContent = shareUrl;
+
+  subscribeIssues(pid);
+}
+
+window.openProject = openProject;
+
+// ── SUBSCRIBE ISSUES ──
+function subscribeIssues(pid) {
+  if (unsubIssues) unsubIssues();
+  const q = query(collection(db,'projects',pid,'issues'), orderBy('createdAt','asc'));
+  unsubIssues = onSnapshot(q, snap => {
+    issues = {};
+    snap.forEach(d => { issues[d.id] = {id:d.id,...d.data()}; });
+    render();
+  });
+}
+
+// ── RENDER ──
+function filtered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const disc = document.getElementById('filterDisc').value;
+  const status = document.getElementById('filterStatus').value;
+  const priority = document.getElementById('filterPriority').value;
+  return Object.values(issues).filter(i =>
+    (!q||(i.title||'').toLowerCase().includes(q)||(i.desc||'').toLowerCase().includes(q)||(i.person||'').toLowerCase().includes(q)||(i.num||'').toLowerCase().includes(q)) &&
+    (!disc||i.disc===disc) && (!status||i.status===status) && (!priority||i.priority===priority)
+  );
+}
+function sorted(arr) {
+  return [...arr].sort((a,b)=>{
+    let av=a[sortCol]??'', bv=b[sortCol]??'';
+    if(sortCol==='num'){av=parseInt((av+'').replace(/\D/g,''))||0;bv=parseInt((bv+'').replace(/\D/g,''))||0}
+    if(av<bv)return sortDir==='asc'?-1:1;
+    if(av>bv)return sortDir==='asc'?1:-1;
+    return 0;
+  });
+}
+function render() {
+  const arr = sorted(filtered());
+  const all = filtered();
+  document.getElementById('cntOpen').textContent = all.filter(i=>i.status==='open').length+' გახსნილი';
+  document.getElementById('cntProgress').textContent = all.filter(i=>i.status==='progress').length+' მიმდინარე';
+  document.getElementById('cntClosed').textContent = all.filter(i=>i.status==='closed').length+' დახურული';
+  const tbody = document.getElementById('tbody');
+  if (!arr.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div></td></tr>`;
+    return;
+  }
+  const canEdit = currentRole==='admin'||currentRole==='manager';
+  tbody.innerHTML = arr.map(issue => {
+    const links = issue.images||[];
+    const linkHtml = links.length ? `<span style="font-size:12px;color:var(--accent);font-weight:500">🔗 ${links.length}</span>` : '';
+    const cmtHtml = (issue.commentCount||0)>0 ? `<span style="font-size:11px;color:var(--ink-light)">💬 ${issue.commentCount}</span>` : '<span style="font-size:11px;color:var(--ink-light);opacity:.3">—</span>';
+    const acts = canEdit
+      ? `<td class="action-cell">
+          <button class="btn-edit" data-id="${issue.id}">✏</button>
+          ${currentRole==='admin'?`<button class="btn-del" data-id="${issue.id}">🗑</button>`:''}
+        </td>`
+      : `<td></td>`;
+    return `<tr data-id="${issue.id}">
+      <td class="num-cell">${esc(issue.num)}</td>
+      <td><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></td>
+      <td class="desc-cell"><span class="desc-short">${esc(issue.title)}</span></td>
+      <td><span class="priority-flag priority-${issue.priority}">${prioL[issue.priority]}</span></td>
+      <td><span class="status-dot ${issue.status}">${statL[issue.status]}</span></td>
+      <td>${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</td>
+      <td>${cmtHtml}</td>
+      <td style="white-space:nowrap;color:var(--ink-light);font-size:12px">${issue.date||'—'}</td>
+      ${acts}
+    </tr>`;
+  }).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', e => {
+      if (e.target.classList.contains('btn-edit')||e.target.classList.contains('btn-del')) return;
+      openDetail(tr.dataset.id);
+    });
+  });
+  tbody.querySelectorAll('.btn-edit').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openEdit(b.dataset.id); }));
+  tbody.querySelectorAll('.btn-del').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); confirmDelete(b.dataset.id); }));
+  document.querySelectorAll('th[data-col]').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.col===sortCol) th.classList.add(sortDir==='asc'?'sort-asc':'sort-desc');
+    th.onclick = () => { if(sortCol===th.dataset.col) sortDir=sortDir==='asc'?'desc':'asc'; else{sortCol=th.dataset.col;sortDir='asc'} render(); };
+  });
+}
+['searchInput','filterDisc','filterStatus','filterPriority'].forEach(id => document.getElementById(id).addEventListener('input', render));
+
+// ── NEXT NUM ──
+function nextNum() {
+  const nums = Object.values(issues).map(i=>parseInt((i.num||'').replace(/\D/g,''))||0);
+  const n = nums.length ? Math.max(...nums)+1 : 1;
+  return 'R-'+String(n).padStart(3,'0');
+}
+
+// ── ADD/EDIT ISSUE ──
+function openAdd() {
+  editingId = null; pendingLinks = [];
+  document.getElementById('modalTitle').textContent = 'ახალი საკითხი';
+  document.getElementById('fNum').value = nextNum();
+  document.getElementById('fDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('fDisc').value = 'arch';
+  document.getElementById('fPriority').value = 'med';
+  document.getElementById('fStatus').value = 'open';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fPerson').value = '';
+  renderLinks(); om('issueModal');
+}
+function openEdit(id) {
+  const issue = issues[id]; if(!issue) return;
+  editingId = id; pendingLinks = [...(issue.images||[])];
+  document.getElementById('modalTitle').textContent = 'საკითხის რედაქტირება';
+  document.getElementById('fNum').value = issue.num;
+  document.getElementById('fDate').value = issue.date||'';
+  document.getElementById('fDisc').value = issue.disc;
+  document.getElementById('fPriority').value = issue.priority;
+  document.getElementById('fStatus').value = issue.status;
+  document.getElementById('fTitle').value = issue.title;
+  document.getElementById('fDesc').value = issue.desc||'';
+  document.getElementById('fPerson').value = issue.person||'';
+  renderLinks(); om('issueModal');
+}
+document.getElementById('btnAddIssue').addEventListener('click', openAdd);
+document.getElementById('saveIssue').addEventListener('click', async () => {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { alert('სათაური სავალდებულოა'); return; }
+  const data = {
+    num: document.getElementById('fNum').value,
+    date: document.getElementById('fDate').value,
+    disc: document.getElementById('fDisc').value,
+    priority: document.getElementById('fPriority').value,
+    status: document.getElementById('fStatus').value,
+    title, desc: document.getElementById('fDesc').value,
+    person: document.getElementById('fPerson').value.trim(),
+    images: pendingLinks.filter(u=>u.trim()),
+    updatedAt: serverTimestamp(),
+  };
+  const btn = document.getElementById('saveIssue');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  try {
+    if (editingId) {
+      await updateDoc(doc(db,'projects',currentProjectId,'issues',editingId), data);
+    } else {
+      data.createdAt = serverTimestamp(); data.commentCount = 0;
+      await addDoc(collection(db,'projects',currentProjectId,'issues'), data);
+    }
+    cm('issueModal'); showToast(editingId?'განახლდა!':'საკითხი დაემატა!');
+  } catch(e) { alert('შეცდომა: '+e.message); }
+  btn.innerHTML = 'შენახვა'; btn.disabled = false;
+});
+async function confirmDelete(id) {
+  if (!confirm('ნამდვილად წავშალო?')) return;
+  await deleteDoc(doc(db,'projects',currentProjectId,'issues',id));
+  showToast('წაიშალა');
+}
+
+// ── LINKS ──
+function renderLinks() {
+  const c = document.getElementById('linkInputsContainer');
+  c.innerHTML = pendingLinks.map((url,i) => `
+    <div class="link-input-row">
+      <input type="url" value="${esc(url)}" placeholder="https://..." data-idx="${i}">
+      <button type="button" class="btn-link-rm" data-idx="${i}">✕</button>
+    </div>`).join('');
+  c.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => { pendingLinks[+inp.dataset.idx] = inp.value.trim(); }));
+  c.querySelectorAll('.btn-link-rm').forEach(b => b.addEventListener('click', () => { pendingLinks.splice(+b.dataset.idx,1); renderLinks(); }));
+}
+document.getElementById('btnAddLink').addEventListener('click', () => {
+  pendingLinks.push(''); renderLinks();
+  const ins = document.getElementById('linkInputsContainer').querySelectorAll('input');
+  ins[ins.length-1].focus();
+});
+
+// ── DETAIL ──
+async function openDetail(id) {
+  const issue = issues[id]; if(!issue) return;
+  currentDetailId = id;
+  const canEdit = currentRole==='admin'||currentRole==='manager';
+  const canComment = !isViewerMode && (currentRole==='admin'||currentRole==='manager'||currentRole==='commenter');
+  document.getElementById('detailTitle').textContent = issue.num+' — '+issue.title;
+  document.getElementById('detailEditBtn').style.display = canEdit?'flex':'none';
+  document.getElementById('detailBody').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-section"><div class="detail-label">ნომერი</div><div class="detail-val" style="font-family:'JetBrains Mono',monospace;font-weight:600">${esc(issue.num)}</div></div>
+      <div class="detail-section"><div class="detail-label">დისციპლინა</div><div class="detail-val"><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div></div>
+      <div class="detail-section"><div class="detail-label">თარიღი</div><div class="detail-val">${issue.date||'—'}</div></div>
+      <div class="detail-section"><div class="detail-label">სტატუსი</div><div class="detail-val"><span class="status-dot ${issue.status}">${statL[issue.status]}</span></div></div>
+      <div class="detail-section"><div class="detail-label">პრიორიტეტი</div><div class="detail-val"><span class="priority-flag priority-${issue.priority}">${prioL[issue.priority]}</span></div></div>
+      <div class="detail-section"><div class="detail-label">პასუხისმგებელი</div><div class="detail-val">${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</div></div>
+    </div>
+    <div class="detail-section"><div class="detail-label">დეტალური აღწერა</div>
+      <div class="detail-val" style="background:var(--bg);padding:12px;border-radius:6px;border:1px solid var(--rule);white-space:pre-wrap">${esc(issue.desc)||'—'}</div>
+    </div>
+    ${(issue.images&&issue.images.length)?`<div class="detail-section" style="margin-top:12px">
+      <div class="detail-label">ლინკები</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+        ${issue.images.map((url,i)=>`<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;word-break:break-all">🔗 ლინკი ${i+1}</a>`).join('')}
+      </div></div>`:''}
+    <div class="comments-section">
+      <div class="detail-label" style="margin-bottom:10px">💬 კომენტარები</div>
+      <div id="commentsList"><div class="no-comments">იტვირთება...</div></div>
+      ${canComment ? `<div class="comment-input-row">
+        <textarea id="commentInput" placeholder="დაწერე კომენტარი... (Enter — გაგზავნა)"></textarea>
+        <button class="btn-primary" id="btnSendComment">გაგზავნა</button>
+      </div>` : `<div class="viewer-note">💬 კომენტარისთვის საჭიროა რეგისტრაცია</div>`}
+    </div>`;
+  om('detailModal');
+  loadComments(id);
+  if (canComment) {
+    document.getElementById('btnSendComment').addEventListener('click', () => sendComment(id));
+    document.getElementById('commentInput').addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendComment(id);} });
+  }
+}
+async function loadComments(issueId) {
+  const q = query(collection(db,'projects',currentProjectId,'issues',issueId,'comments'), orderBy('createdAt','asc'));
+  const snap = await getDocs(q);
+  const list = document.getElementById('commentsList');
+  if (!list) return;
+  if (snap.empty) { list.innerHTML = '<div class="no-comments">კომენტარი ჯერ არ არის</div>'; return; }
+  list.innerHTML = snap.docs.map(d => {
+    const c = d.data();
+    const time = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('ka-GE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="comment-item">
+      <div class="comment-avatar">${initials(c.authorName)}</div>
+      <div class="comment-bubble">
+        <div class="comment-meta"><span class="comment-author">${esc(c.authorName)}</span><span>${time}</span></div>
+        <div class="comment-text">${esc(c.text)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function sendComment(issueId) {
+  const inp = document.getElementById('commentInput');
+  const text = inp.value.trim(); if(!text) return;
+  const btn = document.getElementById('btnSendComment'); btn.disabled = true;
+  await addDoc(collection(db,'projects',currentProjectId,'issues',issueId,'comments'), {
+    text, authorName: currentUser.displayName||currentUser.email,
+    authorId: currentUser.uid, createdAt: serverTimestamp()
+  });
+  await updateDoc(doc(db,'projects',currentProjectId,'issues',issueId), {commentCount: increment(1)});
+  inp.value = ''; btn.disabled = false;
+  loadComments(issueId);
+}
+document.getElementById('detailEditBtn').addEventListener('click', () => { cm('detailModal'); openEdit(currentDetailId); });
+
+// ── NAVIGATION ──
+document.getElementById('btnBackProjects').addEventListener('click', () => {
+  if (isViewerMode) return;
+  if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+  currentProjectId = null; currentRole = ADMIN_EMAILS.includes(currentUser?.email) ? 'admin' : 'member';
+  showProjects();
+});
+document.getElementById('btnProjLogout').addEventListener('click', () => signOut(auth));
+document.getElementById('btnAppLogout').addEventListener('click', () => signOut(auth));
+
+// ── AUTH ──
+document.getElementById('btnLogin').addEventListener('click', async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr'); err.style.display='none';
+  try { await signInWithEmailAndPassword(auth, email, pass); }
+  catch(e) { err.textContent='მეილი ან პაროლი არასწორია'; err.style.display='block'; }
+});
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btnLogin').click(); });
+document.getElementById('btnReg').addEventListener('click', async () => {
+  const name = document.getElementById('regName').value.trim();
+  const company = document.getElementById('regCompany').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const err = document.getElementById('regErr'); err.style.display='none';
+  if (!name){err.textContent='სახელი სავალდებულოა';err.style.display='block';return}
+  if (pass.length<6){err.textContent='პაროლი მინ. 6 სიმბოლო';err.style.display='block';return}
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, {displayName: name});
+    await setDoc(doc(db,'users',cred.user.uid), {name,email,company,role:'member',approved:false,createdAt:serverTimestamp()});
+    await signOut(auth);
+    switchTab('login');
+    showToast('რეგისტრაცია წარმატებულია! Admin დაამტკიცებს.');
+  } catch(e) {
+    err.textContent = e.code==='auth/email-already-in-use'?'მეილი უკვე გამოყენებულია':'შეცდომა: '+e.message;
+    err.style.display='block';
+  }
+});
+
+// ── GLOBAL USERS (admin) ──
+async function loadAllUsers() {
+  const snap = await getDocs(collection(db,'users'));
+  allUsers = {};
+  snap.forEach(d => { allUsers[d.id] = {id:d.id,...d.data()}; });
+}
+document.getElementById('btnGlobalUsers').addEventListener('click', async () => {
+  await loadAllUsers();
+  const panel = document.getElementById('usersPanel');
+  const users = Object.values(allUsers);
+  panel.innerHTML = users.length ? users.map(u => `
+    <div class="user-row">
+      <div class="user-info">
+        <div class="ue">${esc(u.name)} ${u.company?`<span style="color:var(--ink-light);font-size:12px">· ${esc(u.company)}</span>`:''}</div>
+        <div class="um">${esc(u.email)}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${u.role!=='admin'?`${!u.approved?`<button class="btn-primary" style="padding:5px 11px;font-size:12px" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>`:'<span style="color:var(--ok);font-size:12px">✓</span>'}`:'<span style="color:var(--accent);font-size:12px;font-weight:600">Admin</span>'}
+      </div>
+    </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">მომხმარებელი არ არის</div>';
+  om('usersModal');
+});
+window.approveUser = async uid => {
+  await updateDoc(doc(db,'users',uid), {approved:true});
+  showToast('დამტკიცდა!');
+  document.getElementById('btnGlobalUsers').click();
+};
+
+// ── PROJECT MANAGE ──
+document.getElementById('btnManageProject').addEventListener('click', () => openProjectModal(currentProjectId));
+async function openProjectModal(pid) {
+  await loadAllUsers();
+  document.getElementById('projectModalTitle').textContent = pid ? 'პროექტის მართვა' : 'ახალი პროექტი';
+  const pd = pid ? currentProjectData : {};
+  document.getElementById('pName').value = pd.name||'';
+  document.getElementById('pDesc').value = pd.desc||'';
+  renderMemberList(pid ? (pd.members||{}) : {});
+  document.getElementById('memberSearch').oninput = e => renderMemberList(pid?(pd.members||{}):{}, e.target.value);
+  document.getElementById('saveProject').onclick = () => saveProjectData(pid);
+  om('projectModal');
+}
+function renderMemberList(currentMembers, search='') {
+  const users = Object.values(allUsers).filter(u => u.role!=='admin' && u.approved &&
+    (!search || (u.name||'').toLowerCase().includes(search.toLowerCase()) || (u.email||'').toLowerCase().includes(search.toLowerCase())));
+  document.getElementById('memberList').innerHTML = users.length ? users.map(u => {
+    const role = currentMembers[u.id]||'';
+    return `<div class="member-item">
+      <div><div style="font-size:13px;font-weight:500">${esc(u.name)}</div><div style="font-size:11px;color:var(--ink-light)">${esc(u.email)}</div></div>
+      <select data-uid="${u.id}" onchange="updateMemberRole('${u.id}',this.value)">
+        <option value="">— არ არის წევრი —</option>
+        <option value="manager" ${role==='manager'?'selected':''}>Manager</option>
+        <option value="commenter" ${role==='commenter'?'selected':''}>Commenter</option>
+        <option value="viewer" ${role==='viewer'?'selected':''}>Viewer</option>
+      </select>
+    </div>`;
+  }).join('') : '<div style="padding:12px;font-size:13px;color:var(--ink-light)">მომხმარებელი ვერ მოიძებნა</div>';
+}
+const pendingMemberChanges = {};
+window.updateMemberRole = (uid, role) => { pendingMemberChanges[uid] = role; };
+async function saveProjectData(pid) {
+  const name = document.getElementById('pName').value.trim();
+  if (!name) { alert('სახელი სავალდებულოა'); return; }
+  const currentMembers = pid ? (currentProjectData.members||{}) : {};
+  const newMembers = {...currentMembers};
+  Object.entries(pendingMemberChanges).forEach(([uid,role]) => {
+    if (role) newMembers[uid] = role; else delete newMembers[uid];
+  });
+  const memberIds = Object.keys(newMembers);
+  const data = { name, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, updatedAt: serverTimestamp() };
+  try {
+    if (pid) {
+      await updateDoc(doc(db,'projects',pid), data);
+      currentProjectData = {...currentProjectData,...data};
+      document.getElementById('hdrProjectName').textContent = name;
+    }
+    cm('projectModal'); showToast('შენახულია!');
+  } catch(e) { alert('შეცდომა: '+e.message); }
+}
+
+// ── NEW PROJECT ──
+window.openNewProject = () => { document.getElementById('npName').value=''; document.getElementById('npDesc').value=''; om('newProjModal'); };
+document.getElementById('saveNewProj').addEventListener('click', async () => {
+  const name = document.getElementById('npName').value.trim();
+  if (!name) { alert('სახელი სავალდებულოა'); return; }
+  const btn = document.getElementById('saveNewProj'); btn.disabled=true;
+  try {
+    const ref = await addDoc(collection(db,'projects'), {
+      name, desc: document.getElementById('npDesc').value.trim(),
+      members:{}, memberIds:[], createdAt:serverTimestamp(), createdBy:currentUser.uid
+    });
+    cm('newProjModal'); showToast('პროექტი შეიქმნა!');
+    await showProjects();
+  } catch(e) { alert('შეცდომა: '+e.message); }
+  btn.disabled=false;
+});
+
+// ── SHARE ──
+document.getElementById('btnShare').addEventListener('click', () => om('shareModal'));
+window.copyShare = () => {
+  const url = location.origin + location.pathname + '?p=' + currentProjectId;
+  navigator.clipboard.writeText(url).then(() => showToast('ლინკი დაკოპირდა! 📋'));
+};
+
+
+// ── GUEST VIEW ──
+document.getElementById('btnGuestView').addEventListener('click', async () => {
+  const listEl = document.getElementById('guestProjectList');
+  listEl.innerHTML = 'იტვირთება...';
+  om('guestModal');
+  try {
+    const { getDocs: gds, collection: col2 } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDocs(collection(db,'projects'));
+    const projects = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if (!projects.length) {
+      listEl.innerHTML = '<div style="font-size:13px;color:var(--ink-light);padding:10px">პროექტი არ მოიძებნა</div>';
+      return;
+    }
+    listEl.innerHTML = projects.map(p => `
+      <div onclick="openGuestProject('${p.id}','${p.name.replace(/'/g,"\'")}'')"
+        style="padding:12px 14px;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:8px;cursor:pointer;transition:all .15s;background:var(--bg)"
+        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-lo)'"
+        onmouseout="this.style.borderColor='var(--rule)';this.style.background='var(--bg)'">
+        <div style="font-size:14px;font-weight:500;color:var(--ink)">${esc(p.name)}</div>
+        ${p.desc?`<div style="font-size:12px;color:var(--ink-light);margin-top:2px">${esc(p.desc)}</div>`:''}
+      </div>`).join('');
+  } catch(e) {
+    listEl.innerHTML = '<div style="font-size:13px;color:var(--warn)">შეცდომა: '+e.message+'</div>';
+  }
+});
+
+window.openGuestProject = async (pid, pname) => {
+  cm('guestModal');
+  await openProjectAsViewer(pid);
+};
+
+</script>
+</body>
+</html>
