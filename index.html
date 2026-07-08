@@ -901,25 +901,7 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
   catch(e) { err.textContent='მეილი ან პაროლი არასწორია'; err.style.display='block'; }
 });
 document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btnLogin').click(); });
-document.getElementById('btnReg').addEventListener('click', async () => {
-  const name = document.getElementById('regName').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
-  const pass = document.getElementById('regPass').value;
-  const err = document.getElementById('regErr'); err.style.display='none';
-  if (!name){err.textContent='სახელი სავალდებულოა';err.style.display='block';return}
-  if (pass.length<6){err.textContent='პაროლი მინ. 6 სიმბოლო';err.style.display='block';return}
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(cred.user, {displayName: name});
-    await setDoc(doc(db,'users',cred.user.uid), {name,email,role:'member',approved:false,createdAt:serverTimestamp()});
-    await signOut(auth);
-    switchTab('login');
-    showToast('რეგისტრაცია წარმატებულია! Admin დაამტკიცებს.');
-  } catch(e) {
-    err.textContent = e.code==='auth/email-already-in-use'?'მეილი უკვე გამოყენებულია':'შეცდომა: '+e.message;
-    err.style.display='block';
-  }
-});
+
 
 // ── GLOBAL USERS (admin) ──
 async function loadAllUsers() {
