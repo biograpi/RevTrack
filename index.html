@@ -31,8 +31,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);font-s
 .auth-tab.active{background:var(--accent);color:white}
 .auth-field{margin-bottom:13px}
 .auth-field label{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin-bottom:5px}
-.auth-field input{width:100%;border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px;font-family:inherit;font-size:14px;color:var(--ink)}
-.auth-field input:focus{outline:none;border-color:var(--accent)}
+.auth-field input,.auth-field select{width:100%;border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px;font-family:inherit;font-size:14px;color:var(--ink);background:white}
+.auth-field input:focus,.auth-field select:focus{outline:none;border-color:var(--accent)}
+.auth-hint{font-size:11px;color:var(--ink-light);margin-top:4px}
+.auth-ok{color:var(--ok);font-size:12px;margin-bottom:10px;display:none;background:var(--ok-lo);padding:8px 10px;border-radius:var(--r)}
 .auth-err{color:var(--warn);font-size:12px;margin-bottom:10px;display:none}
 .auth-note{font-size:12px;color:var(--ink-light);margin-top:12px;text-align:center;line-height:1.6}
 
@@ -48,8 +50,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);font-s
 .project-card-meta{font-size:12px;color:rgba(255,255,255,.4)}
 .project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:10px}
 .role-admin{background:var(--accent);color:white}
-.role-manager{background:var(--purple);color:white}
-.role-commenter{background:var(--ok-lo);color:var(--ok)}
+.role-design_manager{background:var(--purple);color:white}
+.role-reviewer{background:var(--ok-lo);color:var(--ok)}
+.role-contractor{background:var(--amber-lo);color:var(--amber)}
 .role-viewer{background:rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
 .btn-new-project{background:var(--accent);color:white;border:none;border-radius:10px;padding:20px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;text-align:left;transition:background .15s}
 .btn-new-project:hover{background:#1d4ed8}
@@ -206,6 +209,10 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
   <div class="auth-box">
     <div class="auth-logo">RevTrack</div>
     <div class="auth-sub">პროექტის რევიზიების სისტემა</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin">შესვლა</button>
+      <button class="auth-tab" id="tabRegister">რეგისტრაცია</button>
+    </div>
     <div id="loginForm">
       <div class="auth-field"><label>ელ. ფოსტა</label><input type="email" id="loginEmail" placeholder="name@company.ge"></div>
       <div class="auth-field"><label>პაროლი</label><input type="password" id="loginPass" placeholder="••••••••"></div>
@@ -219,6 +226,23 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
       <button id="btnGuestView" style="width:100%;margin-top:12px;padding:9px;border:1px solid var(--rule);border-radius:var(--r);background:var(--bg);color:var(--ink-mid);font-family:inherit;font-size:13px;cursor:pointer;">
         👁 სტუმრად ნახვა (რეგისტრაციის გარეშე)
       </button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="auth-field"><label>სახელი გვარი</label><input type="text" id="regName" placeholder="გიორგი გიორგაძე"></div>
+      <div class="auth-field"><label>ელ. ფოსტა</label><input type="email" id="regEmail" placeholder="name@company.ge"></div>
+      <div class="auth-field"><label>პაროლი</label><input type="password" id="regPass" placeholder="მინიმუმ 6 სიმბოლო"></div>
+      <div class="auth-field">
+        <label>თქვენი როლი</label>
+        <select id="regRole">
+          <option value="reviewer">რევიზორი</option>
+          <option value="design_manager">დიზაინ მენეჯერი</option>
+          <option value="contractor">კონტრაქტორი</option>
+        </select>
+        <div class="auth-hint">როლს საბოლოოდ დაადასტურებს ადმინისტრატორი</div>
+      </div>
+      <div class="auth-err" id="regErr"></div>
+      <div class="auth-ok" id="regOk">მოთხოვნა გაიგზავნა! დაელოდეთ ადმინისტრატორის დადასტურებას.</div>
+      <button class="btn-primary" style="width:100%;justify-content:center" id="btnRegister">რეგისტრაცია</button>
     </div>
   </div>
 </div>
@@ -434,7 +458,7 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
 <!-- ══ FIREBASE ══ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
   onSnapshot, orderBy, query, serverTimestamp, increment, where }
@@ -457,6 +481,7 @@ const ADMIN_EMAILS = ['biograpirev@gmail.com']; // ← admins
 // ── STATE ──
 let currentUser = null;
 let currentRole = 'viewer';
+let currentGlobalRole = 'contractor';
 let currentProjectId = null;
 let currentProjectData = null;
 let issues = {};
@@ -478,6 +503,7 @@ const initials = n => (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().sl
 const discL = {arch:'არქიტექტურა',struct:'კონსტრუქცია',mep:'MEP',fire:'სახანძრო',other:'სხვა'};
 const prioL = {high:'მაღალი',med:'საშუალო',low:'დაბალი'};
 const statL = {open:'გახსნილი',progress:'მიმდინარე',closed:'დახურული'};
+const roleL = {admin:'Admin', design_manager:'დიზაინ მენეჯერი', reviewer:'რევიზორი', contractor:'კონტრაქტორი', viewer:'Viewer'};
 
 
 
@@ -499,7 +525,7 @@ onAuthStateChanged(auth, async user => {
   }
 
   const uDoc = await getDoc(doc(db,'users',user.uid));
-  let role = 'member';
+  let role = 'contractor';
   if (ADMIN_EMAILS.includes(user.email)) {
     role = 'admin';
     if (!uDoc.exists()) {
@@ -509,14 +535,15 @@ onAuthStateChanged(auth, async user => {
     }
   } else if (uDoc.exists()) {
     const d = uDoc.data();
-    if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული'); await signOut(auth); return; }
-    role = d.role || 'member';
+    if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ'); await signOut(auth); return; }
+    role = d.role || 'contractor';
   } else {
-    showToast('მომხმარებელი ვერ მოიძებნა'); await signOut(auth); return;
+    showToast('მომხმარებელი ვერ მოიძებნა — გაიარეთ რეგისტრაცია'); await signOut(auth); return;
   }
 
   currentUser = user;
   currentRole = role;
+  currentGlobalRole = role;
   isViewerMode = false;
 
   // load all users for admin
@@ -574,7 +601,7 @@ async function showProjects() {
   grid.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px">იტვირთება...</div>';
 
   let projects = [];
-  if (currentRole === 'admin') {
+  if (currentGlobalRole === 'admin') {
     const snap = await getDocs(collection(db,'projects'));
     projects = snap.docs.map(d=>({id:d.id,...d.data()}));
   } else {
@@ -583,15 +610,15 @@ async function showProjects() {
   }
 
   let html = '';
-  if (currentRole === 'admin') {
+  if (currentGlobalRole === 'admin') {
     html += `<button class="btn-new-project" onclick="openNewProject()">+ ახალი პროექტი</button>`;
   }
   if (!projects.length) {
-    html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${currentRole==='admin'?'შექმენი პირველი პროექტი':'პროექტი არ მინიჭია — დაელოდე Admin-ს'}</div>`;
+    html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${currentGlobalRole==='admin'?'შექმენი პირველი პროექტი':'პროექტი არ მინიჭია — დაელოდე Admin-ს'}</div>`;
   } else {
     projects.forEach(p => {
-      let myRole = currentRole === 'admin' ? 'admin' : (p.members||{})[currentUser.uid] || 'viewer';
-      const roleLabel = myRole==='admin'?'Admin':myRole==='manager'?'Manager':myRole==='commenter'?'Commenter':'Viewer';
+      let myRole = currentGlobalRole === 'admin' ? 'admin' : (p.members||{})[currentUser.uid] || 'viewer';
+      const roleLabel = roleL[myRole] || myRole;
       html += `<div class="project-card" onclick="openProject('${p.id}')">
         <div class="project-card-name">${esc(p.name)}</div>
         <div class="project-card-meta">${esc(p.desc||'')}</div>
@@ -609,15 +636,16 @@ async function openProject(pid) {
   currentProjectId = pid;
   currentProjectData = {id:pid,...pd.data()};
 
-  let myRole = currentRole;
-  if (currentRole !== 'admin') {
+  let myRole = currentGlobalRole;
+  if (currentGlobalRole !== 'admin') {
     myRole = (currentProjectData.members||{})[currentUser.uid] || 'viewer';
-    currentRole = myRole;
   }
+  currentRole = myRole;
 
-  const canEdit = myRole==='admin'||myRole==='manager';
-  const canComment = myRole==='admin'||myRole==='manager'||myRole==='commenter';
-  const roleLabel = myRole==='admin'?'Admin':myRole==='manager'?'Manager':myRole==='commenter'?'Commenter':'Viewer';
+  const canEdit = myRole==='admin'||myRole==='design_manager'||myRole==='reviewer';
+  const canComment = myRole==='admin'||myRole==='design_manager'||myRole==='reviewer'||myRole==='contractor';
+  const canManageProject = myRole==='admin'||myRole==='design_manager';
+  const roleLabel = roleL[myRole] || myRole;
 
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'none';
@@ -629,7 +657,7 @@ async function openProject(pid) {
   document.getElementById('hdrRoleBadge').className = 'role-badge role-'+myRole;
   document.getElementById('btnAddIssue').style.display = canEdit?'flex':'none';
   document.getElementById('actionsHead').style.display = canEdit?'':'none';
-  document.getElementById('btnManageProject').style.display = myRole==='admin'?'flex':'none';
+  document.getElementById('btnManageProject').style.display = canManageProject?'flex':'none';
   document.getElementById('btnGlobalUsers').style.display = myRole==='admin'?'flex':'none';
   document.getElementById('btnAppLogout').style.display = 'flex';
   document.getElementById('btnShare').style.display = 'flex';
@@ -685,7 +713,7 @@ function render() {
     tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div></td></tr>`;
     return;
   }
-  const canEdit = currentRole==='admin'||currentRole==='manager';
+  const canEdit = currentRole==='admin'||currentRole==='design_manager'||currentRole==='reviewer';
   tbody.innerHTML = arr.map(issue => {
     const links = issue.images||[];
     const linkHtml = links.length ? `<span style="font-size:12px;color:var(--accent);font-weight:500">🔗 ${links.length}</span>` : '';
@@ -731,6 +759,20 @@ function nextNum() {
   return 'R-'+String(n).padStart(3,'0');
 }
 
+// ── CLOSE PERMISSION: only admin, or the reviewer who opened the issue ──
+function canCloseIssue(issue) {
+  if (currentRole === 'admin') return true;
+  if (currentRole === 'reviewer') return !issue || issue.createdBy === currentUser?.uid;
+  return false;
+}
+function applyStatusOptionState(issue) {
+  const opt = document.querySelector('#fStatus option[value="closed"]');
+  if (!opt) return;
+  const allowed = canCloseIssue(issue);
+  opt.disabled = !allowed;
+  opt.textContent = allowed ? 'დახურული' : 'დახურული (მხოლოდ შემქმნელი რევიზორი/ადმინი)';
+}
+
 // ── ADD/EDIT ISSUE ──
 function openAdd() {
   editingId = null; pendingLinks = [];
@@ -743,7 +785,7 @@ function openAdd() {
   document.getElementById('fTitle').value = '';
   document.getElementById('fDesc').value = '';
   document.getElementById('fPerson').value = '';
-  renderLinks(); om('issueModal');
+  renderLinks(); applyStatusOptionState(null); om('issueModal');
 }
 function openEdit(id) {
   const issue = issues[id]; if(!issue) return;
@@ -757,19 +799,24 @@ function openEdit(id) {
   document.getElementById('fTitle').value = issue.title;
   document.getElementById('fDesc').value = issue.desc||'';
   document.getElementById('fPerson').value = issue.person||'';
-  renderLinks(); om('issueModal');
+  renderLinks(); applyStatusOptionState(issue); om('issueModal');
 }
 document.getElementById('btnAddIssue').addEventListener('click', openAdd);
 document.getElementById('saveIssue').addEventListener('click', async () => {
   const title = document.getElementById('fTitle').value.trim();
   if (!title) { alert('სათაური სავალდებულოა'); return; }
+  const status = document.getElementById('fStatus').value;
+  const existingIssue = editingId ? issues[editingId] : null;
+  if (status === 'closed' && !canCloseIssue(existingIssue)) {
+    alert('საკითხის დახურვა შეუძლია მხოლოდ ადმინს ან მისი შემქმნელი რევიზორს.');
+    return;
+  }
   const data = {
     num: document.getElementById('fNum').value,
     date: document.getElementById('fDate').value,
     disc: document.getElementById('fDisc').value,
     priority: document.getElementById('fPriority').value,
-    status: document.getElementById('fStatus').value,
-    title, desc: document.getElementById('fDesc').value,
+    status, title, desc: document.getElementById('fDesc').value,
     person: document.getElementById('fPerson').value.trim(),
     images: pendingLinks.filter(u=>u.trim()),
     updatedAt: serverTimestamp(),
@@ -781,6 +828,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
       await updateDoc(doc(db,'projects',currentProjectId,'issues',editingId), data);
     } else {
       data.createdAt = serverTimestamp(); data.commentCount = 0;
+      data.createdBy = currentUser.uid; data.createdByName = currentUser.displayName||currentUser.email;
       await addDoc(collection(db,'projects',currentProjectId,'issues'), data);
     }
     cm('issueModal'); showToast(editingId?'განახლდა!':'საკითხი დაემატა!');
@@ -814,8 +862,8 @@ document.getElementById('btnAddLink').addEventListener('click', () => {
 async function openDetail(id) {
   const issue = issues[id]; if(!issue) return;
   currentDetailId = id;
-  const canEdit = currentRole==='admin'||currentRole==='manager';
-  const canComment = !isViewerMode && (currentRole==='admin'||currentRole==='manager'||currentRole==='commenter');
+  const canEdit = currentRole==='admin'||currentRole==='design_manager'||currentRole==='reviewer';
+  const canComment = !isViewerMode && (currentRole==='admin'||currentRole==='design_manager'||currentRole==='reviewer'||currentRole==='contractor');
   document.getElementById('detailTitle').textContent = issue.num+' — '+issue.title;
   document.getElementById('detailEditBtn').style.display = canEdit?'flex':'none';
   document.getElementById('detailBody').innerHTML = `
@@ -826,6 +874,7 @@ async function openDetail(id) {
       <div class="detail-section"><div class="detail-label">სტატუსი</div><div class="detail-val"><span class="status-dot ${issue.status}">${statL[issue.status]}</span></div></div>
       <div class="detail-section"><div class="detail-label">პრიორიტეტი</div><div class="detail-val"><span class="priority-flag priority-${issue.priority}">${prioL[issue.priority]}</span></div></div>
       <div class="detail-section"><div class="detail-label">პასუხისმგებელი</div><div class="detail-val">${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</div></div>
+      ${issue.createdByName?`<div class="detail-section"><div class="detail-label">გახსნა</div><div class="detail-val">${esc(issue.createdByName)}</div></div>`:''}
     </div>
     <div class="detail-section"><div class="detail-label">დეტალური აღწერა</div>
       <div class="detail-val" style="background:var(--bg);padding:12px;border-radius:6px;border:1px solid var(--rule);white-space:pre-wrap">${esc(issue.desc)||'—'}</div>
@@ -886,13 +935,25 @@ document.getElementById('detailEditBtn').addEventListener('click', () => { cm('d
 document.getElementById('btnBackProjects').addEventListener('click', () => {
   if (isViewerMode) return;
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
-  currentProjectId = null; currentRole = ADMIN_EMAILS.includes(currentUser?.email) ? 'admin' : 'member';
+  currentProjectId = null; currentRole = currentGlobalRole;
   showProjects();
 });
 document.getElementById('btnProjLogout').addEventListener('click', () => signOut(auth));
 document.getElementById('btnAppLogout').addEventListener('click', () => signOut(auth));
 
 // ── AUTH ──
+document.getElementById('tabLogin').addEventListener('click', () => {
+  document.getElementById('tabLogin').classList.add('active');
+  document.getElementById('tabRegister').classList.remove('active');
+  document.getElementById('loginForm').style.display = 'block';
+  document.getElementById('registerForm').style.display = 'none';
+});
+document.getElementById('tabRegister').addEventListener('click', () => {
+  document.getElementById('tabRegister').classList.add('active');
+  document.getElementById('tabLogin').classList.remove('active');
+  document.getElementById('registerForm').style.display = 'block';
+  document.getElementById('loginForm').style.display = 'none';
+});
 document.getElementById('btnLogin').addEventListener('click', async () => {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
@@ -901,6 +962,37 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
   catch(e) { err.textContent='მეილი ან პაროლი არასწორია'; err.style.display='block'; }
 });
 document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btnLogin').click(); });
+
+document.getElementById('btnRegister').addEventListener('click', async () => {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const role = document.getElementById('regRole').value;
+  const err = document.getElementById('regErr'); err.style.display='none';
+  const ok = document.getElementById('regOk'); ok.style.display='none';
+  if (!name) { err.textContent='სახელი სავალდებულოა'; err.style.display='block'; return; }
+  if (!email) { err.textContent='ელ. ფოსტა სავალდებულოა'; err.style.display='block'; return; }
+  if (pass.length < 6) { err.textContent='პაროლი უნდა იყოს მინიმუმ 6 სიმბოლო'; err.style.display='block'; return; }
+  const btn = document.getElementById('btnRegister');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db,'users',cred.user.uid), {
+      name, email, role, approved: false, createdAt: serverTimestamp()
+    });
+    ok.style.display = 'block';
+    document.getElementById('regName').value = '';
+    document.getElementById('regEmail').value = '';
+    document.getElementById('regPass').value = '';
+    // onAuthStateChanged will fire, see approved:false, sign the user back out with a toast
+  } catch(e) {
+    let msg = 'შეცდომა: ' + e.message;
+    if (e.code === 'auth/email-already-in-use') msg = 'ეს ელ. ფოსტა უკვე რეგისტრირებულია';
+    if (e.code === 'auth/invalid-email') msg = 'ელ. ფოსტის ფორმატი არასწორია';
+    err.textContent = msg; err.style.display = 'block';
+  }
+  btn.innerHTML = 'რეგისტრაცია'; btn.disabled = false;
+});
 
 
 // ── GLOBAL USERS (admin) ──
@@ -926,7 +1018,14 @@ document.getElementById('btnGlobalUsers').addEventListener('click', async () => 
         <div class="um">${esc(u.email)}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        ${u.role!=='admin'?`${!u.approved?`<button class="btn-primary" style="padding:5px 11px;font-size:12px" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>`:'<span style="color:var(--ok);font-size:12px">✓</span>'}`:'<span style="color:var(--accent);font-size:12px;font-weight:600">Admin</span>'}
+        ${u.role!=='admin'?`
+          <select onchange="changeUserRole('${u.id}',this.value)" style="border:1px solid var(--rule);border-radius:4px;padding:4px 6px;font-size:12px;font-family:inherit">
+            <option value="reviewer" ${u.role==='reviewer'?'selected':''}>რევიზორი</option>
+            <option value="design_manager" ${u.role==='design_manager'?'selected':''}>დიზაინ მენეჯერი</option>
+            <option value="contractor" ${u.role==='contractor'?'selected':''}>კონტრაქტორი</option>
+          </select>
+          ${!u.approved?`<button class="btn-primary" style="padding:5px 11px;font-size:12px" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>`:'<span style="color:var(--ok);font-size:12px">✓ დამტკიცებული</span>'}
+        `:'<span style="color:var(--accent);font-size:12px;font-weight:600">Admin</span>'}
       </div>
     </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">მომხმარებელი არ არის</div>';
   om('usersModal');
@@ -934,6 +1033,11 @@ document.getElementById('btnGlobalUsers').addEventListener('click', async () => 
 window.approveUser = async uid => {
   await updateDoc(doc(db,'users',uid), {approved:true});
   showToast('დამტკიცდა!');
+  document.getElementById('btnGlobalUsers').click();
+};
+window.changeUserRole = async (uid, role) => {
+  await updateDoc(doc(db,'users',uid), {role});
+  showToast('როლი შეიცვალა');
   document.getElementById('btnGlobalUsers').click();
 };
 
@@ -960,9 +1064,9 @@ function renderMemberList(currentMembers, search='') {
       <div><div style="font-size:13px;font-weight:500">${esc(u.name)}</div><div style="font-size:11px;color:var(--ink-light)">${esc(u.email)}</div></div>
       <select data-uid="${u.id}" onchange="updateMemberRole('${u.id}',this.value)">
         <option value="">— არ არის წევრი —</option>
-        <option value="manager" ${role==='manager'?'selected':''}>Manager</option>
-        <option value="commenter" ${role==='commenter'?'selected':''}>Commenter</option>
-        <option value="viewer" ${role==='viewer'?'selected':''}>Viewer</option>
+        <option value="design_manager" ${role==='design_manager'?'selected':''}>დიზაინ მენეჯერი</option>
+        <option value="reviewer" ${role==='reviewer'?'selected':''}>რევიზორი</option>
+        <option value="contractor" ${role==='contractor'?'selected':''}>კონტრაქტორი</option>
       </select>
     </div>`;
   }).join('') : '<div style="padding:12px;font-size:13px;color:var(--ink-light)">მომხმარებელი ვერ მოიძებნა</div>';
