@@ -7,15 +7,17 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Noto+Sans+Georgian:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 :root {
-  --ink:#1a1a2e; --ink-mid:#3d3d5c; --ink-light:#7c7c9a;
-  --rule:#e2e2ec; --bg:#f7f7fb; --white:#fff;
-  --accent:#2563eb; --accent-lo:#dbeafe;
+  --soft-black:#1a1120; --warm-white:#f0ebd4;
+  --primary:#b63a32; --primary-lo:#f3ddd9;
+  --ink:#1a1120; --ink-mid:#5a4d55; --ink-light:#8f8290;
+  --rule:#e4d9c4; --bg:#f0ebd4; --white:#fff;
+  --accent:#b63a32; --accent-lo:#f3ddd9;
   --warn:#dc2626; --warn-lo:#fee2e2;
   --ok:#16a34a; --ok-lo:#dcfce7;
   --amber:#d97706; --amber-lo:#fef3c7;
   --purple:#7c3aed; --purple-lo:#ede9fe;
-  --shadow-sm:0 1px 3px rgba(26,26,46,.08);
-  --shadow-md:0 4px 16px rgba(26,26,46,.12);
+  --shadow-sm:0 1px 3px rgba(26,17,32,.08);
+  --shadow-md:0 4px 16px rgba(26,17,32,.14);
   --r:6px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -39,28 +41,27 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .auth-note{font-size:12px;color:var(--ink-light);margin-top:12px;text-align:center;line-height:1.6}
 
 /* ── PROJECTS SCREEN ── */
-.projects-screen{display:none;min-height:100vh;background:var(--ink)}
-.projects-header{padding:24px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.1)}
-.projects-logo{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:500;color:var(--accent);letter-spacing:.04em}
-.projects-user{font-size:13px;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:10px}
+.projects-screen{display:none;min-height:100vh;background:var(--soft-black)}
+.projects-header{padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px;flex-wrap:wrap}
+.projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
+.projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
 .project-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:20px;cursor:pointer;transition:all .15s}
 .project-card:hover{background:rgba(255,255,255,.1);border-color:var(--accent)}
 .project-card-name{font-size:15px;font-weight:500;color:white;margin-bottom:6px}
 .project-card-meta{font-size:12px;color:rgba(255,255,255,.4)}
+.project-card-creator{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px}
 .project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:10px}
-.role-admin{background:var(--accent);color:white}
+.role-admin{background:var(--soft-black);color:white}
 .role-design_manager{background:var(--purple);color:white}
 .role-reviewer{background:var(--ok-lo);color:var(--ok)}
 .role-contractor{background:var(--amber-lo);color:var(--amber)}
 .role-viewer{background:rgba(255,255,255,.15);color:rgba(255,255,255,.7)}
-.btn-new-project{background:var(--accent);color:white;border:none;border-radius:10px;padding:20px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:500;text-align:left;transition:background .15s}
-.btn-new-project:hover{background:#1d4ed8}
 
 /* ── HEADER ── */
-header{background:var(--ink);color:white;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:2px solid var(--accent)}
+header{background:var(--primary);color:white;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .header-left{display:flex;align-items:center;gap:12px}
-.header-logo{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;letter-spacing:.04em;color:var(--accent);text-transform:uppercase;cursor:pointer}
+.header-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:15px;font-weight:700;letter-spacing:.01em;color:white;cursor:pointer}
 .header-sep{color:rgba(255,255,255,.2);font-size:16px}
 .project-name-hdr{font-size:13px;color:rgba(255,255,255,.7);cursor:pointer}
 .project-name-hdr:hover{color:white}
@@ -77,7 +78,7 @@ header{background:var(--ink);color:white;padding:0 24px;height:52px;display:flex
 .search-box:focus{outline:none;border-color:var(--accent)}
 select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--ink);cursor:pointer}
 .btn-primary{background:var(--accent);color:white;border:none;border-radius:var(--r);padding:8px 15px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s;white-space:nowrap}
-.btn-primary:hover{background:#1d4ed8}
+.btn-primary:hover{background:#9c312a}
 .btn-secondary{background:white;color:var(--ink-mid);border:1px solid var(--rule);border-radius:var(--r);padding:7px 13px;font-family:inherit;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
 .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
 .stats-row{display:flex;gap:8px;flex-shrink:0}
@@ -85,21 +86,24 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .stat-chip.active{background:var(--amber-lo);color:var(--amber)}
 .stat-chip.closed{background:var(--ok-lo);color:var(--ok)}
 
-/* ── TABLE ── */
-.table-wrap{padding:20px 24px;overflow-x:auto}
-table{width:100%;border-collapse:collapse;background:white;border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden}
-thead tr{background:var(--ink);color:rgba(255,255,255,.85)}
-th{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:11px 14px;text-align:left;white-space:nowrap;cursor:pointer;user-select:none}
-th:hover{color:white}
-th.sort-asc::after{content:' ↑'}
-th.sort-desc::after{content:' ↓'}
-tbody tr{border-bottom:1px solid var(--rule);transition:background .1s;cursor:pointer}
-tbody tr:last-child{border-bottom:none}
-tbody tr:hover{background:#f0f4ff}
-td{padding:11px 14px;vertical-align:middle;font-size:13px;color:var(--ink-mid)}
-td.num-cell{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--ink);width:64px}
-td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
-.desc-short{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+/* ── ISSUE LIST (pill rows) ── */
+.issues-wrap{padding:20px 24px}
+.issue-grid-row{display:grid;grid-template-columns:56px 92px 1fr 90px 100px 130px 40px 74px 68px;align-items:center;gap:8px;padding:0 18px;min-height:46px}
+.issue-header-row{background:var(--white);border:1px solid var(--soft-black);border-radius:999px;margin-bottom:14px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-mid)}
+.issue-header-row [data-col]{cursor:pointer;user-select:none}
+.issue-header-row [data-col]:hover{color:var(--ink)}
+.issue-header-row [data-col].sort-asc::after{content:' ↑'}
+.issue-header-row [data-col].sort-desc::after{content:' ↓'}
+.issue-comment-head{color:var(--ink-mid);width:16px;height:16px}
+.issue-row{background:var(--white);border:1px solid var(--soft-black);border-radius:999px;margin-bottom:9px;cursor:pointer;transition:background .12s}
+.issue-row:hover{background:#faf7ee}
+.issue-row.closed{background:var(--ok-lo)}
+.issue-row.closed:hover{background:#c9edd6}
+.issue-num-cell{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--ink)}
+.issue-title-cell{font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.issue-comment-count{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-light)}
+.issue-comment-count svg{width:15px;height:15px;flex-shrink:0}
+.issue-date-cell{white-space:nowrap;color:var(--ink-light);font-size:12px}
 .disc-tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px}
 .disc-arch{background:#e0e7ff;color:#3730a3}
 .disc-struct{background:#fce7f3;color:#9d174d}
@@ -115,10 +119,11 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
 .priority-check input{width:16px;height:16px;cursor:pointer;accent-color:var(--warn)}
 .priority-check .ptlabel{font-size:13px;color:var(--ink-mid)}
 .person-chip{display:inline-block;background:var(--accent-lo);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
-.action-cell{display:flex;gap:5px}
-.btn-edit,.btn-del{border:none;border-radius:4px;padding:5px 8px;cursor:pointer;font-size:12px;transition:all .15s}
-.btn-edit{background:var(--accent-lo);color:var(--accent)}.btn-edit:hover{background:var(--accent);color:white}
-.btn-del{background:var(--warn-lo);color:var(--warn)}.btn-del:hover{background:var(--warn);color:white}
+.action-cell{display:flex;gap:4px;justify-content:flex-end}
+.icon-btn{border:none;border-radius:5px;padding:5px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;background:transparent}
+.icon-btn svg{width:16px;height:16px}
+.icon-btn.edit{color:var(--ink-mid)}.icon-btn.edit:hover{background:var(--accent-lo);color:var(--accent)}
+.icon-btn.del{color:var(--ink-mid)}.icon-btn.del:hover{background:var(--warn-lo);color:var(--warn)}
 .empty-state{text-align:center;padding:60px 24px;color:var(--ink-light)}
 .empty-icon{font-size:44px;margin-bottom:10px}
 
@@ -164,7 +169,8 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
 .comment-input-row textarea{flex:1;border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;font-family:inherit;font-size:13px;resize:none;min-height:56px;color:var(--ink)}
 .comment-input-row textarea:focus{outline:none;border-color:var(--accent)}
 .no-comments{font-size:13px;color:var(--ink-light);text-align:center;padding:14px 0}
-.viewer-note{font-size:12px;color:var(--ink-light);text-align:center;padding:10px;background:var(--bg);border-radius:var(--r);margin-top:10px}
+.viewer-note{font-size:12px;color:var(--ink-light);text-align:center;padding:10px;background:var(--bg);border-radius:var(--r);margin-top:10px;display:flex;align-items:center;justify-content:center;gap:6px}
+.viewer-note svg{width:14px;height:14px;flex-shrink:0}
 
 /* ── USERS PANEL ── */
 .user-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--rule);gap:10px}
@@ -219,7 +225,7 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
         <div style="flex:1;height:1px;background:var(--rule)"></div>
       </div>
       <button id="btnGuestView" style="width:100%;margin-top:12px;padding:9px;border:1px solid var(--rule);border-radius:var(--r);background:var(--bg);color:var(--ink-mid);font-family:inherit;font-size:13px;cursor:pointer;">
-        👁 სტუმრად ნახვა (რეგისტრაციის გარეშე)
+        👁 დათვალიერება
       </button>
     </div>
     <div id="registerForm" style="display:none">
@@ -247,6 +253,8 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
   <div class="projects-header">
     <div class="projects-logo">RevTrack</div>
     <div class="projects-user">
+      <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
+      <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები</button>
       <span id="projScreenUser"></span>
       <button class="btn-hdr" id="btnProjLogout">გამოსვლა</button>
     </div>
@@ -273,14 +281,13 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
       <span class="role-badge" id="hdrRoleBadge"></span>
     </span>
     <button class="btn-hdr" id="btnManageProject" style="display:none">⚙ პროექტი</button>
-    <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები</button>
     <button class="btn-hdr" id="btnAppLogout" style="display:none">გამოსვლა</button>
   </div>
 </header>
 
 <div class="toolbar">
   <div class="filter-group">
-    <input type="search" class="search-box" id="searchInput" placeholder="🔍  საძიებო...">
+    <input type="search" class="search-box" id="searchInput" placeholder="🔍  ძებნა">
     <select class="fsel" id="filterDisc">
       <option value="">ყველა დისციპლინა</option>
       <option value="arch">არქიტექტურა</option>
@@ -311,20 +318,20 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
 </div>
 
 <div class="table-wrap">
-  <table>
-    <thead><tr>
-      <th data-col="num">#</th>
-      <th data-col="disc">დისციპლინა</th>
-      <th data-col="title">საკითხი</th>
-      <th data-col="priority">პრიორიტეტი</th>
-      <th data-col="status">სტატუსი</th>
-      <th data-col="person">პასუხისმგებელი</th>
-      <th>💬</th>
-      <th data-col="date">თარიღი</th>
-      <th id="actionsHead" style="display:none"></th>
-    </tr></thead>
-    <tbody id="tbody"></tbody>
-  </table>
+  <div class="issues-wrap">
+    <div class="issue-header-row issue-grid-row">
+      <div data-col="num">#</div>
+      <div data-col="disc">დისციპლ.</div>
+      <div data-col="title">საკითხი</div>
+      <div data-col="priority">პრიორიტეტი</div>
+      <div data-col="status">სტატუსი</div>
+      <div data-col="person">პასუხისმგებელი</div>
+      <div class="issue-comment-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" transform="translate(-3,-2.5) scale(0.8)"/><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" transform="translate(3,1.5) scale(0.8)"/></svg></div>
+      <div data-col="date">თარიღი</div>
+      <div id="actionsHead" style="display:none"></div>
+    </div>
+    <div id="tbody"></div>
+  </div>
 </div>
 </div>
 
@@ -337,7 +344,7 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
     <div class="modal-body">
       <div class="form-grid">
         <div class="field"><label>ნომერი</label><input id="fNum" readonly style="background:var(--rule);cursor:not-allowed"></div>
-        <div class="field"><label>თარიღი</label><input id="fDate" readonly placeholder="ავტომატურად" style="background:var(--rule);cursor:not-allowed"></div>
+        <input type="hidden" id="fDate">
         <div class="field"><label>დისციპლინა</label>
           <select id="fDisc"><option value="arch">არქიტექტურა</option><option value="struct">კონსტრუქცია</option><option value="mep">MEP</option><option value="fire">სახანძრო</option><option value="other">სხვა</option></select>
         </div>
@@ -375,7 +382,7 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
     <div class="modal-body" id="detailBody"></div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="cm('detailModal')">დახურვა</button>
-      <button class="btn-primary" id="detailEditBtn" style="display:none">✏ რედაქტირება</button>
+      <button class="btn-primary" id="detailEditBtn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M17 3.5a2.1 2.1 0 0 1 3 3L9 17l-4 1 1-4z"/><path d="M5 8H4.5A1.5 1.5 0 0 0 3 9.5v10A1.5 1.5 0 0 0 4.5 21h10a1.5 1.5 0 0 0 1.5-1.5V19"/></svg> რედაქტირება</button>
     </div>
   </div>
 </div>
@@ -500,6 +507,10 @@ const discL = {arch:'არქიტექტურა',struct:'კონსტ�
 const statL = {active:'აქტიური', closed:'დასრულებული'};
 const roleL = {admin:'Admin', design_manager:'დიზაინ მენეჯერი', reviewer:'რევიზორი', contractor:'კონტრაქტორი', viewer:'Viewer'};
 
+const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3.5a2.1 2.1 0 0 1 3 3L9 17l-4 1 1-4z"/><path d="M5 8H4.5A1.5 1.5 0 0 0 3 9.5v10A1.5 1.5 0 0 0 4.5 21h10a1.5 1.5 0 0 0 1.5-1.5V19"/></svg>`;
+const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>`;
+const ICON_COMMENT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" transform="translate(-3,-2.5) scale(0.8)"/><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" transform="translate(3,1.5) scale(0.8)"/></svg>`;
+
 
 
 // ── URL PARAM ──
@@ -590,6 +601,8 @@ async function showProjects() {
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
   document.getElementById('projScreenUser').textContent = currentUser.displayName || currentUser.email;
+  document.getElementById('btnGlobalUsers').style.display = currentGlobalRole==='admin' ? 'flex' : 'none';
+  document.getElementById('btnNewProjectHdr').style.display = (currentGlobalRole==='admin'||currentGlobalRole==='reviewer') ? 'flex' : 'none';
 
   const grid = document.getElementById('projectsGrid');
   grid.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px">იტვირთება...</div>';
@@ -604,11 +617,8 @@ async function showProjects() {
   }
 
   let html = '';
-  if (currentGlobalRole === 'admin') {
-    html += `<button class="btn-new-project" onclick="openNewProject()">+ ახალი პროექტი</button>`;
-  }
   if (!projects.length) {
-    html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${currentGlobalRole==='admin'?'შექმენი პირველი პროექტი':'პროექტი არ მინიჭია — დაელოდე Admin-ს'}</div>`;
+    html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${(currentGlobalRole==='admin'||currentGlobalRole==='reviewer')?'შექმენი პირველი პროექტი':'პროექტი არ მინიჭია — დაელოდე Admin-ს'}</div>`;
   } else {
     projects.forEach(p => {
       let myRole = currentGlobalRole === 'admin' ? 'admin' : (p.members||{})[currentUser.uid] || 'viewer';
@@ -616,6 +626,7 @@ async function showProjects() {
       html += `<div class="project-card" onclick="openProject('${p.id}')">
         <div class="project-card-name">${esc(p.name)}</div>
         <div class="project-card-meta">${esc(p.desc||'')}</div>
+        <div class="project-card-creator">შექმნილია: ${esc(p.createdByName||'ადმინი')}</div>
         <span class="project-card-role role-${myRole}">${roleLabel}</span>
       </div>`;
     });
@@ -638,7 +649,8 @@ async function openProject(pid) {
 
   const canEdit = myRole==='admin'||myRole==='design_manager'||myRole==='reviewer';
   const canComment = myRole==='admin'||myRole==='design_manager'||myRole==='reviewer'||myRole==='contractor';
-  const canManageProject = myRole==='admin'||myRole==='design_manager';
+  const isMyOwnProject = currentProjectData.createdBy === currentUser.uid;
+  const canManageProject = myRole==='admin'||myRole==='design_manager'||(myRole==='reviewer'&&isMyOwnProject);
   const roleLabel = roleL[myRole] || myRole;
 
   document.getElementById('authScreen').style.display = 'none';
@@ -652,7 +664,6 @@ async function openProject(pid) {
   document.getElementById('btnAddIssue').style.display = canEdit?'flex':'none';
   document.getElementById('actionsHead').style.display = canEdit?'':'none';
   document.getElementById('btnManageProject').style.display = canManageProject?'flex':'none';
-  document.getElementById('btnGlobalUsers').style.display = myRole==='admin'?'flex':'none';
   document.getElementById('btnAppLogout').style.display = 'flex';
 
   subscribeIssues(pid);
@@ -748,44 +759,46 @@ function render() {
   document.getElementById('cntClosed').textContent = all.filter(i=>i.status==='closed').length+' დასრულებული';
   const tbody = document.getElementById('tbody');
   if (!arr.length) {
-    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div></td></tr>`;
+    tbody.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div>`;
     return;
   }
   const canEdit = currentRole==='admin'||currentRole==='design_manager'||currentRole==='reviewer';
+  const isMyOwnProject = currentProjectData && currentProjectData.createdBy === currentUser?.uid;
+  const canDelete = currentRole==='admin' || (currentRole==='reviewer' && isMyOwnProject);
   tbody.innerHTML = arr.map(issue => {
-    const links = issue.images||[];
-    const linkHtml = links.length ? `<span style="font-size:12px;color:var(--accent);font-weight:500">🔗 ${links.length}</span>` : '';
-    const cmtHtml = (issue.commentCount||0)>0 ? `<span style="font-size:11px;color:var(--ink-light)">💬 ${issue.commentCount}</span>` : '<span style="font-size:11px;color:var(--ink-light);opacity:.3">—</span>';
+    const cmtHtml = (issue.commentCount||0)>0
+      ? `<span class="issue-comment-count">${ICON_COMMENT}${issue.commentCount}</span>`
+      : `<span class="issue-comment-count" style="opacity:.3">—</span>`;
     const acts = canEdit
-      ? `<td class="action-cell">
-          <button class="btn-edit" data-id="${issue.id}">✏</button>
-          ${currentRole==='admin'?`<button class="btn-del" data-id="${issue.id}">🗑</button>`:''}
-        </td>`
-      : `<td></td>`;
-    return `<tr data-id="${issue.id}">
-      <td class="num-cell">${esc(issue.num)}</td>
-      <td><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></td>
-      <td class="desc-cell"><span class="desc-short">${esc(issue.title)}</span></td>
-      <td>${issue.priority?`<span class="priority-flag">🔴 პრიორიტეტული</span>`:''}</td>
-      <td><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></td>
-      <td>${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</td>
-      <td>${cmtHtml}</td>
-      <td style="white-space:nowrap;color:var(--ink-light);font-size:12px">${issue.date||'—'}</td>
+      ? `<div class="action-cell">
+          <button class="icon-btn edit" data-id="${issue.id}" title="რედაქტირება">${ICON_EDIT}</button>
+          ${canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:''}
+        </div>`
+      : `<div></div>`;
+    return `<div class="issue-row issue-grid-row ${issue.status}" data-id="${issue.id}">
+      <div class="issue-num-cell">${esc(issue.num)}</div>
+      <div><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div>
+      <div class="issue-title-cell">${esc(issue.title)}</div>
+      <div>${issue.priority?`<span class="priority-flag">🔴 პრიორიტეტული</span>`:''}</div>
+      <div><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></div>
+      <div>${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</div>
+      <div>${cmtHtml}</div>
+      <div class="issue-date-cell">${issue.date||'—'}</div>
       ${acts}
-    </tr>`;
+    </div>`;
   }).join('');
-  tbody.querySelectorAll('tr[data-id]').forEach(tr => {
-    tr.addEventListener('click', e => {
-      if (e.target.classList.contains('btn-edit')||e.target.classList.contains('btn-del')) return;
-      openDetail(tr.dataset.id);
+  tbody.querySelectorAll('.issue-row[data-id]').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('.icon-btn')) return;
+      openDetail(row.dataset.id);
     });
   });
-  tbody.querySelectorAll('.btn-edit').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openEdit(b.dataset.id); }));
-  tbody.querySelectorAll('.btn-del').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); confirmDelete(b.dataset.id); }));
-  document.querySelectorAll('th[data-col]').forEach(th => {
-    th.classList.remove('sort-asc','sort-desc');
-    if (th.dataset.col===sortCol) th.classList.add(sortDir==='asc'?'sort-asc':'sort-desc');
-    th.onclick = () => { if(sortCol===th.dataset.col) sortDir=sortDir==='asc'?'desc':'asc'; else{sortCol=th.dataset.col;sortDir='asc'} render(); };
+  tbody.querySelectorAll('.icon-btn.edit').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openEdit(b.dataset.id); }));
+  tbody.querySelectorAll('.icon-btn.del').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); confirmDelete(b.dataset.id); }));
+  document.querySelectorAll('.issue-header-row [data-col]').forEach(cell => {
+    cell.classList.remove('sort-asc','sort-desc');
+    if (cell.dataset.col===sortCol) cell.classList.add(sortDir==='asc'?'sort-asc':'sort-desc');
+    cell.onclick = () => { if(sortCol===cell.dataset.col) sortDir=sortDir==='asc'?'desc':'asc'; else{sortCol=cell.dataset.col;sortDir='asc'} render(); };
   });
 }
 ['searchInput','filterDisc','filterStatus','filterPriority'].forEach(id => document.getElementById(id).addEventListener('input', render));
@@ -960,12 +973,12 @@ async function openDetail(id) {
         ${issue.images.map((url,i)=>`<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--accent);font-size:13px;word-break:break-all">🔗 ლინკი ${i+1}</a>`).join('')}
       </div></div>`:''}
     <div class="comments-section">
-      <div class="detail-label" style="margin-bottom:10px">💬 კომენტარები</div>
+      <div class="detail-label" style="margin-bottom:10px;display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" transform="translate(-3,-2.5) scale(0.8)"/><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" transform="translate(3,1.5) scale(0.8)"/></svg> კომენტარები</div>
       <div id="commentsList"><div class="no-comments">იტვირთება...</div></div>
       ${canComment ? `<div class="comment-input-row">
         <textarea id="commentInput" placeholder="დაწერე კომენტარი... (Enter — გაგზავნა)"></textarea>
         <button class="btn-primary" id="btnSendComment">გაგზავნა</button>
-      </div>` : `<div class="viewer-note">💬 კომენტარისთვის საჭიროა რეგისტრაცია</div>`}
+      </div>` : `<div class="viewer-note">${ICON_COMMENT} კომენტარისთვის საჭიროა რეგისტრაცია</div>`}
     </div>`;
   om('detailModal');
   loadComments(id);
@@ -1143,7 +1156,8 @@ async function openProjectModal(pid) {
   document.getElementById('memberSearch').oninput = e => renderMemberList(pid?(pd.members||{}):{}, e.target.value);
   document.getElementById('saveProject').onclick = () => saveProjectData(pid);
   const delBtn = document.getElementById('btnDeleteProject');
-  if (pid && currentGlobalRole === 'admin') {
+  const canDeleteThisProject = pid && (currentGlobalRole === 'admin' || (currentGlobalRole === 'reviewer' && pd.createdBy === currentUser.uid));
+  if (canDeleteThisProject) {
     delBtn.style.display = 'block';
     delBtn.disabled = false;
     delBtn.textContent = '🗑 პროექტის წაშლა';
@@ -1242,15 +1256,20 @@ async function deleteProjectFully(pid, name) {
 }
 
 // ── NEW PROJECT ──
+document.getElementById('btnNewProjectHdr').addEventListener('click', () => openNewProject());
 window.openNewProject = () => { document.getElementById('npName').value=''; document.getElementById('npDesc').value=''; om('newProjModal'); };
 document.getElementById('saveNewProj').addEventListener('click', async () => {
   const name = document.getElementById('npName').value.trim();
   if (!name) { alert('სახელი სავალდებულოა'); return; }
   const btn = document.getElementById('saveNewProj'); btn.disabled=true;
   try {
+    const isReviewer = currentGlobalRole === 'reviewer';
     const ref = await addDoc(collection(db,'projects'), {
       name, desc: document.getElementById('npDesc').value.trim(),
-      members:{}, memberIds:[], createdAt:serverTimestamp(), createdBy:currentUser.uid
+      members: isReviewer ? {[currentUser.uid]:'reviewer'} : {},
+      memberIds: isReviewer ? [currentUser.uid] : [],
+      createdAt:serverTimestamp(), createdBy:currentUser.uid,
+      createdByName: currentUser.displayName||currentUser.email
     });
     cm('newProjModal'); showToast('პროექტი შეიქმნა!');
     await showProjects();
