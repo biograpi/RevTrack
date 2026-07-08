@@ -923,9 +923,15 @@ document.getElementById('btnReg').addEventListener('click', async () => {
 
 // ── GLOBAL USERS (admin) ──
 async function loadAllUsers() {
-  const snap = await getDocs(collection(db,'users'));
-  allUsers = {};
-  snap.forEach(d => { allUsers[d.id] = {id:d.id,...d.data()}; });
+  try {
+    const snap = await getDocs(collection(db,'users'));
+    allUsers = {};
+    snap.forEach(d => { allUsers[d.id] = {id:d.id,...d.data()}; });
+    console.log('Users loaded:', Object.keys(allUsers).length);
+  } catch(e) {
+    console.error('loadAllUsers error:', e);
+    showToast('შეცდომა: ' + e.message);
+  }
 }
 document.getElementById('btnGlobalUsers').addEventListener('click', async () => {
   await loadAllUsers();
@@ -953,6 +959,7 @@ window.approveUser = async uid => {
 document.getElementById('btnManageProject').addEventListener('click', () => openProjectModal(currentProjectId));
 async function openProjectModal(pid) {
   await loadAllUsers();
+  console.log('allUsers in modal:', Object.keys(allUsers).length);
   document.getElementById('projectModalTitle').textContent = pid ? 'პროექტის მართვა' : 'ახალი პროექტი';
   const pd = pid ? currentProjectData : {};
   document.getElementById('pName').value = pd.name||'';
