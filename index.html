@@ -302,6 +302,7 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <button class="btn-primary" id="btnAddIssue" style="display:none">+ საკითხი</button>
+    <button class="btn-secondary" id="btnExportExcel">📊 Excel-ში ექსპორტი</button>
     <div class="stats-row">
       <span class="stat-chip active" id="cntActive">0 აქტიური</span>
       <span class="stat-chip closed" id="cntClosed">0 დასრულებული</span>
@@ -450,6 +451,7 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
 </div>
 
 <!-- ══ FIREBASE ══ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
@@ -668,6 +670,55 @@ function subscribeIssues(pid) {
     render();
   });
 }
+
+// ── EXCEL EXPORT ──
+document.getElementById('btnExportExcel').addEventListener('click', async () => {
+  const btn = document.getElementById('btnExportExcel');
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'მუშავდება...';
+  try {
+    const allIssues = Object.values(issues).sort((a,b) => (a.num||'').localeCompare(b.num||'', undefined, {numeric:true}));
+
+    const issueRows = allIssues.map(i => ({
+      'ნომერი': i.num||'',
+      'დისციპლინა': discL[i.disc]||i.disc||'',
+      'სათაური': i.title||'',
+      'აღწერა': i.desc||'',
+      'პრიორიტეტული': i.priority ? 'დიახ' : 'არა',
+      'სტატუსი': statL[i.status]||i.status||'',
+      'პასუხისმგებელი': i.person||'',
+      'თარიღი': i.date||'',
+      'შემქმნელი': i.createdByName||'',
+      'კომენტარები': i.commentCount||0,
+      'ლინკები': (i.images||[]).join(', ')
+    }));
+
+    const commentRows = [];
+    for (const iss of allIssues) {
+      const snap = await getDocs(query(collection(db,'projects',currentProjectId,'issues',iss.id,'comments'), orderBy('createdAt','asc')));
+      snap.forEach(cDoc => {
+        const c = cDoc.data();
+        commentRows.push({
+          'საკითხის ნომერი': iss.num||'',
+          'საკითხის სათაური': iss.title||'',
+          'ავტორი': c.authorName||'',
+          'თარიღი': c.createdAt && c.createdAt.toDate ? c.createdAt.toDate().toLocaleString('ka-GE') : '',
+          'კომენტარი': c.text||''
+        });
+      });
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(issueRows), 'საკითხები');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(commentRows.length ? commentRows : [{'ინფო':'კომენტარები არ არის'}]), 'კომენტარები');
+
+    const safeName = (currentProjectData?.name || 'პროექტი').replace(/[\\\/*?:[\]]/g,'').slice(0,30);
+    XLSX.writeFile(wb, `${safeName}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  } catch(e) {
+    alert('შეცდომა ექსპორტისას: '+e.message);
+  }
+  btn.disabled = false; btn.textContent = origText;
+});
 
 // ── RENDER ──
 function filtered() {
