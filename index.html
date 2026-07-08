@@ -82,8 +82,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
 .stats-row{display:flex;gap:8px;flex-shrink:0}
 .stat-chip{font-size:12px;font-weight:500;padding:4px 10px;border-radius:20px;white-space:nowrap}
-.stat-chip.open{background:var(--warn-lo);color:var(--warn)}
-.stat-chip.progress{background:var(--amber-lo);color:var(--amber)}
+.stat-chip.active{background:var(--amber-lo);color:var(--amber)}
 .stat-chip.closed{background:var(--ok-lo);color:var(--ok)}
 
 /* ── TABLE ── */
@@ -109,13 +108,16 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
 .disc-other{background:var(--rule);color:var(--ink-mid)}
 .status-dot{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;white-space:nowrap}
 .status-dot::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.status-dot.open{color:var(--warn)}.status-dot.open::before{background:var(--warn)}
-.status-dot.progress{color:var(--amber)}.status-dot.progress::before{background:var(--amber)}
+.status-dot.active{color:var(--amber)}.status-dot.active::before{background:var(--amber)}
 .status-dot.closed{color:var(--ok)}.status-dot.closed::before{background:var(--ok)}
-.priority-flag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;white-space:nowrap}
-.priority-high{background:var(--warn-lo);color:var(--warn)}
-.priority-med{background:var(--amber-lo);color:var(--amber)}
-.priority-low{background:var(--ok-lo);color:var(--ok)}
+.priority-flag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;white-space:nowrap;background:var(--warn-lo);color:var(--warn)}
+.priority-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.priority-toggle input{display:none}
+.priority-toggle .switch{width:38px;height:22px;border-radius:20px;background:var(--rule);position:relative;transition:background .15s;flex-shrink:0}
+.priority-toggle .switch::before{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:white;box-shadow:var(--shadow-sm);transition:transform .15s}
+.priority-toggle input:checked + .switch{background:var(--warn)}
+.priority-toggle input:checked + .switch::before{transform:translateX(16px)}
+.priority-toggle .ptlabel{font-size:13px;color:var(--ink-mid)}
 .person-chip{display:inline-block;background:var(--accent-lo);color:var(--accent);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;white-space:nowrap}
 .action-cell{display:flex;gap:5px}
 .btn-edit,.btn-del{border:none;border-radius:4px;padding:5px 8px;cursor:pointer;font-size:12px;transition:all .15s}
@@ -297,23 +299,20 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
     </select>
     <select class="fsel" id="filterStatus">
       <option value="">ყველა სტატუსი</option>
-      <option value="open">გახსნილი</option>
-      <option value="progress">მიმდინარე</option>
-      <option value="closed">დახურული</option>
+      <option value="active">აქტიური</option>
+      <option value="closed">დასრულებული</option>
     </select>
     <select class="fsel" id="filterPriority">
-      <option value="">ყველა პრიორიტეტი</option>
-      <option value="high">მაღალი</option>
-      <option value="med">საშუალო</option>
-      <option value="low">დაბალი</option>
+      <option value="">ყველა საკითხი</option>
+      <option value="yes">პრიორიტეტული</option>
+      <option value="no">ჩვეულებრივი</option>
     </select>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <button class="btn-primary" id="btnAddIssue" style="display:none">+ საკითხი</button>
     <div class="stats-row">
-      <span class="stat-chip open" id="cntOpen">0 გახსნილი</span>
-      <span class="stat-chip progress" id="cntProgress">0 მიმდინარე</span>
-      <span class="stat-chip closed" id="cntClosed">0 დახურული</span>
+      <span class="stat-chip active" id="cntActive">0 აქტიური</span>
+      <span class="stat-chip closed" id="cntClosed">0 დასრულებული</span>
     </div>
   </div>
 </div>
@@ -345,19 +344,24 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
     <div class="modal-body">
       <div class="form-grid">
         <div class="field"><label>ნომერი</label><input id="fNum" readonly style="background:var(--rule);cursor:not-allowed"></div>
-        <div class="field"><label>თარიღი</label><input type="date" id="fDate"></div>
+        <div class="field"><label>თარიღი</label><input id="fDate" readonly placeholder="ავტომატურად" style="background:var(--rule);cursor:not-allowed"></div>
         <div class="field"><label>დისციპლინა</label>
           <select id="fDisc"><option value="arch">არქიტექტურა</option><option value="struct">კონსტრუქცია</option><option value="mep">MEP</option><option value="fire">სახანძრო</option><option value="other">სხვა</option></select>
         </div>
-        <div class="field"><label>პრიორიტეტი</label>
-          <select id="fPriority"><option value="high">მაღალი</option><option value="med">საშუალო</option><option value="low">დაბალი</option></select>
+        <div class="field">
+          <label>პრიორიტეტი</label>
+          <label class="priority-toggle" style="margin-top:9px">
+            <input type="checkbox" id="fPriority">
+            <span class="switch"></span>
+            <span class="ptlabel" id="fPriorityLabel">ჩვეულებრივი</span>
+          </label>
         </div>
         <div class="field form-full"><label>სათაური</label><input id="fTitle" placeholder="საკითხის მოკლე სათაური"></div>
         <div class="field form-full"><label>დეტალური აღწერა</label><textarea id="fDesc" placeholder="სად არის, რა პრობლემაა..."></textarea></div>
         <div class="field"><label>სტატუსი</label>
-          <select id="fStatus"><option value="open">გახსნილი</option><option value="progress">მიმდინარე</option><option value="closed">დახურული</option></select>
+          <select id="fStatus"><option value="active">აქტიური</option><option value="closed">დასრულებული</option></select>
         </div>
-        <div class="field"><label>პასუხისმგებელი</label><input id="fPerson" placeholder="სახელი / კომპანია"></div>
+        <div class="field"><label>პასუხისმგებელი</label><select id="fPerson"><option value="">— არჩევა —</option></select></div>
         <div class="field form-full">
           <label>ლინკები (OneDrive, Google Drive...)</label>
           <div id="linkInputsContainer"></div>
@@ -402,6 +406,16 @@ td.desc-cell{max-width:240px;font-weight:500;color:var(--ink)}
         <div class="field form-full"><label>პროექტის სახელი</label><input id="pName" placeholder="პროექტი N123"></div>
         <div class="field form-full"><label>აღწერა</label><input id="pDesc" placeholder="მოკლე აღწერა"></div>
       </div>
+
+      <div class="detail-label" style="margin-bottom:8px">კონტრაქტორები</div>
+      <div class="form-grid" style="margin-bottom:10px">
+        <div class="field"><label>არქიტექტორი</label><input id="cArch" placeholder="კომპანია / სახელი"></div>
+        <div class="field"><label>MEP</label><input id="cMep" placeholder="კომპანია / სახელი"></div>
+        <div class="field"><label>კონსტრუქტორი</label><input id="cStruct" placeholder="კომპანია / სახელი"></div>
+      </div>
+      <div id="extraContractorsList"></div>
+      <button type="button" class="btn-add-link" id="btnAddContractor" style="margin-bottom:16px">+ სხვა კონტრაქტორის დამატება</button>
+
       <div class="detail-label" style="margin-bottom:8px">გუნდის წევრები</div>
       <div class="member-search-row">
         <input id="memberSearch" placeholder="მომხმარებლის ძებნა...">
@@ -501,8 +515,7 @@ const om = id => document.getElementById(id).classList.add('open');
 const initials = n => (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
 
 const discL = {arch:'არქიტექტურა',struct:'კონსტრუქცია',mep:'MEP',fire:'სახანძრო',other:'სხვა'};
-const prioL = {high:'მაღალი',med:'საშუალო',low:'დაბალი'};
-const statL = {open:'გახსნილი',progress:'მიმდინარე',closed:'დახურული'};
+const statL = {active:'აქტიური', closed:'დასრულებული'};
 const roleL = {admin:'Admin', design_manager:'დიზაინ მენეჯერი', reviewer:'რევიზორი', contractor:'კონტრაქტორი', viewer:'Viewer'};
 
 
@@ -690,7 +703,8 @@ function filtered() {
   const priority = document.getElementById('filterPriority').value;
   return Object.values(issues).filter(i =>
     (!q||(i.title||'').toLowerCase().includes(q)||(i.desc||'').toLowerCase().includes(q)||(i.person||'').toLowerCase().includes(q)||(i.num||'').toLowerCase().includes(q)) &&
-    (!disc||i.disc===disc) && (!status||i.status===status) && (!priority||i.priority===priority)
+    (!disc||i.disc===disc) && (!status||i.status===status) &&
+    (!priority||(priority==='yes'?!!i.priority:!i.priority))
   );
 }
 function sorted(arr) {
@@ -705,9 +719,8 @@ function sorted(arr) {
 function render() {
   const arr = sorted(filtered());
   const all = filtered();
-  document.getElementById('cntOpen').textContent = all.filter(i=>i.status==='open').length+' გახსნილი';
-  document.getElementById('cntProgress').textContent = all.filter(i=>i.status==='progress').length+' მიმდინარე';
-  document.getElementById('cntClosed').textContent = all.filter(i=>i.status==='closed').length+' დახურული';
+  document.getElementById('cntActive').textContent = all.filter(i=>i.status==='active').length+' აქტიური';
+  document.getElementById('cntClosed').textContent = all.filter(i=>i.status==='closed').length+' დასრულებული';
   const tbody = document.getElementById('tbody');
   if (!arr.length) {
     tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div></td></tr>`;
@@ -728,8 +741,8 @@ function render() {
       <td class="num-cell">${esc(issue.num)}</td>
       <td><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></td>
       <td class="desc-cell"><span class="desc-short">${esc(issue.title)}</span></td>
-      <td><span class="priority-flag priority-${issue.priority}">${prioL[issue.priority]}</span></td>
-      <td><span class="status-dot ${issue.status}">${statL[issue.status]}</span></td>
+      <td>${issue.priority?`<span class="priority-flag">🔴 პრიორიტეტული</span>`:''}</td>
+      <td><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></td>
       <td>${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</td>
       <td>${cmtHtml}</td>
       <td style="white-space:nowrap;color:var(--ink-light);font-size:12px">${issue.date||'—'}</td>
@@ -770,21 +783,57 @@ function applyStatusOptionState(issue) {
   if (!opt) return;
   const allowed = canCloseIssue(issue);
   opt.disabled = !allowed;
-  opt.textContent = allowed ? 'დახურული' : 'დახურული (მხოლოდ შემქმნელი რევიზორი/ადმინი)';
+  opt.textContent = allowed ? 'დასრულებული' : 'დასრულებული (მხოლოდ შემქმნელი რევიზორი/ადმინი)';
 }
+
+// ── CONTRACTORS / RESPONSIBLE PARTY ──
+function contractorOptions() {
+  const c = (currentProjectData && currentProjectData.contractors) || {};
+  const opts = [];
+  if (c.arch) opts.push({value:c.arch, label:'არქიტექტორი — '+c.arch, disc:'arch'});
+  if (c.mep) opts.push({value:c.mep, label:'MEP — '+c.mep, disc:'mep'});
+  if (c.struct) opts.push({value:c.struct, label:'კონსტრუქტორი — '+c.struct, disc:'struct'});
+  (c.extra||[]).forEach(e => { if (e && e.name) opts.push({value:e.name, label:(e.label||'სხვა')+' — '+e.name, disc:null}); });
+  return opts;
+}
+function renderPersonSelect(selected) {
+  const sel = document.getElementById('fPerson');
+  const opts = contractorOptions();
+  let html = '<option value="">— არჩევა —</option>';
+  let matched = false;
+  opts.forEach(o => {
+    if (o.value === selected) matched = true;
+    html += `<option value="${esc(o.value)}" ${o.value===selected?'selected':''}>${esc(o.label)}</option>`;
+  });
+  if (selected && !matched) {
+    html += `<option value="${esc(selected)}" selected>${esc(selected)} (ძველი ჩანაწერი)</option>`;
+  }
+  sel.innerHTML = html;
+}
+document.getElementById('fDisc').addEventListener('change', () => {
+  const c = (currentProjectData && currentProjectData.contractors) || {};
+  const suggestion = ({arch:c.arch, mep:c.mep, struct:c.struct})[document.getElementById('fDisc').value];
+  if (suggestion) {
+    renderPersonSelect(suggestion);
+  }
+});
+document.getElementById('fPriority').addEventListener('change', e => {
+  document.getElementById('fPriorityLabel').textContent = e.target.checked ? 'პრიორიტეტული' : 'ჩვეულებრივი';
+});
 
 // ── ADD/EDIT ISSUE ──
 function openAdd() {
   editingId = null; pendingLinks = [];
   document.getElementById('modalTitle').textContent = 'ახალი საკითხი';
   document.getElementById('fNum').value = nextNum();
-  document.getElementById('fDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('fDate').value = '';
   document.getElementById('fDisc').value = 'arch';
-  document.getElementById('fPriority').value = 'med';
-  document.getElementById('fStatus').value = 'open';
+  document.getElementById('fPriority').checked = false;
+  document.getElementById('fPriorityLabel').textContent = 'ჩვეულებრივი';
+  document.getElementById('fStatus').value = 'active';
   document.getElementById('fTitle').value = '';
   document.getElementById('fDesc').value = '';
-  document.getElementById('fPerson').value = '';
+  renderPersonSelect('');
   renderLinks(); applyStatusOptionState(null); om('issueModal');
 }
 function openEdit(id) {
@@ -794,11 +843,12 @@ function openEdit(id) {
   document.getElementById('fNum').value = issue.num;
   document.getElementById('fDate').value = issue.date||'';
   document.getElementById('fDisc').value = issue.disc;
-  document.getElementById('fPriority').value = issue.priority;
+  document.getElementById('fPriority').checked = !!issue.priority;
+  document.getElementById('fPriorityLabel').textContent = issue.priority ? 'პრიორიტეტული' : 'ჩვეულებრივი';
   document.getElementById('fStatus').value = issue.status;
   document.getElementById('fTitle').value = issue.title;
   document.getElementById('fDesc').value = issue.desc||'';
-  document.getElementById('fPerson').value = issue.person||'';
+  renderPersonSelect(issue.person||'');
   renderLinks(); applyStatusOptionState(issue); om('issueModal');
 }
 document.getElementById('btnAddIssue').addEventListener('click', openAdd);
@@ -813,9 +863,8 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
   }
   const data = {
     num: document.getElementById('fNum').value,
-    date: document.getElementById('fDate').value,
     disc: document.getElementById('fDisc').value,
-    priority: document.getElementById('fPriority').value,
+    priority: document.getElementById('fPriority').checked,
     status, title, desc: document.getElementById('fDesc').value,
     person: document.getElementById('fPerson').value.trim(),
     images: pendingLinks.filter(u=>u.trim()),
@@ -827,6 +876,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     if (editingId) {
       await updateDoc(doc(db,'projects',currentProjectId,'issues',editingId), data);
     } else {
+      data.date = new Date().toISOString().slice(0,10);
       data.createdAt = serverTimestamp(); data.commentCount = 0;
       data.createdBy = currentUser.uid; data.createdByName = currentUser.displayName||currentUser.email;
       await addDoc(collection(db,'projects',currentProjectId,'issues'), data);
@@ -871,8 +921,8 @@ async function openDetail(id) {
       <div class="detail-section"><div class="detail-label">ნომერი</div><div class="detail-val" style="font-family:'JetBrains Mono',monospace;font-weight:600">${esc(issue.num)}</div></div>
       <div class="detail-section"><div class="detail-label">დისციპლინა</div><div class="detail-val"><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div></div>
       <div class="detail-section"><div class="detail-label">თარიღი</div><div class="detail-val">${issue.date||'—'}</div></div>
-      <div class="detail-section"><div class="detail-label">სტატუსი</div><div class="detail-val"><span class="status-dot ${issue.status}">${statL[issue.status]}</span></div></div>
-      <div class="detail-section"><div class="detail-label">პრიორიტეტი</div><div class="detail-val"><span class="priority-flag priority-${issue.priority}">${prioL[issue.priority]}</span></div></div>
+      <div class="detail-section"><div class="detail-label">სტატუსი</div><div class="detail-val"><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></div></div>
+      <div class="detail-section"><div class="detail-label">პრიორიტეტი</div><div class="detail-val">${issue.priority?'<span class="priority-flag">🔴 პრიორიტეტული</span>':'ჩვეულებრივი'}</div></div>
       <div class="detail-section"><div class="detail-label">პასუხისმგებელი</div><div class="detail-val">${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</div></div>
       ${issue.createdByName?`<div class="detail-section"><div class="detail-label">გახსნა</div><div class="detail-val">${esc(issue.createdByName)}</div></div>`:''}
     </div>
@@ -1043,18 +1093,45 @@ window.changeUserRole = async (uid, role) => {
 
 // ── PROJECT MANAGE ──
 document.getElementById('btnManageProject').addEventListener('click', () => openProjectModal(currentProjectId));
+let pendingExtraContractors = [];
+let pendingMemberChanges = {};
 async function openProjectModal(pid) {
   await loadAllUsers();
-  console.log('allUsers in modal:', Object.keys(allUsers).length);
+  pendingMemberChanges = {};
   document.getElementById('projectModalTitle').textContent = pid ? 'პროექტის მართვა' : 'ახალი პროექტი';
   const pd = pid ? currentProjectData : {};
   document.getElementById('pName').value = pd.name||'';
   document.getElementById('pDesc').value = pd.desc||'';
+  const contractors = pd.contractors || {};
+  document.getElementById('cArch').value = contractors.arch||'';
+  document.getElementById('cMep').value = contractors.mep||'';
+  document.getElementById('cStruct').value = contractors.struct||'';
+  pendingExtraContractors = (contractors.extra||[]).map(e => ({...e}));
+  renderExtraContractors();
   renderMemberList(pid ? (pd.members||{}) : {});
   document.getElementById('memberSearch').oninput = e => renderMemberList(pid?(pd.members||{}):{}, e.target.value);
   document.getElementById('saveProject').onclick = () => saveProjectData(pid);
   om('projectModal');
 }
+function renderExtraContractors() {
+  const c = document.getElementById('extraContractorsList');
+  c.innerHTML = pendingExtraContractors.map((e,i) => `
+    <div class="link-input-row">
+      <input placeholder="კატეგორია (მაგ. სახანძრო)" value="${esc(e.label||'')}" data-i="${i}" data-f="label" style="flex:0 0 40%">
+      <input placeholder="კომპანია / სახელი" value="${esc(e.name||'')}" data-i="${i}" data-f="name">
+      <button type="button" class="btn-link-rm" data-i="${i}">✕</button>
+    </div>`).join('');
+  c.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
+    pendingExtraContractors[+inp.dataset.i][inp.dataset.f] = inp.value;
+  }));
+  c.querySelectorAll('.btn-link-rm').forEach(b => b.addEventListener('click', () => {
+    pendingExtraContractors.splice(+b.dataset.i,1); renderExtraContractors();
+  }));
+}
+document.getElementById('btnAddContractor').addEventListener('click', () => {
+  pendingExtraContractors.push({label:'', name:''});
+  renderExtraContractors();
+});
 function renderMemberList(currentMembers, search='') {
   const users = Object.values(allUsers).filter(u => u.role!=='admin' && u.approved &&
     (!search || (u.name||'').toLowerCase().includes(search.toLowerCase()) || (u.email||'').toLowerCase().includes(search.toLowerCase())));
@@ -1071,7 +1148,6 @@ function renderMemberList(currentMembers, search='') {
     </div>`;
   }).join('') : '<div style="padding:12px;font-size:13px;color:var(--ink-light)">მომხმარებელი ვერ მოიძებნა</div>';
 }
-const pendingMemberChanges = {};
 window.updateMemberRole = (uid, role) => { pendingMemberChanges[uid] = role; };
 async function saveProjectData(pid) {
   const name = document.getElementById('pName').value.trim();
@@ -1082,7 +1158,13 @@ async function saveProjectData(pid) {
     if (role) newMembers[uid] = role; else delete newMembers[uid];
   });
   const memberIds = Object.keys(newMembers);
-  const data = { name, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, updatedAt: serverTimestamp() };
+  const contractors = {
+    arch: document.getElementById('cArch').value.trim(),
+    mep: document.getElementById('cMep').value.trim(),
+    struct: document.getElementById('cStruct').value.trim(),
+    extra: pendingExtraContractors.filter(e => (e.name||'').trim()).map(e => ({label:(e.label||'').trim()||'სხვა', name:e.name.trim()}))
+  };
+  const data = { name, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors, updatedAt: serverTimestamp() };
   try {
     if (pid) {
       await updateDoc(doc(db,'projects',pid), data);
