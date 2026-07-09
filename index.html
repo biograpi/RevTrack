@@ -102,6 +102,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .issue-row.closed:hover{background:#c9edd6}
 .issue-num-cell{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--ink)}
 .issue-title-cell{font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.photo-indicator{font-size:11px;color:var(--ink-light);font-weight:400}
+.photo-gallery{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.photo-gallery-item{display:block;width:90px;height:90px;border-radius:var(--r);overflow:hidden;border:1px solid var(--rule)}
+.photo-gallery-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .15s}
+.photo-gallery-item:hover img{transform:scale(1.08)}
 .issue-comment-count{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-light)}
 .issue-comment-count svg{width:15px;height:15px;flex-shrink:0}
 .issue-date-cell{white-space:nowrap;color:var(--ink-light);font-size:12px}
@@ -151,6 +156,16 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .btn-link-rm{background:var(--warn-lo);color:var(--warn);border:none;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .btn-link-rm:hover{background:var(--warn);color:white}
 .btn-add-link{background:var(--accent-lo);color:var(--accent);border:none;border-radius:var(--r);padding:7px 12px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;margin-top:4px}
+.photo-drop-zone{border:2px dashed var(--rule);border-radius:var(--r);padding:20px 14px;text-align:center;font-size:13px;color:var(--ink-light);cursor:pointer;transition:all .15s;outline:none}
+.photo-drop-zone:hover,.photo-drop-zone:focus{border-color:var(--accent);background:var(--accent-lo)}
+.photo-drop-zone.dragover{border-color:var(--accent);background:var(--accent-lo);color:var(--accent)}
+.photo-browse-link{color:var(--accent);font-weight:500;text-decoration:underline}
+.photo-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.photo-thumb{position:relative;width:84px;height:84px;border-radius:var(--r);overflow:hidden;border:1px solid var(--rule);background:var(--bg)}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-thumb .photo-rm{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(26,17,32,.75);color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;padding:0}
+.photo-thumb.uploading{opacity:.5}
+.photo-thumb .photo-spin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .btn-add-link:hover{background:var(--accent);color:white}
 .modal-footer{padding:13px 20px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:10px}
 
@@ -196,6 +211,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
+.spinner-dark{display:inline-block;width:18px;height:18px;border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:700px){
   .form-grid,.detail-grid{grid-template-columns:1fr}
@@ -342,7 +358,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <!-- Issue -->
 <div class="modal-overlay" id="issueModal">
   <div class="modal">
-    <div class="modal-header"><h2 id="modalTitle">ახალი საკითხი</h2><button class="modal-close" onclick="cm('issueModal')">✕</button></div>
+    <div class="modal-header"><h2 id="modalTitle">ახალი საკითხი</h2><button class="modal-close" onclick="cancelIssueModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="field"><label>ნომერი</label><input id="fNum" readonly style="background:var(--rule);cursor:not-allowed"></div>
@@ -364,6 +380,14 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         </div>
         <div class="field"><label>პასუხისმგებელი</label><select id="fPerson"><option value="">— არჩევა —</option></select></div>
         <div class="field form-full">
+          <label>სურათები (screenshot-ები — ჩააწებეთ Ctrl+V, ჩააგდეთ, ან აირჩიეთ ფაილი)</label>
+          <div id="photoDropZone" class="photo-drop-zone" tabindex="0">
+            📷 ჩააგდე სურათი აქ, ჩააწებე (Ctrl+V), ან <span class="photo-browse-link">აირჩიე ფაილი</span>
+            <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none">
+          </div>
+          <div id="photoThumbs" class="photo-thumbs"></div>
+        </div>
+        <div class="field form-full">
           <label>ლინკები (OneDrive, Google Drive...)</label>
           <div id="linkInputsContainer"></div>
           <button type="button" class="btn-add-link" id="btnAddLink">+ ლინკის დამატება</button>
@@ -371,7 +395,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="cm('issueModal')">გაუქმება</button>
+      <button class="btn-secondary" onclick="cancelIssueModal()">გაუქმება</button>
       <button class="btn-primary" id="saveIssue">შენახვა</button>
     </div>
   </div>
@@ -468,6 +492,8 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
   onSnapshot, orderBy, query, serverTimestamp, increment, where }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA461TKgKROBwZ1l4YKdMW5QuA0M4tgxMM",
@@ -480,6 +506,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 const ADMIN_EMAILS = ['biograpirev@gmail.com']; // ← admins
 
@@ -494,6 +521,9 @@ let allUsers = {};
 let unsubIssues = null;
 let editingId = null;
 let pendingLinks = [];
+let pendingPhotos = [];
+let originalPhotos = [];
+let currentIssueStorageId = null;
 let currentDetailId = null;
 let sortCol = 'num', sortDir = 'asc';
 let isViewerMode = false; // anonymous viewer via ?p=
@@ -807,7 +837,7 @@ function render() {
     return `<div class="issue-row issue-grid-row ${issue.status}" data-id="${issue.id}">
       <div class="issue-num-cell">${esc(issue.num)}</div>
       <div><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div>
-      <div class="issue-title-cell">${esc(issue.title)}</div>
+      <div class="issue-title-cell">${esc(issue.title)}${(issue.photos&&issue.photos.length)?` <span class="photo-indicator" title="${issue.photos.length} სურათი">📷${issue.photos.length}</span>`:''}</div>
       <div>${issue.priority?`<span class="priority-icon">${ICON_PRIORITY}</span>`:''}</div>
       <div><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></div>
       <div>${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</div>
@@ -891,6 +921,8 @@ document.getElementById('fPriority').addEventListener('change', e => {
 // ── ADD/EDIT ISSUE ──
 function openAdd() {
   editingId = null; pendingLinks = [];
+  currentIssueStorageId = doc(collection(db,'projects',currentProjectId,'issues')).id;
+  pendingPhotos = []; originalPhotos = [];
   document.getElementById('modalTitle').textContent = 'ახალი საკითხი';
   document.getElementById('fNum').value = nextNum();
   document.getElementById('fDate').value = '';
@@ -901,11 +933,13 @@ function openAdd() {
   document.getElementById('fTitle').value = '';
   document.getElementById('fDesc').value = '';
   renderPersonSelect('');
-  renderLinks(); applyStatusOptionState(null); om('issueModal');
+  renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null); om('issueModal');
 }
 function openEdit(id) {
   const issue = issues[id]; if(!issue) return;
   editingId = id; pendingLinks = [...(issue.images||[])];
+  currentIssueStorageId = id;
+  pendingPhotos = [...(issue.photos||[])]; originalPhotos = [...pendingPhotos];
   document.getElementById('modalTitle').textContent = 'საკითხის რედაქტირება';
   document.getElementById('fNum').value = issue.num;
   document.getElementById('fDate').value = issue.date||'';
@@ -916,9 +950,93 @@ function openEdit(id) {
   document.getElementById('fTitle').value = issue.title;
   document.getElementById('fDesc').value = issue.desc||'';
   renderPersonSelect(issue.person||'');
-  renderLinks(); applyStatusOptionState(issue); om('issueModal');
+  renderLinks(); renderPhotoThumbs(); applyStatusOptionState(issue); om('issueModal');
 }
 document.getElementById('btnAddIssue').addEventListener('click', openAdd);
+
+// ── PHOTOS (screenshots) ──
+function compressImage(file, maxDim = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('ფაილის წაკითხვა ჩავარდა'));
+    reader.onload = e => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('სურათის ჩატვირთვა ჩავარდა'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('კონვერტაცია ჩავარდა')), 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function renderPhotoThumbs() {
+  const c = document.getElementById('photoThumbs');
+  c.innerHTML = pendingPhotos.map((url,i) => `
+    <div class="photo-thumb"><img src="${url}" onclick="window.open('${url}','_blank')"><button type="button" class="photo-rm" data-i="${i}">✕</button></div>
+  `).join('');
+  c.querySelectorAll('.photo-rm').forEach(b => b.addEventListener('click', async e => {
+    e.stopPropagation();
+    const i = +b.dataset.i;
+    const url = pendingPhotos[i];
+    pendingPhotos.splice(i,1);
+    renderPhotoThumbs();
+    try { await deleteObject(storageRef(storage, url)); } catch(err) { /* already gone or never existed, ignore */ }
+  }));
+}
+async function uploadPhotoFile(file) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return;
+  const c = document.getElementById('photoThumbs');
+  const spinnerEl = document.createElement('div');
+  spinnerEl.className = 'photo-thumb uploading';
+  spinnerEl.innerHTML = '<div class="photo-spin"><span class="spinner-dark"></span></div>';
+  c.appendChild(spinnerEl);
+  try {
+    const blob = await compressImage(file);
+    const path = `projects/${currentProjectId}/issues/${currentIssueStorageId}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
+    const ref = storageRef(storage, path);
+    await uploadBytes(ref, blob, { contentType: 'image/jpeg' });
+    const url = await getDownloadURL(ref);
+    pendingPhotos.push(url);
+    renderPhotoThumbs();
+  } catch(e) {
+    alert('სურათის ატვირთვის შეცდომა: '+e.message);
+    spinnerEl.remove();
+  }
+}
+async function handlePhotoFiles(fileList) {
+  for (const file of Array.from(fileList)) { await uploadPhotoFile(file); }
+}
+const photoDropZone = document.getElementById('photoDropZone');
+const photoFileInput = document.getElementById('photoFileInput');
+photoDropZone.addEventListener('click', () => photoFileInput.click());
+photoFileInput.addEventListener('change', () => { handlePhotoFiles(photoFileInput.files); photoFileInput.value = ''; });
+photoDropZone.addEventListener('dragover', e => { e.preventDefault(); photoDropZone.classList.add('dragover'); });
+photoDropZone.addEventListener('dragleave', () => photoDropZone.classList.remove('dragover'));
+photoDropZone.addEventListener('drop', e => {
+  e.preventDefault(); photoDropZone.classList.remove('dragover');
+  if (e.dataTransfer?.files?.length) handlePhotoFiles(e.dataTransfer.files);
+});
+document.addEventListener('paste', e => {
+  if (!document.getElementById('issueModal').classList.contains('open')) return;
+  const items = e.clipboardData?.items; if (!items) return;
+  const imgFiles = Array.from(items).filter(it => it.type.startsWith('image/')).map(it => it.getAsFile());
+  if (imgFiles.length) { e.preventDefault(); handlePhotoFiles(imgFiles); }
+});
+window.cancelIssueModal = async () => {
+  // Clean up any photos uploaded during this session that were never saved.
+  const toRemove = pendingPhotos.filter(u => !originalPhotos.includes(u));
+  cm('issueModal');
+  for (const url of toRemove) { try { await deleteObject(storageRef(storage, url)); } catch(e) {} }
+};
 document.getElementById('saveIssue').addEventListener('click', async () => {
   const title = document.getElementById('fTitle').value.trim();
   if (!title) { alert('სათაური სავალდებულოა'); return; }
@@ -935,6 +1053,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     status, title, desc: document.getElementById('fDesc').value,
     person: document.getElementById('fPerson').value.trim(),
     images: pendingLinks.filter(u=>u.trim()),
+    photos: pendingPhotos,
     updatedAt: serverTimestamp(),
   };
   const btn = document.getElementById('saveIssue');
@@ -946,7 +1065,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
       data.date = new Date().toISOString().slice(0,10);
       data.createdAt = serverTimestamp(); data.commentCount = 0;
       data.createdBy = currentUser.uid; data.createdByName = currentUser.displayName||currentUser.email;
-      await addDoc(collection(db,'projects',currentProjectId,'issues'), data);
+      await setDoc(doc(db,'projects',currentProjectId,'issues',currentIssueStorageId), data);
     }
     cm('issueModal'); showToast(editingId?'განახლდა!':'საკითხი დაემატა!');
   } catch(e) { alert('შეცდომა: '+e.message); }
@@ -954,7 +1073,11 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
 });
 async function confirmDelete(id) {
   if (!confirm('ნამდვილად წავშალო?')) return;
+  const issue = issues[id];
   await deleteDoc(doc(db,'projects',currentProjectId,'issues',id));
+  for (const url of (issue?.photos||[])) {
+    try { await deleteObject(storageRef(storage, url)); } catch(e) { /* already gone, ignore */ }
+  }
   showToast('წაიშალა');
 }
 
@@ -997,6 +1120,11 @@ async function openDetail(id) {
     <div class="detail-section"><div class="detail-label">დეტალური აღწერა</div>
       <div class="detail-val" style="background:var(--bg);padding:12px;border-radius:6px;border:1px solid var(--rule);white-space:pre-wrap">${esc(issue.desc)||'—'}</div>
     </div>
+    ${(issue.photos&&issue.photos.length)?`<div class="detail-section" style="margin-top:12px">
+      <div class="detail-label">📷 სურათები</div>
+      <div class="photo-gallery">
+        ${issue.photos.map(url=>`<a href="${esc(url)}" target="_blank" rel="noopener" class="photo-gallery-item"><img src="${esc(url)}" loading="lazy"></a>`).join('')}
+      </div></div>`:''}
     ${(issue.images&&issue.images.length)?`<div class="detail-section" style="margin-top:12px">
       <div class="detail-label">ლინკები</div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
@@ -1280,6 +1408,9 @@ async function deleteProjectFully(pid, name) {
     for (const issueDoc of issuesSnap.docs) {
       const commentsSnap = await getDocs(collection(db,'projects',pid,'issues',issueDoc.id,'comments'));
       for (const c of commentsSnap.docs) await deleteDoc(c.ref);
+      for (const url of (issueDoc.data().photos||[])) {
+        try { await deleteObject(storageRef(storage, url)); } catch(e) { /* already gone, ignore */ }
+      }
       await deleteDoc(issueDoc.ref);
     }
     await deleteDoc(doc(db,'projects',pid));
