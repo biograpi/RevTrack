@@ -1107,6 +1107,8 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
 async function confirmDelete(id) {
   if (!confirm('ნამდვილად წავშალო?')) return;
   const issue = issues[id];
+  const commentsSnap = await getDocs(collection(db,'projects',currentProjectId,'issues',id,'comments'));
+  for (const c of commentsSnap.docs) await deleteDoc(c.ref);
   await deleteDoc(doc(db,'projects',currentProjectId,'issues',id));
   for (const url of (issue?.photos||[])) {
     try { await deleteObject(storageRef(storage, url)); } catch(e) { /* already gone, ignore */ }
@@ -1444,6 +1446,7 @@ async function deleteProjectFully(pid, name) {
       await deleteDoc(issueDoc.ref);
     }
     await deleteDoc(doc(db,'projects',pid));
+    try { await deleteDoc(doc(db,'projects',pid,'meta','counter')); } catch(e) { /* already gone, ignore */ }
     cm('projectModal');
     showToast('პროექტი წაიშალა');
     if (unsubIssues) { unsubIssues(); unsubIssues = null; }
