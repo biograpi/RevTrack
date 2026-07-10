@@ -88,7 +88,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 /* ── ISSUE LIST ── */
 .issues-wrap{padding:0 24px 24px}
-.issue-grid-row{display:grid;grid-template-columns:52px 130px minmax(120px,1fr) 110px 120px 120px 40px 74px 68px;align-items:center;gap:10px;padding:0 4px;min-height:44px}
+.issue-grid-row{display:grid;grid-template-columns:100px 108px minmax(120px,1fr) 56px 64px 120px 120px 40px 74px 68px;align-items:center;gap:10px;padding:0 4px;min-height:44px}
 .issue-grid-row>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .issue-header-row{width:100%;border-top:1px solid var(--rule);margin-top:10px;padding-top:10px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-mid)}
 .issue-header-row [data-col]{cursor:pointer;user-select:none}
@@ -104,7 +104,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .issue-row.sub-issue .issue-num-cell{padding-left:16px;color:var(--ink-light)}
 .issue-row.sub-issue .issue-title-cell{padding-left:16px}
 .issue-title-cell{font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.photo-indicator{font-size:11px;color:var(--ink-light);font-weight:400}
 .photo-gallery{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .photo-gallery-item{display:block;width:90px;height:90px;border-radius:var(--r);overflow:hidden;border:1px solid var(--rule)}
 .photo-gallery-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .15s}
@@ -125,6 +124,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .priority-flag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;white-space:nowrap;background:var(--warn-lo);color:var(--warn)}
 .priority-icon{display:inline-flex;color:var(--warn);width:18px;height:18px}
 .priority-icon svg{width:100%;height:100%}
+.issue-photo-head{text-align:center;color:var(--ink-mid)}
+.issue-photo-cell,.issue-priority-cell{display:flex;justify-content:center;align-items:center}
+.photo-indicator{font-size:11px;color:var(--ink-light);font-weight:400;white-space:nowrap}
 .priority-check{display:flex;align-items:center;justify-content:flex-start;gap:8px;cursor:pointer;user-select:none;margin-top:9px}
 .field .priority-check input[type="checkbox"]{width:16px;height:16px;flex:none;padding:0;border:none;background:none;cursor:pointer;accent-color:var(--warn)}
 .priority-check .ptlabel{font-size:13px;color:var(--ink-mid)}
@@ -340,6 +342,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div data-col="num">#</div>
     <div data-col="disc">დისციპლინა</div>
     <div data-col="title">საკითხი</div>
+    <div class="issue-photo-head">📷</div>
     <div data-col="priority">პრიორიტეტი</div>
     <div data-col="status">სტატუსი</div>
     <div data-col="person">პასუხისმგებელი</div>
@@ -871,8 +874,9 @@ function render() {
     return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}" data-id="${issue.id}">
       <div class="issue-num-cell">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}</div>
       <div><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div>
-      <div class="issue-title-cell">${esc(issue.title)}${(issue.photos&&issue.photos.length)?` <span class="photo-indicator" title="${issue.photos.length} სურათი">📷${issue.photos.length}</span>`:''}</div>
-      <div>${issue.priority?`<span class="priority-icon">${ICON_PRIORITY}</span>`:''}</div>
+      <div class="issue-title-cell">${esc(issue.title)}</div>
+      <div class="issue-photo-cell">${(issue.photos&&issue.photos.length)?`<span class="photo-indicator" title="${issue.photos.length} სურათი">📷${issue.photos.length}</span>`:''}</div>
+      <div class="issue-priority-cell">${issue.priority?`<span class="priority-icon">${ICON_PRIORITY}</span>`:''}</div>
       <div><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></div>
       <div>${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</div>
       <div>${cmtHtml}</div>
