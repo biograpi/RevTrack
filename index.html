@@ -101,6 +101,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .issue-row.closed{background:var(--ok-lo)}
 .issue-row.closed:hover{background:#c9edd6}
 .issue-num-cell{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--ink)}
+.issue-row.sub-issue .issue-num-cell{padding-left:16px;color:var(--ink-light)}
+.issue-row.sub-issue .issue-title-cell{padding-left:16px}
 .issue-title-cell{font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .photo-indicator{font-size:11px;color:var(--ink-light);font-weight:400}
 .photo-gallery{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
@@ -271,7 +273,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <!-- ══ PROJECTS ══ -->
 <div class="projects-screen" id="projectsScreen">
   <div class="projects-header">
-    <div class="projects-logo">RevTrack</div>
+    <div class="projects-logo">RevTrack <span style="opacity:.6;font-weight:400">1.0</span></div>
     <div class="projects-user">
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები</button>
@@ -291,7 +293,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 <header>
   <div class="header-left">
-    <span class="header-logo" id="btnBackProjects">RevTrack</span>
+    <span class="header-logo" id="btnBackProjects">RevTrack <span style="opacity:.6;font-weight:400">1.0</span></span>
     <span class="header-sep">/</span>
     <span class="project-name-hdr" id="hdrProjectName">პროექტი</span>
   </div>
@@ -313,7 +315,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <option value="arch">არქიტექტურა</option>
       <option value="struct">კონსტრუქცია</option>
       <option value="mep">MEP</option>
-      <option value="fire">სახანძრო</option>
       <option value="other">სხვა</option>
     </select>
     <select class="fsel" id="filterStatus">
@@ -329,7 +330,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <button class="btn-primary" id="btnAddIssue" style="display:none">+ საკითხი</button>
-    <button class="btn-secondary" id="btnExportExcel">📊 Excel-ში ექსპორტი</button>
+    <button class="btn-secondary" id="btnExportExcel">📊 ექსპორტი (Excel + ფოტოები)</button>
     <div class="stats-row">
       <span class="stat-chip active" id="cntActive">0 აქტიური</span>
       <span class="stat-chip closed" id="cntClosed">0 დასრულებული</span>
@@ -361,10 +362,12 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="modal-header"><h2 id="modalTitle">ახალი საკითხი</h2><button class="modal-close" onclick="cancelIssueModal()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="field"><label>ნომერი</label><input id="fNum" readonly style="background:var(--rule);cursor:not-allowed"></div>
+        <div class="field"><label>ნომერი</label><input id="fNum" readonly style="background:var(--rule);cursor:not-allowed">
+          <div class="auth-hint">ახალი საკითხისას რედაქტირებადია — ჩაწერე მაგ. 2.1, რომ გახდეს 2-ის ქვე-საკითხი</div>
+        </div>
         <input type="hidden" id="fDate">
         <div class="field"><label>დისციპლინა</label>
-          <select id="fDisc"><option value="arch">არქიტექტურა</option><option value="struct">კონსტრუქცია</option><option value="mep">MEP</option><option value="fire">სახანძრო</option><option value="other">სხვა</option></select>
+          <select id="fDisc"><option value="arch">არქიტექტურა</option><option value="struct">კონსტრუქცია</option><option value="mep">MEP</option><option value="other">სხვა</option></select>
         </div>
         <div class="field">
           <label>პრიორიტეტი</label>
@@ -429,6 +432,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="modal-body">
       <div class="form-grid" style="margin-bottom:16px">
         <div class="field form-full"><label>პროექტის სახელი</label><input id="pName" placeholder="პროექტი N123"></div>
+        <div class="field">
+          <label>პროექტის კოდი</label>
+          <input id="pCode" placeholder="MZK" style="text-transform:uppercase" maxlength="8">
+          <div class="auth-hint">კოდის შეცვლა მყისიერად ცვლის ყველა საკითხის ნომერს (მაგ. MZK-001)</div>
+        </div>
         <div class="field form-full"><label>აღწერა</label><input id="pDesc" placeholder="მოკლე აღწერა"></div>
       </div>
 
@@ -461,6 +469,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="modal-header"><h2>+ ახალი პროექტი</h2><button class="modal-close" onclick="cm('newProjModal')">✕</button></div>
     <div class="modal-body">
       <div class="field" style="margin-bottom:14px"><label>სახელი</label><input id="npName" placeholder="პროექტი N123"></div>
+      <div class="field" style="margin-bottom:14px">
+        <label>პროექტის კოდი (საკითხების ნუმერაციისთვის, მაგ. MZK)</label>
+        <input id="npCode" placeholder="MZK" style="text-transform:uppercase" maxlength="8">
+      </div>
       <div class="field"><label>აღწერა</label><input id="npDesc" placeholder="მოკლე აღწერა (არასავალდებულო)"></div>
     </div>
     <div class="modal-footer">
@@ -485,12 +497,13 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 <!-- ══ FIREBASE ══ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  onSnapshot, orderBy, query, serverTimestamp, increment, where }
+  onSnapshot, orderBy, query, serverTimestamp, increment, where, runTransaction }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -535,7 +548,7 @@ window.cm = id => document.getElementById(id).classList.remove('open');
 const om = id => document.getElementById(id).classList.add('open');
 const initials = n => (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
 
-const discL = {arch:'არქიტექტურა',struct:'კონსტრუქცია',mep:'MEP',fire:'სახანძრო',other:'სხვა'};
+const discL = {arch:'არქიტექტურა',struct:'კონსტრუქცია',mep:'MEP',other:'სხვა'};
 const statL = {active:'აქტიური', closed:'დასრულებული'};
 const roleL = {admin:'Admin', design_manager:'დიზაინ მენეჯერი', reviewer:'რევიზორი', contractor:'კონტრაქტორი', viewer:'დამთვალიერებელი'};
 
@@ -658,7 +671,7 @@ async function showProjects() {
       const myRole = currentGlobalRole;
       const roleLabel = roleL[myRole] || myRole;
       html += `<div class="project-card" onclick="openProject('${p.id}')">
-        <div class="project-card-name">${esc(p.name)}</div>
+        <div class="project-card-name">${esc(p.name)} ${p.code?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;color:rgba(255,255,255,.5)">[${esc(p.code)}]</span>`:''}</div>
         <div class="project-card-meta">${esc(p.desc||'')}</div>
         <div class="project-card-creator">შექმნილია: ${esc(p.createdByName||'ადმინი')}</div>
         <span class="project-card-role role-${myRole}">${roleLabel}</span>
@@ -728,13 +741,13 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
   const origText = btn.textContent;
   btn.disabled = true; btn.textContent = 'მუშავდება...';
   try {
-    const allIssues = Object.values(issues).sort((a,b) => (a.num||'').localeCompare(b.num||'', undefined, {numeric:true}));
+    const allIssues = Object.values(issues).sort((a,b) => (a.seqMajor-b.seqMajor) || ((a.seqMinor||0)-(b.seqMinor||0)));
 
     const issueRows = allIssues.map(i => ({
-      num: i.num||'', disc: discL[i.disc]||i.disc||'', title: i.title||'', desc: i.desc||'',
+      num: formatIssueNum(i.seqMajor, i.seqMinor), disc: discL[i.disc]||i.disc||'', title: i.title||'', desc: i.desc||'',
       priority: i.priority ? 'დიახ' : 'არა', status: statL[i.status]||i.status||'',
       person: i.person||'', date: i.date||'', createdByName: i.createdByName||'',
-      commentCount: i.commentCount||0, images: (i.images||[]).join(', ')
+      commentCount: i.commentCount||0, photoCount: (i.photos||[]).length, images: (i.images||[]).join(', ')
     }));
 
     const commentRows = [];
@@ -743,7 +756,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
       snap.forEach(cDoc => {
         const c = cDoc.data();
         commentRows.push({
-          num: iss.num||'', title: iss.title||'', author: c.authorName||'',
+          num: formatIssueNum(iss.seqMajor, iss.seqMinor), title: iss.title||'', author: c.authorName||'',
           date: c.createdAt && c.createdAt.toDate ? c.createdAt.toDate().toLocaleString('ka-GE') : '',
           text: c.text||''
         });
@@ -754,9 +767,9 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
 
     const ws1 = wb.addWorksheet('საკითხები');
     ws1.columns = autoColumns(
-      ['ნომერი','დისციპლინა','სათაური','აღწერა','პრიორიტეტული','სტატუსი','პასუხისმგებელი','თარიღი','შემქმნელი','კომენტარები','ლინკები'],
+      ['ნომერი','დისციპლინა','სათაური','აღწერა','პრიორიტეტული','სტატუსი','პასუხისმგებელი','თარიღი','შემქმნელი','კომენტარები','სურათები','ლინკები'],
       issueRows,
-      ['num','disc','title','desc','priority','status','person','date','createdByName','commentCount','images'],
+      ['num','disc','title','desc','priority','status','person','date','createdByName','commentCount','photoCount','images'],
       10, 45
     );
     ws1.addRows(issueRows);
@@ -775,14 +788,32 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
     ws2.getRow(1).font = { bold: true };
     ws2.eachRow(row => row.eachCell(cell => { cell.alignment = { wrapText: true, vertical: 'top' }; }));
 
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
+    const xlsxBuffer = await wb.xlsx.writeBuffer();
     const safeName = (currentProjectData?.name || 'პროექტი').replace(/[\\\/*?:[\]]/g,'').slice(0,30);
+
+    const zip = new JSZip();
+    zip.file(`${safeName}.xlsx`, xlsxBuffer);
+    const photosFolder = zip.folder('photos');
+    let photoFetchFailures = 0;
+    for (const iss of allIssues) {
+      const photos = iss.photos||[];
+      for (let idx = 0; idx < photos.length; idx++) {
+        try {
+          const resp = await fetch(photos[idx]);
+          const blob = await resp.blob();
+          const fname = `${formatIssueNum(iss.seqMajor, iss.seqMinor)}-${String(idx+1).padStart(2,'0')}.jpg`;
+          photosFolder.file(fname, blob);
+        } catch(e) { photoFetchFailures++; }
+      }
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
-    a.href = url; a.download = `${safeName}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.href = url; a.download = `${safeName}_${new Date().toISOString().slice(0,10)}.zip`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
+    if (photoFetchFailures) showToast(`გაფრთხილება: ${photoFetchFailures} სურათი ვერ ჩაიტვირთა`);
   } catch(e) {
     alert('შეცდომა ექსპორტისას: '+e.message);
   }
@@ -796,15 +827,18 @@ function filtered() {
   const status = document.getElementById('filterStatus').value;
   const priority = document.getElementById('filterPriority').value;
   return Object.values(issues).filter(i =>
-    (!q||(i.title||'').toLowerCase().includes(q)||(i.desc||'').toLowerCase().includes(q)||(i.person||'').toLowerCase().includes(q)||(i.num||'').toLowerCase().includes(q)) &&
+    (!q||(i.title||'').toLowerCase().includes(q)||(i.desc||'').toLowerCase().includes(q)||(i.person||'').toLowerCase().includes(q)||formatIssueNum(i.seqMajor,i.seqMinor).toLowerCase().includes(q)) &&
     (!disc||i.disc===disc) && (!status||i.status===status) &&
     (!priority||(priority==='yes'?!!i.priority:!i.priority))
   );
 }
 function sorted(arr) {
   return [...arr].sort((a,b)=>{
+    if (sortCol === 'num') {
+      const diff = (a.seqMajor??0)-(b.seqMajor??0) || ((a.seqMinor||0)-(b.seqMinor||0));
+      return sortDir==='asc' ? diff : -diff;
+    }
     let av=a[sortCol]??'', bv=b[sortCol]??'';
-    if(sortCol==='num'){av=parseInt((av+'').replace(/\D/g,''))||0;bv=parseInt((bv+'').replace(/\D/g,''))||0}
     if(av<bv)return sortDir==='asc'?-1:1;
     if(av>bv)return sortDir==='asc'?1:-1;
     return 0;
@@ -834,8 +868,8 @@ function render() {
           ${canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:''}
         </div>`
       : `<div></div>`;
-    return `<div class="issue-row issue-grid-row ${issue.status}" data-id="${issue.id}">
-      <div class="issue-num-cell">${esc(issue.num)}</div>
+    return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}" data-id="${issue.id}">
+      <div class="issue-num-cell">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}</div>
       <div><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div>
       <div class="issue-title-cell">${esc(issue.title)}${(issue.photos&&issue.photos.length)?` <span class="photo-indicator" title="${issue.photos.length} სურათი">📷${issue.photos.length}</span>`:''}</div>
       <div>${issue.priority?`<span class="priority-icon">${ICON_PRIORITY}</span>`:''}</div>
@@ -862,11 +896,31 @@ function render() {
 }
 ['searchInput','filterDisc','filterStatus','filterPriority'].forEach(id => document.getElementById(id).addEventListener('input', render));
 
-// ── NEXT NUM ──
-function nextNum() {
-  const nums = Object.values(issues).map(i=>parseInt((i.num||'').replace(/\D/g,''))||0);
-  const n = nums.length ? Math.max(...nums)+1 : 1;
-  return 'R-'+String(n).padStart(3,'0');
+// ── ISSUE NUMBERING (project code + live sequence + optional sub-numbers) ──
+function formatIssueNum(seqMajor, seqMinor) {
+  const code = currentProjectData?.code || '???';
+  const major = String(seqMajor).padStart(3,'0');
+  return seqMinor ? `${code}-${major}.${seqMinor}` : `${code}-${major}`;
+}
+// Parses manual entry like "3" or "2.1" -> {major, minor} (minor 0 = none). Returns null if not a valid positive number pattern.
+function parseManualSeq(text) {
+  const t = (text||'').trim();
+  const m = t.match(/^(\d+)(?:\.(\d+))?$/);
+  if (!m) return null;
+  const major = parseInt(m[1],10);
+  const minor = m[2] ? parseInt(m[2],10) : 0;
+  if (major < 1 || minor < 0) return null;
+  return { major, minor };
+}
+// Reserves the next top-level sequence number for this project atomically (persistent counter — never reused, even after deletions).
+async function reserveNextSeq(projectId) {
+  const counterRef = doc(db,'projects',projectId,'meta','counter');
+  return await runTransaction(db, async tx => {
+    const snap = await tx.get(counterRef);
+    const current = snap.exists() ? (snap.data().nextSeq||1) : 1;
+    tx.set(counterRef, { nextSeq: current + 1 }, { merge: true });
+    return current;
+  });
 }
 
 // ── CLOSE PERMISSION: only admin, or the reviewer who opened the issue ──
@@ -919,12 +973,24 @@ document.getElementById('fPriority').addEventListener('change', e => {
 });
 
 // ── ADD/EDIT ISSUE ──
-function openAdd() {
+let reservedSeqMajor = null;
+async function openAdd() {
   editingId = null; pendingLinks = [];
   currentIssueStorageId = doc(collection(db,'projects',currentProjectId,'issues')).id;
   pendingPhotos = []; originalPhotos = [];
   document.getElementById('modalTitle').textContent = 'ახალი საკითხი';
-  document.getElementById('fNum').value = nextNum();
+  const fNumEl = document.getElementById('fNum');
+  fNumEl.readOnly = false;
+  fNumEl.style.background = 'white'; fNumEl.style.cursor = 'text';
+  fNumEl.value = '...'; fNumEl.disabled = true;
+  om('issueModal');
+  try {
+    reservedSeqMajor = await reserveNextSeq(currentProjectId);
+    fNumEl.value = String(reservedSeqMajor);
+  } catch(e) {
+    fNumEl.value = ''; alert('ნომრის დაჯავშნის შეცდომა: '+e.message);
+  }
+  fNumEl.disabled = false;
   document.getElementById('fDate').value = '';
   document.getElementById('fDisc').value = 'arch';
   document.getElementById('fPriority').checked = false;
@@ -933,7 +999,7 @@ function openAdd() {
   document.getElementById('fTitle').value = '';
   document.getElementById('fDesc').value = '';
   renderPersonSelect('');
-  renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null); om('issueModal');
+  renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
 }
 function openEdit(id) {
   const issue = issues[id]; if(!issue) return;
@@ -941,7 +1007,9 @@ function openEdit(id) {
   currentIssueStorageId = id;
   pendingPhotos = [...(issue.photos||[])]; originalPhotos = [...pendingPhotos];
   document.getElementById('modalTitle').textContent = 'საკითხის რედაქტირება';
-  document.getElementById('fNum').value = issue.num;
+  const fNumEl = document.getElementById('fNum');
+  fNumEl.readOnly = true; fNumEl.style.background = 'var(--rule)'; fNumEl.style.cursor = 'not-allowed';
+  fNumEl.value = formatIssueNum(issue.seqMajor, issue.seqMinor);
   document.getElementById('fDate').value = issue.date||'';
   document.getElementById('fDisc').value = issue.disc;
   document.getElementById('fPriority').checked = !!issue.priority;
@@ -1046,8 +1114,19 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     alert('საკითხის დახურვა შეუძლია მხოლოდ ადმინს ან მისი შემქმნელს.');
     return;
   }
+  let seqMajor, seqMinor;
+  if (!editingId) {
+    const parsed = parseManualSeq(document.getElementById('fNum').value);
+    if (!parsed) { alert('ნომრის ფორმატი არასწორია (მაგ. 3 ან 2.1)'); return; }
+    seqMajor = parsed.major; seqMinor = parsed.minor;
+    if (seqMinor > 0) {
+      const parentExists = Object.values(issues).some(i => i.seqMajor === seqMajor && (i.seqMinor||0) === 0);
+      if (!parentExists) { alert(`ვერ მოიძებნა ${String(seqMajor).padStart(3,'0')} საკითხი — ქვე-საკითხი მხოლოდ არსებული საკითხისთვის შეიძლება.`); return; }
+    }
+    const duplicate = Object.values(issues).some(i => i.seqMajor === seqMajor && (i.seqMinor||0) === seqMinor);
+    if (duplicate) { alert('ეს ნომერი უკვე დაკავებულია — აირჩიე სხვა.'); return; }
+  }
   const data = {
-    num: document.getElementById('fNum').value,
     disc: document.getElementById('fDisc').value,
     priority: document.getElementById('fPriority').checked,
     status, title, desc: document.getElementById('fDesc').value,
@@ -1062,6 +1141,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     if (editingId) {
       await updateDoc(doc(db,'projects',currentProjectId,'issues',editingId), data);
     } else {
+      data.seqMajor = seqMajor; data.seqMinor = seqMinor;
       data.date = new Date().toISOString().slice(0,10);
       data.createdAt = serverTimestamp(); data.commentCount = 0;
       data.createdBy = currentUser.uid; data.createdByName = currentUser.displayName||currentUser.email;
@@ -1105,11 +1185,11 @@ async function openDetail(id) {
   const isProjectMember = !!(currentProjectData?.members||{})[currentUser?.uid];
   const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&isProjectMember);
   const canComment = !isViewerMode;
-  document.getElementById('detailTitle').textContent = issue.num+' — '+issue.title;
+  document.getElementById('detailTitle').textContent = formatIssueNum(issue.seqMajor, issue.seqMinor)+' — '+issue.title;
   document.getElementById('detailEditBtn').style.display = canEdit?'flex':'none';
   document.getElementById('detailBody').innerHTML = `
     <div class="detail-grid">
-      <div class="detail-section"><div class="detail-label">ნომერი</div><div class="detail-val" style="font-family:'JetBrains Mono',monospace;font-weight:600">${esc(issue.num)}</div></div>
+      <div class="detail-section"><div class="detail-label">ნომერი</div><div class="detail-val" style="font-family:'JetBrains Mono',monospace;font-weight:600">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}</div></div>
       <div class="detail-section"><div class="detail-label">დისციპლინა</div><div class="detail-val"><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div></div>
       <div class="detail-section"><div class="detail-label">თარიღი</div><div class="detail-val">${issue.date||'—'}</div></div>
       <div class="detail-section"><div class="detail-label">სტატუსი</div><div class="detail-val"><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></div></div>
@@ -1313,6 +1393,7 @@ async function openProjectModal(pid) {
   document.getElementById('projectModalTitle').textContent = pid ? 'პროექტის მართვა' : 'ახალი პროექტი';
   const pd = pid ? currentProjectData : {};
   document.getElementById('pName').value = pd.name||'';
+  document.getElementById('pCode').value = pd.code||'';
   document.getElementById('pDesc').value = pd.desc||'';
   const contractors = pd.contractors || {};
   document.getElementById('cArch').value = contractors.arch||'';
@@ -1372,7 +1453,9 @@ function renderMemberList(currentMembers, search='') {
 window.updateMemberRole = (uid, role) => { pendingMemberChanges[uid] = role; };
 async function saveProjectData(pid) {
   const name = document.getElementById('pName').value.trim();
+  const code = document.getElementById('pCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   if (!name) { alert('სახელი სავალდებულოა'); return; }
+  if (!code) { alert('პროექტის კოდი სავალდებულოა (მაგ. MZK)'); return; }
   const currentMembers = pid ? (currentProjectData.members||{}) : {};
   const newMembers = {...currentMembers};
   Object.entries(pendingMemberChanges).forEach(([uid,role]) => {
@@ -1385,12 +1468,13 @@ async function saveProjectData(pid) {
     struct: document.getElementById('cStruct').value.trim(),
     extra: pendingExtraContractors.filter(e => (e.name||'').trim()).map(e => ({label:(e.label||'').trim()||'სხვა', name:e.name.trim()}))
   };
-  const data = { name, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors, updatedAt: serverTimestamp() };
+  const data = { name, code, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors, updatedAt: serverTimestamp() };
   try {
     if (pid) {
       await updateDoc(doc(db,'projects',pid), data);
       currentProjectData = {...currentProjectData,...data};
       document.getElementById('hdrProjectName').textContent = name;
+      render(); // re-render so all issue numbers reflect the (possibly changed) code immediately
     }
     cm('projectModal'); showToast('შენახულია!');
   } catch(e) { alert('შეცდომა: '+e.message); }
@@ -1427,18 +1511,21 @@ async function deleteProjectFully(pid, name) {
 
 // ── NEW PROJECT ──
 document.getElementById('btnNewProjectHdr').addEventListener('click', () => openNewProject());
-window.openNewProject = () => { document.getElementById('npName').value=''; document.getElementById('npDesc').value=''; om('newProjModal'); };
+window.openNewProject = () => { document.getElementById('npName').value=''; document.getElementById('npCode').value=''; document.getElementById('npDesc').value=''; om('newProjModal'); };
 document.getElementById('saveNewProj').addEventListener('click', async () => {
   const name = document.getElementById('npName').value.trim();
+  const code = document.getElementById('npCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   if (!name) { alert('სახელი სავალდებულოა'); return; }
+  if (!code) { alert('პროექტის კოდი სავალდებულოა (მაგ. MZK)'); return; }
   const btn = document.getElementById('saveNewProj'); btn.disabled=true;
   try {
     const ref = await addDoc(collection(db,'projects'), {
-      name, desc: document.getElementById('npDesc').value.trim(),
+      name, code, desc: document.getElementById('npDesc').value.trim(),
       members: {}, memberIds: [],
       createdAt:serverTimestamp(), createdBy:currentUser.uid,
       createdByName: currentUser.displayName||currentUser.email
     });
+    await setDoc(doc(db,'projects',ref.id,'meta','counter'), { nextSeq: 1 });
     cm('newProjModal'); showToast('პროექტი შეიქმნა!');
     await showProjects();
   } catch(e) { alert('შეცდომა: '+e.message); }
