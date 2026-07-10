@@ -209,7 +209,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .member-item select{border:1px solid var(--rule);border-radius:4px;padding:3px 6px;font-family:inherit;font-size:12px;background:white}
 
 /* ── VIEWER BANNER ── */
-.viewer-banner{background:var(--amber-lo);border-bottom:1px solid var(--amber);padding:8px 24px;font-size:13px;color:var(--amber);display:flex;align-items:center;gap:8px}
 
 /* ── MISC ── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
@@ -221,6 +220,21 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   .form-grid,.detail-grid{grid-template-columns:1fr}
   .stats-row{display:none}
   .search-box{width:140px}
+
+  /* ── issue list becomes a stacked card view on narrow screens ── */
+  .issue-header-row{display:none}
+  .issues-wrap{padding:0 10px 16px}
+  .issue-row{border-radius:var(--r);border:1px solid var(--rule);margin-bottom:10px}
+  .issue-row.closed{border-color:var(--ok)}
+  .issue-grid-row{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:14px;min-height:0}
+  .issue-num-cell,.issue-title-cell,.action-cell{grid-column:1 / -1}
+  .issue-title-cell{white-space:normal;overflow:visible;font-size:15px}
+  .issue-num-cell{font-size:13px}
+  .issue-row.sub-issue .issue-num-cell,.issue-row.sub-issue .issue-title-cell{padding-left:14px}
+  .issue-grid-row>div[data-label]{overflow:visible;white-space:normal}
+  .issue-grid-row>div[data-label]::before{content:attr(data-label);display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-light);margin-bottom:3px}
+  .issue-photo-cell,.issue-priority-cell{justify-content:flex-start}
+  .action-cell{justify-content:flex-end;border-top:1px solid var(--rule);padding-top:10px;margin-top:2px}
 }
 </style>
 </head>
@@ -232,7 +246,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <div class="auth-screen" id="authScreen">
   <div class="auth-box">
     <div class="auth-logo">RevTrack</div>
-    <div class="auth-sub">პროექტის რევიზიების სისტემა</div>
+    <div class="auth-sub">პროექტების რევიზიების სისტემა</div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tabLogin">შესვლა</button>
       <button class="auth-tab" id="tabRegister">რეგისტრაცია</button>
@@ -242,14 +256,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <div class="auth-field"><label>პაროლი</label><input type="password" id="loginPass" placeholder="••••••••"></div>
       <div class="auth-err" id="loginErr"></div>
       <button class="btn-primary" style="width:100%;justify-content:center" id="btnLogin">შესვლა</button>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
-        <div style="flex:1;height:1px;background:var(--rule)"></div>
-        <span style="font-size:12px;color:var(--ink-light)">ან</span>
-        <div style="flex:1;height:1px;background:var(--rule)"></div>
-      </div>
-      <button id="btnGuestView" style="width:100%;margin-top:12px;padding:9px;border:1px solid var(--rule);border-radius:var(--r);background:var(--bg);color:var(--ink-mid);font-family:inherit;font-size:13px;cursor:pointer;">
-        👁 დათვალიერება
-      </button>
     </div>
     <div id="registerForm" style="display:none">
       <div class="auth-field"><label>სახელი გვარი</label><input type="text" id="regName" placeholder="გიორგი გიორგაძე"></div>
@@ -288,10 +294,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 <!-- ══ APP ══ -->
 <div id="appScreen" style="display:none">
-
-<div class="viewer-banner" id="viewerBanner" style="display:none">
-  👁 დათვალიერების რეჟიმი — კომენტარისთვის გთხოვთ დარეგისტრირდეთ
-</div>
 
 <header>
   <div class="header-left">
@@ -332,7 +334,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <button class="btn-primary" id="btnAddIssue" style="display:none">+ საკითხი</button>
-    <button class="btn-secondary" id="btnExportExcel">📊 ექსპორტი (Excel + ფოტოები)</button>
+    <button class="btn-secondary" id="btnExportExcel" style="display:none">📊 ექსპორტი (Excel + ფოტოები)</button>
     <div class="stats-row">
       <span class="stat-chip active" id="cntActive">0 აქტიური</span>
       <span class="stat-chip closed" id="cntClosed">0 დასრულებული</span>
@@ -343,7 +345,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div data-col="disc">დისციპლინა</div>
     <div data-col="title">საკითხი</div>
     <div class="issue-photo-head">📷</div>
-    <div data-col="priority">პრიორიტეტი</div>
+    <div data-col="priority" style="text-align:center" title="პრიორიტეტი"><svg viewBox="0 0 512 512" fill="currentColor" style="width:14px;height:14px;vertical-align:middle" xmlns="http://www.w3.org/2000/svg"><path d="M238.301,346.393c0.598,3.938,2.563,7.725,5.903,11.359c3.313,3.626,7.252,5.447,11.796,5.447 c10.592,0,16.486-5.608,17.691-16.806l35.398-271.98c0.607-4.823,0.911-11.636,0.911-20.415c0-13.618-4.679-26.013-14.065-37.22 C286.558,5.59,273.244,0,255.999,0c-17.868,0-31.317,5.742-40.389,17.226c-9.073,11.206-13.61,23.459-13.61,36.773 c0,8.172,0.285,14.976,0.892,20.415L238.301,346.393z"/><path d="M295.033,418.065c-10.288-10.287-23.307-15.44-39.034-15.44c-15.422,0-28.441,5.314-39.032,15.896 c-10.591,10.591-15.877,23.441-15.877,38.569c0,14.52,5.286,27.379,15.877,38.577C227.558,506.562,240.578,512,255.999,512 c15.423,0,28.424-5.286,39.034-15.886c10.574-10.574,15.877-23.593,15.877-39.024C310.91,441.658,305.607,428.656,295.033,418.065z"/></svg></div>
     <div data-col="status">სტატუსი</div>
     <div data-col="person">პასუხისმგებელი</div>
     <div class="issue-comment-head"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4525C3.22094 16.8088 3.28001 17.2161 3.17712 17.6006L2.58151 19.8267C2.32295 20.793 3.20701 21.677 4.17335 21.4185L6.39939 20.8229C6.78393 20.72 7.19121 20.7791 7.54753 20.9565C8.88837 21.6244 10.4003 22 12 22Z"/></svg></div>
@@ -486,18 +488,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 </div>
 
 
-<!-- Guest project picker -->
-<div class="modal-overlay" id="guestModal">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-header"><h2>👁 პროექტის არჩევა</h2><button class="modal-close" onclick="cm('guestModal')">&#x2715;</button></div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:var(--ink-mid);margin-bottom:14px">აირჩიე პროექტი სტუმრად სანახავად:</p>
-      <div id="guestProjectList">იტვირთება...</div>
-    </div>
-    <div class="modal-footer"><button class="btn-secondary" onclick="cm('guestModal')">გაუქმება</button></div>
-  </div>
-</div>
-
 <!-- ══ FIREBASE ══ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -542,7 +532,6 @@ let originalPhotos = [];
 let currentIssueStorageId = null;
 let currentDetailId = null;
 let sortCol = 'num', sortDir = 'asc';
-let isViewerMode = false; // anonymous viewer via ?p=
 
 // ── HELPERS ──
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -562,20 +551,10 @@ const ICON_COMMENT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 
 
 
-// ── URL PARAM ──
-function getUrlProject(){ return new URLSearchParams(location.search).get('p'); }
-
 // ── AUTH STATE ──
 onAuthStateChanged(auth, async user => {
-  const urlPid = getUrlProject();
-
   if (!user) {
-    // check viewer mode
-    if (urlPid) {
-      await openProjectAsViewer(urlPid);
-    } else {
-      showAuth();
-    }
+    showAuth();
     return;
   }
 
@@ -599,16 +578,11 @@ onAuthStateChanged(auth, async user => {
   currentUser = user;
   currentRole = role;
   currentGlobalRole = role;
-  isViewerMode = false;
 
   // load all users for admin
   if (role === 'admin') await loadAllUsers();
 
-  if (urlPid) {
-    await openProject(urlPid);
-  } else {
-    await showProjects();
-  }
+  await showProjects();
 });
 
 // ── SHOW AUTH ──
@@ -616,31 +590,6 @@ function showAuth() {
   document.getElementById('authScreen').style.display = 'flex';
   document.getElementById('projectsScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
-}
-
-// ── VIEWER MODE ──
-async function openProjectAsViewer(pid) {
-  isViewerMode = true;
-  currentUser = null;
-  currentRole = 'viewer';
-  const pd = await getDoc(doc(db,'projects',pid));
-  if (!pd.exists()) { showAuth(); return; }
-  currentProjectId = pid;
-  currentProjectData = {id:pid,...pd.data()};
-  document.getElementById('authScreen').style.display = 'none';
-  document.getElementById('projectsScreen').style.display = 'none';
-  document.getElementById('appScreen').style.display = 'block';
-  document.getElementById('viewerBanner').style.display = 'flex';
-  document.getElementById('hdrProjectName').textContent = pd.data().name || 'პროექტი';
-  document.getElementById('hdrUserName').textContent = 'სტუმარი';
-  document.getElementById('hdrRoleBadge').textContent = 'სტუმარი';
-  document.getElementById('hdrRoleBadge').className = 'role-badge role-viewer';
-  document.getElementById('btnAddIssue').style.display = 'none';
-  document.getElementById('actionsHead').style.display = 'none';
-  document.getElementById('btnManageProject').style.display = 'none';
-  document.getElementById('btnGlobalUsers').style.display = 'none';
-  document.getElementById('btnAppLogout').style.display = 'none';
-  subscribeIssues(pid);
 }
 
 // ── SHOW PROJECTS ──
@@ -696,7 +645,7 @@ async function openProject(pid) {
   const isProjectMember = !!(currentProjectData.members||{})[currentUser.uid];
 
   const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&isProjectMember);
-  const canComment = !isViewerMode; // any real (registered, approved) role can comment
+  const canComment = true; // any real (registered, approved) role can comment
   const isMyOwnProject = currentProjectData.createdBy === currentUser.uid;
   const canManageProject = myRole==='admin'||(myRole==='reviewer'&&isMyOwnProject);
   const roleLabel = roleL[myRole] || myRole;
@@ -704,7 +653,6 @@ async function openProject(pid) {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
-  document.getElementById('viewerBanner').style.display = 'none';
   document.getElementById('hdrProjectName').textContent = currentProjectData.name || 'პროექტი';
   document.getElementById('hdrUserName').textContent = currentUser.displayName || currentUser.email;
   document.getElementById('hdrRoleBadge').textContent = roleLabel;
@@ -712,6 +660,7 @@ async function openProject(pid) {
   document.getElementById('btnAddIssue').style.display = canEdit?'flex':'none';
   document.getElementById('actionsHead').style.display = canEdit?'':'none';
   document.getElementById('btnManageProject').style.display = canManageProject?'flex':'none';
+  document.getElementById('btnExportExcel').style.display = (myRole==='admin'||myRole==='reviewer'||myRole==='design_manager')?'flex':'none';
   document.getElementById('btnAppLogout').style.display = 'flex';
 
   subscribeIssues(pid);
@@ -873,14 +822,14 @@ function render() {
       : `<div></div>`;
     return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}" data-id="${issue.id}">
       <div class="issue-num-cell">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}</div>
-      <div><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div>
+      <div data-label="დისციპლინა"><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div>
       <div class="issue-title-cell">${esc(issue.title)}</div>
-      <div class="issue-photo-cell">${(issue.photos&&issue.photos.length)?`<span class="photo-indicator" title="${issue.photos.length} სურათი">📷${issue.photos.length}</span>`:''}</div>
-      <div class="issue-priority-cell">${issue.priority?`<span class="priority-icon">${ICON_PRIORITY}</span>`:''}</div>
-      <div><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></div>
-      <div>${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</div>
-      <div>${cmtHtml}</div>
-      <div class="issue-date-cell">${issue.date||'—'}</div>
+      <div class="issue-photo-cell" data-label="სურათები">${(issue.photos&&issue.photos.length)?`<span class="photo-indicator" title="${issue.photos.length} სურათი">📷${issue.photos.length}</span>`:'—'}</div>
+      <div class="issue-priority-cell" data-label="პრიორიტეტი">${issue.priority?`<span class="priority-icon">${ICON_PRIORITY}</span>`:'—'}</div>
+      <div data-label="სტატუსი"><span class="status-dot ${issue.status}">${statL[issue.status]||issue.status}</span></div>
+      <div data-label="პასუხისმგებელი">${issue.person?`<span class="person-chip">${esc(issue.person)}</span>`:'—'}</div>
+      <div data-label="კომენტარები">${cmtHtml}</div>
+      <div class="issue-date-cell" data-label="თარიღი">${issue.date||'—'}</div>
       ${acts}
     </div>`;
   }).join('');
@@ -1188,7 +1137,7 @@ async function openDetail(id) {
   currentDetailId = id;
   const isProjectMember = !!(currentProjectData?.members||{})[currentUser?.uid];
   const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&isProjectMember);
-  const canComment = !isViewerMode;
+  const canComment = true;
   document.getElementById('detailTitle').textContent = formatIssueNum(issue.seqMajor, issue.seqMinor)+' — '+issue.title;
   document.getElementById('detailEditBtn').style.display = canEdit?'flex':'none';
   document.getElementById('detailBody').innerHTML = `
@@ -1264,13 +1213,6 @@ document.getElementById('detailEditBtn').addEventListener('click', () => { cm('d
 // ── NAVIGATION ──
 document.getElementById('btnBackProjects').addEventListener('click', () => {
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
-  if (isViewerMode) {
-    isViewerMode = false;
-    currentProjectId = null;
-    history.replaceState(null, '', location.pathname);
-    showAuth();
-    return;
-  }
   currentProjectId = null; currentRole = currentGlobalRole;
   showProjects();
 });
@@ -1535,38 +1477,6 @@ document.getElementById('saveNewProj').addEventListener('click', async () => {
   } catch(e) { alert('შეცდომა: '+e.message); }
   btn.disabled=false;
 });
-
-// ── GUEST VIEW ──
-document.getElementById('btnGuestView').addEventListener('click', async () => {
-  const listEl = document.getElementById('guestProjectList');
-  listEl.innerHTML = 'იტვირთება...';
-  om('guestModal');
-  try {
-    const snap = await getDocs(collection(db,'projects'));
-    const projects = snap.docs.map(d=>({id:d.id,...d.data()}));
-    if (!projects.length) {
-      listEl.innerHTML = '<div style="font-size:13px;color:var(--ink-light);padding:10px">პროექტი არ მოიძებნა</div>';
-      return;
-    }
-    listEl.innerHTML = projects.map(p => {
-      const safeId = p.id;
-      return `<div onclick="openGuestProject('${safeId}')"
-        style="padding:12px 14px;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:8px;cursor:pointer;transition:all .15s;background:var(--bg)"
-        onmouseover="this.style.borderColor='var(--accent)';this.style.background='var(--accent-lo)'"
-        onmouseout="this.style.borderColor='var(--rule)';this.style.background='var(--bg)'">
-        <div style="font-size:14px;font-weight:500;color:var(--ink)">${esc(p.name)}</div>
-        ${p.desc?`<div style="font-size:12px;color:var(--ink-light);margin-top:2px">${esc(p.desc)}</div>`:''}
-      </div>`;
-    }).join('');
-  } catch(e) {
-    listEl.innerHTML = '<div style="font-size:13px;color:var(--warn)">შეცდომა: '+e.message+'</div>';
-  }
-});
-
-window.openGuestProject = async (pid) => {
-  cm('guestModal');
-  await openProjectAsViewer(pid);
-};
 
 </script>
 </body>
