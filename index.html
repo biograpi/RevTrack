@@ -893,7 +893,7 @@ function render() {
     const acts = canEdit
       ? `<div class="action-cell">
           <button class="icon-btn edit" data-id="${issue.id}" title="რედაქტირება">${ICON_EDIT}</button>
-          ${canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:''}
+          ${canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:`<button class="icon-btn" style="visibility:hidden;pointer-events:none" tabindex="-1">${ICON_DELETE}</button>`}
         </div>`
       : `<div></div>`;
     return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}" data-id="${issue.id}">
@@ -1288,6 +1288,7 @@ window.deleteCommentHandler = async (issueId, commentId) => {
 // ── UNREAD COMMENTS ──
 async function markIssueRead(issueId) {
   myCommentReads[issueId] = Date.now();
+  render(); // reflect the updated read-state immediately in the list, without waiting for a full reload
   try {
     await setDoc(doc(db,'users',currentUser.uid,'meta','commentReads'), {[issueId]: myCommentReads[issueId]}, {merge:true});
   } catch(e) { console.warn('could not save read-state:', e); }
