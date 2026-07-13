@@ -184,7 +184,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .comment-item{display:flex;gap:9px;margin-bottom:12px}
 .comment-avatar{width:30px;height:30px;border-radius:50%;background:var(--accent-lo);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
 .comment-bubble{flex:1;background:var(--bg);border-radius:0 8px 8px 8px;padding:9px 12px;border:1px solid var(--rule)}
-.comment-meta{font-size:11px;color:var(--ink-light);margin-bottom:3px;display:flex;justify-content:space-between}
+.comment-meta{font-size:11px;color:var(--ink-light);margin-bottom:3px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.comment-del{border:none;background:transparent;color:var(--ink-light);cursor:pointer;padding:2px;display:inline-flex;align-items:center;border-radius:3px}
+.comment-del svg{width:11px;height:11px}
+.comment-del:hover{color:var(--warn);background:var(--warn-lo)}
 .comment-author{font-weight:600;color:var(--ink-mid)}
 .comment-text{font-size:13px;color:var(--ink)}
 .comment-input-row{display:flex;gap:8px;margin-top:10px;align-items:flex-end}
@@ -336,6 +339,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <button class="btn-primary" id="btnAddIssue" style="display:none">+ საკითხი</button>
     <button class="btn-secondary" id="btnExportExcel" style="display:none">📊 ექსპორტი (Excel + ფოტოები)</button>
+    <button class="btn-secondary" id="btnRecalcCounts" style="display:none" title="ასწორებს ძველი ბაგით დაზიანებულ კომენტარების რაოდენობებს">🔄 კომენტარების გადათვლა</button>
     <div class="stats-row">
       <span class="stat-chip active" id="cntActive">0 აქტიური</span>
       <span class="stat-chip closed" id="cntClosed">0 დასრულებული</span>
@@ -664,6 +668,7 @@ async function openProject(pid) {
   document.getElementById('actionsHead').style.display = canEdit?'':'none';
   document.getElementById('btnManageProject').style.display = canManageProject?'flex':'none';
   document.getElementById('btnExportExcel').style.display = (myRole==='admin'||myRole==='reviewer'||myRole==='design_manager')?'flex':'none';
+  document.getElementById('btnRecalcCounts').style.display = (myRole==='admin')?'flex':'none';
   document.getElementById('btnAppLogout').style.display = 'flex';
 
   subscribeIssues(pid);
@@ -681,6 +686,27 @@ function subscribeIssues(pid) {
     render();
   });
 }
+
+// ── RECALCULATE COMMENT COUNTS (admin repair tool for the old undercount bug) ──
+document.getElementById('btnRecalcCounts').addEventListener('click', async () => {
+  if (!confirm('გადაითვალოს ყველა საკითხის კომენტარების რეალური რაოდენობა ამ პროექტში?')) return;
+  const btn = document.getElementById('btnRecalcCounts');
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'მუშავდება...';
+  try {
+    let fixed = 0;
+    for (const issue of Object.values(issues)) {
+      const commentsSnap = await getDocs(collection(db,'projects',currentProjectId,'issues',issue.id,'comments'));
+      const realCount = commentsSnap.size;
+      if (realCount !== (issue.commentCount||0)) {
+        await updateDoc(doc(db,'projects',currentProjectId,'issues',issue.id), {commentCount: realCount});
+        fixed++;
+      }
+    }
+    showToast(fixed ? `გასწორდა ${fixed} საკითხი` : 'ყველა რაოდენობა უკვე სწორი იყო');
+  } catch(e) { alert('შეცდომა: '+e.message); }
+  btn.disabled = false; btn.textContent = origText;
+});
 
 // ── EXCEL EXPORT ──
 function autoColumns(headers, rows, keys, minW, maxW) {
@@ -1195,23 +1221,39 @@ async function loadComments(issueId) {
     return `<div class="comment-item">
       <div class="comment-avatar">${initials(c.authorName)}</div>
       <div class="comment-bubble">
-        <div class="comment-meta"><span class="comment-author">${esc(c.authorName)}</span><span>${time}</span></div>
+        <div class="comment-meta"><span class="comment-author">${esc(c.authorName)}</span><span>${time}</span>${currentRole==='admin'?`<button class="comment-del" title="წაშლა" onclick="deleteCommentHandler('${issueId}','${d.id}')">${ICON_DELETE}</button>`:''}</div>
         <div class="comment-text">${esc(c.text)}</div>
       </div>
     </div>`;
   }).join('');
 }
+window.deleteCommentHandler = async (issueId, commentId) => {
+  if (!confirm('წავშალო ეს კომენტარი?')) return;
+  try {
+    await deleteDoc(doc(db,'projects',currentProjectId,'issues',issueId,'comments',commentId));
+    try { await updateDoc(doc(db,'projects',currentProjectId,'issues',issueId), {commentCount: increment(-1)}); } catch(e) {}
+    loadComments(issueId);
+    showToast('კომენტარი წაიშალა');
+  } catch(e) { alert('შეცდომა: '+e.message); }
+};
 async function sendComment(issueId) {
   const inp = document.getElementById('commentInput');
   const text = inp.value.trim(); if(!text) return;
   const btn = document.getElementById('btnSendComment'); btn.disabled = true;
-  await addDoc(collection(db,'projects',currentProjectId,'issues',issueId,'comments'), {
-    text, authorName: currentUser.displayName||currentUser.email,
-    authorId: currentUser.uid, createdAt: serverTimestamp()
-  });
-  await updateDoc(doc(db,'projects',currentProjectId,'issues',issueId), {commentCount: increment(1)});
-  inp.value = ''; btn.disabled = false;
-  loadComments(issueId);
+  try {
+    await addDoc(collection(db,'projects',currentProjectId,'issues',issueId,'comments'), {
+      text, authorName: currentUser.displayName||currentUser.email,
+      authorId: currentUser.uid, createdAt: serverTimestamp()
+    });
+    try {
+      await updateDoc(doc(db,'projects',currentProjectId,'issues',issueId), {commentCount: increment(1)});
+    } catch(counterErr) { console.warn('comment counter update failed:', counterErr); }
+    inp.value = '';
+    loadComments(issueId);
+  } catch(e) {
+    alert('კომენტარის დამატება ვერ მოხერხდა: '+e.message);
+  }
+  btn.disabled = false;
 }
 document.getElementById('detailEditBtn').addEventListener('click', () => { cm('detailModal'); openEdit(currentDetailId); });
 
