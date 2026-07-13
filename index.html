@@ -1260,11 +1260,12 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
     await setDoc(doc(db,'users',cred.user.uid), {
       name, email, role, approved: false, createdAt: serverTimestamp()
     });
-    ok.style.display = 'block';
+    await signOut(auth);
     document.getElementById('regName').value = '';
     document.getElementById('regEmail').value = '';
     document.getElementById('regPass').value = '';
-    // onAuthStateChanged will fire, see approved:false, sign the user back out with a toast
+    document.getElementById('tabLogin').click();
+    showToast('რეგისტრაცია დასრულდა! დაელოდეთ ადმინისტრატორის დადასტურებას.');
   } catch(e) {
     let msg = 'შეცდომა: ' + e.message;
     if (e.code === 'auth/email-already-in-use') msg = 'ეს ელ. ფოსტა უკვე რეგისტრირებულია';
