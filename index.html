@@ -46,12 +46,15 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
-.project-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:20px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
+.project-card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:20px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
 .project-card-body{position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
-.project-card:hover{background:rgba(255,255,255,.1);border-color:var(--accent)}
+.project-card:hover{border-color:var(--accent)}
+.project-card.has-color:hover .project-card-name,
+.project-card.has-color:hover .project-card-meta,
+.project-card.has-color:hover .project-card-creator{color:var(--soft-black)!important}
 .project-card-name{font-size:15px;font-weight:500;color:white;margin-bottom:6px}
 .project-card-meta{font-size:12px;color:rgba(255,255,255,.4)}
-.project-card-creator{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px}
+.project-card-creator{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;margin-bottom:6px}
 .project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:auto;align-self:flex-start;width:fit-content}
 .project-card-count{position:absolute;top:10px;right:10px;font-size:80px;font-weight:800;line-height:1;color:rgba(255,255,255,.15);z-index:0;pointer-events:none;font-family:'JetBrains Mono',monospace}
 .role-admin{background:var(--soft-black);color:white}
@@ -295,6 +298,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="projects-user">
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები</button>
+      <button class="btn-hdr" id="btnFixNames" style="display:none" title="ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე">🔄 სახელების გასწორება</button>
       <span id="projScreenUser"></span>
       <button class="btn-hdr" id="btnProjLogout">გამოსვლა</button>
     </div>
@@ -536,6 +540,7 @@ const ADMIN_EMAILS = ['biograpirev@gmail.com']; // ← admins
 
 // ── STATE ──
 let currentUser = null;
+let currentUserName = ''; // real name from Firestore users/{uid}.name — Auth displayName is never set, so don't rely on it
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
 let currentRole = 'viewer';
 let currentGlobalRole = 'contractor';
@@ -603,6 +608,7 @@ onAuthStateChanged(auth, async user => {
 
   const uDoc = await getDoc(doc(db,'users',user.uid));
   let role = 'contractor';
+  let name = user.displayName || user.email;
   if (ADMIN_EMAILS.includes(user.email)) {
     role = 'admin';
     if (!uDoc.exists()) {
@@ -610,15 +616,18 @@ onAuthStateChanged(auth, async user => {
     } else if (uDoc.data().role !== 'admin') {
       await updateDoc(doc(db,'users',user.uid),{role:'admin',approved:true});
     }
+    if (uDoc.exists() && uDoc.data().name) name = uDoc.data().name;
   } else if (uDoc.exists()) {
     const d = uDoc.data();
     if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ'); await signOut(auth); return; }
     role = d.role || 'contractor';
+    name = d.name || name;
   } else {
     showToast('მომხმარებელი ვერ მოიძებნა — გაიარეთ რეგისტრაცია'); await signOut(auth); return;
   }
 
   currentUser = user;
+  currentUserName = name;
   currentRole = role;
   currentGlobalRole = role;
 
@@ -641,12 +650,15 @@ async function showProjects() {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
-  document.getElementById('projScreenUser').textContent = currentUser.displayName || currentUser.email;
+  document.getElementById('projScreenUser').textContent = currentUserName;
   document.getElementById('btnGlobalUsers').style.display = currentGlobalRole==='admin' ? 'flex' : 'none';
+  document.getElementById('btnFixNames').style.display = currentGlobalRole==='admin' ? 'flex' : 'none';
   document.getElementById('btnNewProjectHdr').style.display = (currentGlobalRole==='admin'||currentGlobalRole==='reviewer') ? 'flex' : 'none';
 
   const grid = document.getElementById('projectsGrid');
   grid.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px">იტვირთება...</div>';
+
+  await loadAllUsers();
 
   let projects = [];
   const globallyVisible = ['admin','reviewer','design_manager','viewer'].includes(currentGlobalRole);
@@ -672,12 +684,17 @@ async function showProjects() {
       const roleLabel = roleL[myRole] || myRole;
       const brandColor = p.color || getProjectColor(p.name);
       const cardStyle = brandColor ? `style="background:${brandColor}"` : '';
-      html += `<div class="project-card" ${cardStyle} onclick="openProject('${p.id}')">
+      const dmNames = Object.entries(p.members||{})
+        .filter(([,role])=>role==='design_manager')
+        .map(([uid])=>allUsers[uid]?.name || allUsers[uid]?.email)
+        .filter(Boolean);
+      html += `<div class="project-card${brandColor?' has-color':''}" ${cardStyle} onclick="openProject('${p.id}')">
         <div class="project-card-count" id="pcount-${p.id}"></div>
         <div class="project-card-body">
           <div class="project-card-name">${esc(p.name)} ${p.code?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;color:rgba(255,255,255,.5)">[${esc(p.code)}]</span>`:''}</div>
           <div class="project-card-meta">${esc(p.desc||'')}</div>
-          <div class="project-card-creator">შექმნილია: ${esc(p.createdByName||'ადმინი')}</div>
+          <div class="project-card-creator">რევიზორი: ${esc(p.createdByName||'ადმინი')}</div>
+          <div class="project-card-creator">დიზაინ მენეჯერი: ${dmNames.length?esc(dmNames.join(', ')):'—'}</div>
           ${showBadge?`<span class="project-card-role role-${myRole}">${roleLabel}</span>`:''}
         </div>
       </div>`;
@@ -731,7 +748,7 @@ async function openProject(pid) {
   document.getElementById('projectsScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('hdrProjectName').textContent = currentProjectData.name || 'პროექტი';
-  document.getElementById('hdrUserName').textContent = currentUser.displayName || currentUser.email;
+  document.getElementById('hdrUserName').textContent = currentUserName;
   document.getElementById('hdrRoleBadge').textContent = roleLabel;
   document.getElementById('hdrRoleBadge').className = 'role-badge role-'+myRole;
   document.getElementById('btnAddIssue').style.display = canEdit?'flex':'none';
@@ -1187,7 +1204,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
       data.seqMajor = seqMajor; data.seqMinor = seqMinor;
       data.date = new Date().toISOString().slice(0,10);
       data.createdAt = serverTimestamp(); data.commentCount = 0;
-      data.createdBy = currentUser.uid; data.createdByName = currentUser.displayName||currentUser.email;
+      data.createdBy = currentUser.uid; data.createdByName = currentUserName;
       await setDoc(doc(db,'projects',currentProjectId,'issues',currentIssueStorageId), data);
     }
     cm('issueModal'); showToast(editingId?'განახლდა!':'საკითხი დაემატა!');
@@ -1320,7 +1337,7 @@ async function sendComment(issueId) {
   const btn = document.getElementById('btnSendComment'); btn.disabled = true;
   try {
     await addDoc(collection(db,'projects',currentProjectId,'issues',issueId,'comments'), {
-      text, authorName: currentUser.displayName||currentUser.email,
+      text, authorName: currentUserName,
       authorId: currentUser.uid, createdAt: serverTimestamp()
     });
     try {
@@ -1613,6 +1630,29 @@ async function deleteProjectFully(pid, name) {
 }
 
 // ── NEW PROJECT ──
+document.getElementById('btnFixNames').addEventListener('click', async () => {
+  if (!confirm('გადავამოწმო ყველა პროექტის შემქმნელის სახელი და გავასწორო ძველი (მეილზე დაფუძნებული) ჩანაწერები?')) return;
+  const btn = document.getElementById('btnFixNames');
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'მუშავდება...';
+  try {
+    await loadAllUsers();
+    const snap = await getDocs(collection(db,'projects'));
+    let fixed = 0;
+    for (const d of snap.docs) {
+      const p = d.data();
+      const u = allUsers[p.createdBy];
+      const correctName = u?.name || u?.email;
+      if (correctName && correctName !== p.createdByName) {
+        await updateDoc(doc(db,'projects',d.id), { createdByName: correctName });
+        fixed++;
+      }
+    }
+    showToast(fixed ? `გასწორდა ${fixed} პროექტი` : 'ყველა სახელი უკვე სწორი იყო');
+    await showProjects();
+  } catch(e) { alert('შეცდომა: '+e.message); }
+  btn.disabled = false; btn.textContent = origText;
+});
 document.getElementById('btnNewProjectHdr').addEventListener('click', () => openNewProject());
 window.openNewProject = () => { document.getElementById('npName').value=''; document.getElementById('npCode').value=''; document.getElementById('npDesc').value=''; om('newProjModal'); };
 document.getElementById('saveNewProj').addEventListener('click', async () => {
@@ -1626,7 +1666,7 @@ document.getElementById('saveNewProj').addEventListener('click', async () => {
       name, code, desc: document.getElementById('npDesc').value.trim(),
       members: {}, memberIds: [],
       createdAt:serverTimestamp(), createdBy:currentUser.uid,
-      createdByName: currentUser.displayName||currentUser.email
+      createdByName: currentUserName
     });
     await setDoc(doc(db,'projects',ref.id,'meta','counter'), { nextSeq: 1 });
     cm('newProjModal'); showToast('პროექტი შეიქმნა!');
