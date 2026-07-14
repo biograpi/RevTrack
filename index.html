@@ -513,7 +513,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  onSnapshot, orderBy, query, serverTimestamp, increment, where, runTransaction, getCountFromServer }
+  onSnapshot, orderBy, query, serverTimestamp, increment, where, getCountFromServer }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -965,16 +965,6 @@ function parseManualSeq(text) {
   if (major < 1 || minor < 0) return null;
   return { major, minor };
 }
-// Reserves the next top-level sequence number for this project atomically (persistent counter — never reused, even after deletions).
-async function reserveNextSeq(projectId) {
-  const counterRef = doc(db,'projects',projectId,'meta','counter');
-  return await runTransaction(db, async tx => {
-    const snap = await tx.get(counterRef);
-    const current = snap.exists() ? (snap.data().nextSeq||1) : 1;
-    tx.set(counterRef, { nextSeq: current + 1 }, { merge: true });
-    return current;
-  });
-}
 
 // ── CLOSE PERMISSION: only admin, or the reviewer who opened the issue ──
 function canCloseIssue(issue) {
@@ -1027,7 +1017,7 @@ document.getElementById('fPriority').addEventListener('change', e => {
 });
 
 // ── ADD/EDIT ISSUE ──
-let reservedSeqMajor = null;
+let previewSeqMajor = null;
 async function openAdd() {
   editingId = null; pendingLinks = [];
   currentIssueStorageId = doc(collection(db,'projects',currentProjectId,'issues')).id;
@@ -1036,15 +1026,13 @@ async function openAdd() {
   const fNumEl = document.getElementById('fNum');
   fNumEl.readOnly = false;
   fNumEl.style.background = 'white'; fNumEl.style.cursor = 'text';
-  fNumEl.value = '...'; fNumEl.disabled = true;
+  // Next number = max existing seqMajor + 1 (or 1 if there are none). Deleting
+  // issues never renumbers the rest — it only affects what the *next new*
+  // issue gets, and numbers can be reused after a full cleanup (testing-friendly).
+  const maxMajor = Object.values(issues).reduce((m,i)=>Math.max(m, i.seqMajor||0), 0);
+  previewSeqMajor = maxMajor + 1;
+  fNumEl.value = String(previewSeqMajor);
   om('issueModal');
-  try {
-    reservedSeqMajor = await reserveNextSeq(currentProjectId);
-    fNumEl.value = String(reservedSeqMajor);
-  } catch(e) {
-    fNumEl.value = ''; alert('ნომრის დაჯავშნის შეცდომა: '+e.message);
-  }
-  fNumEl.disabled = false;
   document.getElementById('fDate').value = '';
   document.getElementById('fDisc').value = 'arch';
   document.getElementById('fPriority').checked = false;
