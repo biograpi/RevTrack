@@ -46,12 +46,14 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
-.project-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:20px;cursor:pointer;transition:all .15s}
+.project-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:20px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
+.project-card-body{position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
 .project-card:hover{background:rgba(255,255,255,.1);border-color:var(--accent)}
 .project-card-name{font-size:15px;font-weight:500;color:white;margin-bottom:6px}
 .project-card-meta{font-size:12px;color:rgba(255,255,255,.4)}
 .project-card-creator{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px}
-.project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:10px}
+.project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:auto;align-self:flex-start;width:fit-content}
+.project-card-count{position:absolute;top:10px;right:10px;font-size:80px;font-weight:800;line-height:1;color:rgba(255,255,255,.15);z-index:0;pointer-events:none;font-family:'JetBrains Mono',monospace}
 .role-admin{background:var(--soft-black);color:white}
 .role-design_manager{background:var(--purple);color:white}
 .role-reviewer{background:var(--ok-lo);color:var(--ok)}
@@ -511,7 +513,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  onSnapshot, orderBy, query, serverTimestamp, increment, where, runTransaction }
+  onSnapshot, orderBy, query, serverTimestamp, increment, where, runTransaction, getCountFromServer }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -670,14 +672,27 @@ async function showProjects() {
       const brandColor = p.color || getProjectColor(p.name);
       const cardStyle = brandColor ? `style="background:${brandColor}"` : '';
       html += `<div class="project-card" ${cardStyle} onclick="openProject('${p.id}')">
-        <div class="project-card-name">${esc(p.name)} ${p.code?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;color:rgba(255,255,255,.5)">[${esc(p.code)}]</span>`:''}</div>
-        <div class="project-card-meta">${esc(p.desc||'')}</div>
-        <div class="project-card-creator">შექმნილია: ${esc(p.createdByName||'ადმინი')}</div>
-        ${showBadge?`<span class="project-card-role role-${myRole}">${roleLabel}</span>`:''}
+        <div class="project-card-count" id="pcount-${p.id}"></div>
+        <div class="project-card-body">
+          <div class="project-card-name">${esc(p.name)} ${p.code?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;color:rgba(255,255,255,.5)">[${esc(p.code)}]</span>`:''}</div>
+          <div class="project-card-meta">${esc(p.desc||'')}</div>
+          <div class="project-card-creator">შექმნილია: ${esc(p.createdByName||'ადმინი')}</div>
+          ${showBadge?`<span class="project-card-role role-${myRole}">${roleLabel}</span>`:''}
+        </div>
       </div>`;
     });
   }
   grid.innerHTML = html;
+
+  // Fetch each project's live issue count in parallel (cheap aggregation query — 1 read each, always accurate)
+  projects.forEach(async p => {
+    const el = document.getElementById(`pcount-${p.id}`);
+    if (!el) return;
+    try {
+      const countSnap = await getCountFromServer(collection(db,'projects',p.id,'issues'));
+      el.textContent = countSnap.data().count;
+    } catch(e) { el.textContent = '0'; }
+  });
 }
 
 // ── OPEN PROJECT ──
@@ -776,7 +791,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
   const origText = btn.textContent;
   btn.disabled = true; btn.textContent = 'მუშავდება...';
   try {
-    const allIssues = Object.values(issues).sort((a,b) => (a.seqMajor-b.seqMajor) || ((a.seqMinor||0)-(b.seqMinor||0)));
+    const allIssues = filtered().sort((a,b) => (a.seqMajor-b.seqMajor) || ((a.seqMinor||0)-(b.seqMinor||0)));
 
     const issueRows = allIssues.map(i => ({
       num: formatIssueNum(i.seqMajor, i.seqMinor), disc: discL[i.disc]||i.disc||'', title: i.title||'', desc: i.desc||'',
