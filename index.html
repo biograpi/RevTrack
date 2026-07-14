@@ -42,7 +42,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 
 /* ── PROJECTS SCREEN ── */
 .projects-screen{display:none;min-height:100vh;background:var(--soft-black)}
-.projects-header{padding:16px 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px;flex-wrap:wrap}
+.projects-header{height:52px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px}
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
@@ -199,7 +199,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .viewer-note svg{width:14px;height:14px;flex-shrink:0}
 
 /* ── USERS PANEL ── */
-.user-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--rule);gap:10px}
+.user-row{display:grid;grid-template-columns:1fr 150px 130px 30px;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.user-row select{border:1px solid var(--rule);border-radius:4px;padding:5px 6px;font-size:12px;font-family:inherit;width:100%}
+.user-row .user-status{text-align:left}
 .user-info .ue{font-size:13px;font-weight:500;color:var(--ink)}
 .user-info .um{font-size:12px;color:var(--ink-light)}
 
@@ -429,9 +431,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 <!-- Global Users (admin) -->
 <div class="modal-overlay" id="usersModal">
-  <div class="modal" style="max-width:500px">
+  <div class="modal" style="max-width:720px">
     <div class="modal-header"><h2>👥 ყველა მომხმარებელი</h2><button class="modal-close" onclick="cm('usersModal')">✕</button></div>
-    <div class="modal-body" id="usersPanel">იტვირთება...</div>
+    <div class="modal-body" id="usersPanel" style="max-height:60vh;overflow-y:auto">იტვირთება...</div>
     <div class="modal-footer"><button class="btn-secondary" onclick="cm('usersModal')">დახურვა</button></div>
   </div>
 </div>
@@ -447,6 +449,13 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
           <label>პროექტის კოდი</label>
           <input id="pCode" placeholder="MZK" style="text-transform:uppercase" maxlength="8">
           <div class="auth-hint">კოდის შეცვლა მყისიერად ცვლის ყველა საკითხის ნომერს (მაგ. MZK-001)</div>
+        </div>
+        <div class="field">
+          <label>პროექტის ფერი (ბარათისთვის მთავარ გვერდზე)</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="color" id="pColor" style="width:44px;height:38px;padding:2px;border:1px solid var(--rule);border-radius:var(--r);cursor:pointer;background:white">
+            <button type="button" class="btn-secondary" id="btnClearColor" style="padding:8px 12px;font-size:12px">ნაგულისხმევზე დაბრუნება</button>
+          </div>
         </div>
         <div class="field form-full"><label>აღწერა</label><input id="pDesc" placeholder="მოკლე აღწერა"></div>
       </div>
@@ -658,7 +667,7 @@ async function showProjects() {
         || (myRole === 'reviewer' && isMyOwnProject)
         || (myRole !== 'design_manager' && myRole !== 'reviewer');
       const roleLabel = roleL[myRole] || myRole;
-      const brandColor = getProjectColor(p.name);
+      const brandColor = p.color || getProjectColor(p.name);
       const cardStyle = brandColor ? `style="background:${brandColor}"` : '';
       html += `<div class="project-card" ${cardStyle} onclick="openProject('${p.id}')">
         <div class="project-card-name">${esc(p.name)} ${p.code?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;color:rgba(255,255,255,.5)">[${esc(p.code)}]</span>`:''}</div>
@@ -1430,18 +1439,16 @@ document.getElementById('btnGlobalUsers').addEventListener('click', async () => 
         <div class="ue">${esc(u.name)}</div>
         <div class="um">${esc(u.email)}</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        ${u.role!=='admin'?`
-          <select onchange="changeUserRole('${u.id}',this.value)" style="border:1px solid var(--rule);border-radius:4px;padding:4px 6px;font-size:12px;font-family:inherit">
-            <option value="reviewer" ${u.role==='reviewer'?'selected':''}>რევიზორი</option>
-            <option value="design_manager" ${u.role==='design_manager'?'selected':''}>დიზაინ მენეჯერი</option>
-            <option value="contractor" ${u.role==='contractor'?'selected':''}>კონტრაქტორი</option>
-            <option value="viewer" ${u.role==='viewer'?'selected':''}>დამთვალიერებელი</option>
-          </select>
-          ${!u.approved?`<button class="btn-primary" style="padding:5px 11px;font-size:12px" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>`:'<span style="color:var(--ok);font-size:12px">✓ დამტკიცებული</span>'}
-          <button class="icon-btn del" title="მომხმარებლის წაშლა" onclick="deleteUser('${u.id}','${esc(u.name).replace(/'/g,"\\'")}')">${ICON_DELETE}</button>
-        `:'<span style="color:var(--accent);font-size:12px;font-weight:600">Admin</span>'}
-      </div>
+      ${u.role!=='admin'?`
+        <select onchange="changeUserRole('${u.id}',this.value)">
+          <option value="reviewer" ${u.role==='reviewer'?'selected':''}>რევიზორი</option>
+          <option value="design_manager" ${u.role==='design_manager'?'selected':''}>დიზაინ მენეჯერი</option>
+          <option value="contractor" ${u.role==='contractor'?'selected':''}>კონტრაქტორი</option>
+          <option value="viewer" ${u.role==='viewer'?'selected':''}>დამთვალიერებელი</option>
+        </select>
+        <div class="user-status">${!u.approved?`<button class="btn-primary" style="padding:5px 11px;font-size:12px;white-space:nowrap" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>`:'<span style="color:var(--ok);font-size:12px;white-space:nowrap">✓ დამტკიცებული</span>'}</div>
+        <button class="icon-btn del" title="მომხმარებლის წაშლა" onclick="deleteUser('${u.id}','${esc(u.name).replace(/'/g,"\\'")}')">${ICON_DELETE}</button>
+      `:'<div style="grid-column:2 / -1;color:var(--accent);font-size:12px;font-weight:600">Admin</div>'}
     </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">მომხმარებელი არ არის</div>';
   om('usersModal');
 });
@@ -1467,6 +1474,12 @@ window.deleteUser = async (uid, name) => {
 // ── PROJECT MANAGE ──
 document.getElementById('btnManageProject').addEventListener('click', () => openProjectModal(currentProjectId));
 let pendingExtraContractors = [];
+let pendingColorCleared = false;
+document.getElementById('pColor').addEventListener('input', () => { pendingColorCleared = false; });
+document.getElementById('btnClearColor').addEventListener('click', () => {
+  pendingColorCleared = true;
+  document.getElementById('pColor').value = '#1a1120';
+});
 let pendingMemberChanges = {};
 async function openProjectModal(pid) {
   await loadAllUsers();
@@ -1476,6 +1489,8 @@ async function openProjectModal(pid) {
   document.getElementById('pName').value = pd.name||'';
   document.getElementById('pCode').value = pd.code||'';
   document.getElementById('pDesc').value = pd.desc||'';
+  document.getElementById('pColor').value = pd.color || '#1a1120';
+  pendingColorCleared = false;
   const contractors = pd.contractors || {};
   document.getElementById('cArch').value = contractors.arch||'';
   document.getElementById('cMep').value = contractors.mep||'';
@@ -1549,7 +1564,9 @@ async function saveProjectData(pid) {
     struct: document.getElementById('cStruct').value.trim(),
     extra: pendingExtraContractors.filter(e => (e.name||'').trim()).map(e => ({label:(e.label||'').trim()||'სხვა', name:e.name.trim()}))
   };
-  const data = { name, code, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors, updatedAt: serverTimestamp() };
+  const data = { name, code, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors,
+    color: pendingColorCleared ? null : document.getElementById('pColor').value,
+    updatedAt: serverTimestamp() };
   try {
     if (pid) {
       await updateDoc(doc(db,'projects',pid), data);
