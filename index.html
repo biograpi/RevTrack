@@ -79,6 +79,8 @@ header{background:var(--primary);color:white;padding:0 24px;height:52px;display:
 .header-right{display:flex;align-items:center;gap:8px}
 .user-chip{font-size:12px;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:6px}
 .role-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase}
+.status-label-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;letter-spacing:.03em;background:rgba(255,255,255,.18);color:inherit;vertical-align:middle}
+.status-label-badge-light{background:var(--rule);color:var(--ink-mid)}
 .btn-hdr{background:rgba(255,255,255,.1);border:none;border-radius:var(--r);color:white;cursor:pointer;padding:6px 12px;font-size:12px;font-family:inherit;transition:background .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
 .btn-hdr:hover{background:rgba(255,255,255,.2)}
 
@@ -562,6 +564,7 @@ const ADMIN_EMAILS = ['biograpirev@gmail.com']; // ← admins
 // ── STATE ──
 let currentUser = null;
 let currentUserName = ''; // real name from Firestore users/{uid}.name — Auth displayName is never set, so don't rely on it
+let currentUserLabel = ''; // optional status label (DM/PM/TT...), only meaningful for User-role accounts
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
 let currentRole = 'viewer';
 let currentGlobalRole = 'contractor';
@@ -617,6 +620,7 @@ onAuthStateChanged(auth, async user => {
   const uDoc = await getDoc(doc(db,'users',user.uid));
   let role = 'contractor';
   let name = user.displayName || user.email;
+  let label = '';
   if (ADMIN_EMAILS.includes(user.email)) {
     role = 'admin';
     if (!uDoc.exists()) {
@@ -630,12 +634,14 @@ onAuthStateChanged(auth, async user => {
     if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ'); await signOut(auth); return; }
     role = d.role || 'contractor';
     name = d.name || name;
+    label = d.statusLabel || '';
   } else {
     showToast('მომხმარებელი ვერ მოიძებნა — გაიარეთ რეგისტრაცია'); await signOut(auth); return;
   }
 
   currentUser = user;
   currentUserName = name;
+  currentUserLabel = label;
   currentRole = role;
   currentGlobalRole = role;
 
@@ -659,7 +665,7 @@ async function showProjects() {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
-  document.getElementById('projScreenUser').textContent = currentUserName;
+  document.getElementById('projScreenUser').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
   document.getElementById('btnGlobalUsers').style.display = currentGlobalRole==='admin' ? 'flex' : 'none';
   document.getElementById('btnFixNames').style.display = currentGlobalRole==='admin' ? 'flex' : 'none';
   document.getElementById('btnNewProjectHdr').style.display = (currentGlobalRole==='admin'||currentGlobalRole==='reviewer') ? 'flex' : 'none';
@@ -681,12 +687,13 @@ async function showProjects() {
 
   let html = '';
   if (!projects.length) {
-    html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${(currentGlobalRole==='admin'||currentGlobalRole==='reviewer')?'შექმენი პირველი პროექტი':'პროექტი არ მინიჭია — დაელოდე Admin-ს'}</div>`;
+    html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${(currentGlobalRole==='admin'||currentGlobalRole==='reviewer')?'შექმენი პირველი პროექტი':'პროექტზე არ ხართ დამატებული. დაელოდეთ.'}</div>`;
   } else {
     projects.forEach(p => {
       const brandColor = p.color || DEFAULT_CARD_COLOR;
       const cardStyle = brandColor ? `style="background:${brandColor}"` : '';
-      html += `<div class="project-card project-card-bare" ${cardStyle} onclick="showProjectSections('${p.id}')">
+      const goTo = currentGlobalRole==='contractor' ? `openProject('${p.id}','review')` : `showProjectSections('${p.id}')`;
+      html += `<div class="project-card project-card-bare" ${cardStyle} onclick="${goTo}">
         <div class="project-card-body">
           <div class="project-card-name">${esc(p.name)}</div>
         </div>
@@ -783,7 +790,7 @@ async function openProject(pid, section) {
   document.getElementById('projectsScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('hdrProjectName').textContent = (currentProjectData.name||'პროექტი') + ' — ' + SECTION_LABEL[currentSection];
-  document.getElementById('hdrUserName').textContent = currentUserName;
+  document.getElementById('hdrUserName').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
   document.getElementById('hdrRoleBadge').textContent = roleLabel;
   document.getElementById('hdrRoleBadge').className = 'role-badge role-'+myRole;
   document.getElementById('btnAddIssue').style.display = canEdit?'flex':'none';
@@ -1396,7 +1403,7 @@ async function loadComments(issueId) {
     return `<div class="comment-item">
       <div class="comment-avatar">${initials(c.authorName)}</div>
       <div class="comment-bubble">
-        <div class="comment-meta"><span class="comment-author">${esc(c.authorName)}</span><span>${time}</span>${currentRole==='admin'?`<button class="comment-del" title="წაშლა" onclick="deleteCommentHandler('${issueId}','${d.id}')">${ICON_DELETE}</button>`:''}</div>
+        <div class="comment-meta"><span class="comment-author">${esc(c.authorName)}</span>${c.authorLabel?`<span class="status-label-badge status-label-badge-light">${esc(c.authorLabel)}</span>`:''}<span>${time}</span>${currentRole==='admin'?`<button class="comment-del" title="წაშლა" onclick="deleteCommentHandler('${issueId}','${d.id}')">${ICON_DELETE}</button>`:''}</div>
         <div class="comment-text">${esc(c.text)}</div>
       </div>
     </div>`;
@@ -1433,7 +1440,7 @@ async function sendComment(issueId) {
   const btn = document.getElementById('btnSendComment'); btn.disabled = true;
   try {
     await addDoc(collection(db,'projects',currentProjectId,'issues',issueId,'comments'), {
-      text, authorName: currentUserName,
+      text, authorName: currentUserName, authorLabel: currentUserLabel || null,
       authorId: currentUser.uid, createdAt: serverTimestamp()
     });
     try {
