@@ -97,7 +97,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 /* ── ISSUE LIST ── */
 .issues-wrap{padding:0 24px 24px}
-.issue-grid-row{display:grid;grid-template-columns:100px 108px minmax(120px,1fr) 56px 64px 112px 120px 40px 74px 96px;align-items:center;gap:10px;padding:0 4px;min-height:44px}
+.issue-grid-row{display:grid;grid-template-columns:140px 100px minmax(120px,1fr) 56px 64px 104px 116px 40px 74px 96px;align-items:center;gap:10px;padding:0 4px;min-height:44px}
 .issue-grid-row>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .issue-header-row{width:100%;border-top:1px solid var(--rule);margin-top:10px;padding-top:10px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-mid)}
 .issue-header-row [data-col]{cursor:pointer;user-select:none}
@@ -392,7 +392,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="modal-body">
       <div class="form-grid">
         <div class="field"><label>ნომერი</label><input id="fNum" readonly style="background:var(--rule);cursor:not-allowed">
-          <div class="auth-hint">ახალი საკითხისას რედაქტირებადია — ჩაწერე მაგ. 2.1, რომ გახდეს 2-ის ქვე-საკითხი</div>
+          <div class="auth-hint">რედაქტირებადია — ჩაწერე მაგ. 2.1, რომ გახდეს 2-ის ქვე-საკითხი</div>
         </div>
         <input type="hidden" id="fDate">
         <div class="field"><label>დისციპლინა</label>
@@ -1004,7 +1004,8 @@ function render() {
 function formatIssueNum(seqMajor, seqMinor) {
   const code = currentProjectData?.code || '???';
   const major = String(seqMajor).padStart(3,'0');
-  return seqMinor ? `${code}-${major}.${seqMinor}` : `${code}-${major}`;
+  const base = seqMinor ? `${code}-${major}.${seqMinor}` : `${code}-${major}`;
+  return currentSection === 'internal' ? `${base}-INT` : base;
 }
 // Parses manual entry like "3" or "2.1" -> {major, minor} (minor 0 = none). Returns null if not a valid positive number pattern.
 function parseManualSeq(text) {
@@ -1101,8 +1102,8 @@ function openEdit(id) {
   pendingPhotos = [...(issue.photos||[])]; originalPhotos = [...pendingPhotos];
   document.getElementById('modalTitle').textContent = 'საკითხის რედაქტირება';
   const fNumEl = document.getElementById('fNum');
-  fNumEl.readOnly = true; fNumEl.style.background = 'var(--rule)'; fNumEl.style.cursor = 'not-allowed';
-  fNumEl.value = formatIssueNum(issue.seqMajor, issue.seqMinor);
+  fNumEl.readOnly = false; fNumEl.style.background = 'white'; fNumEl.style.cursor = 'text';
+  fNumEl.value = issue.seqMinor ? `${issue.seqMajor}.${issue.seqMinor}` : String(issue.seqMajor);
   document.getElementById('fDate').value = issue.date||'';
   document.getElementById('fDisc').value = issue.disc;
   document.getElementById('fPriority').checked = !!issue.priority;
@@ -1208,15 +1209,15 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     return;
   }
   let seqMajor, seqMinor;
-  if (!editingId) {
+  {
     const parsed = parseManualSeq(document.getElementById('fNum').value);
     if (!parsed) { alert('ნომრის ფორმატი არასწორია (მაგ. 3 ან 2.1)'); return; }
     seqMajor = parsed.major; seqMinor = parsed.minor;
     if (seqMinor > 0) {
-      const parentExists = Object.values(issues).some(i => i.seqMajor === seqMajor && (i.seqMinor||0) === 0);
+      const parentExists = Object.values(issues).some(i => i.id!==editingId && i.seqMajor === seqMajor && (i.seqMinor||0) === 0);
       if (!parentExists) { alert(`ვერ მოიძებნა ${String(seqMajor).padStart(3,'0')} საკითხი — ქვე-საკითხი მხოლოდ არსებული საკითხისთვის შეიძლება.`); return; }
     }
-    const duplicate = Object.values(issues).some(i => i.seqMajor === seqMajor && (i.seqMinor||0) === seqMinor);
+    const duplicate = Object.values(issues).some(i => i.id!==editingId && i.seqMajor === seqMajor && (i.seqMinor||0) === seqMinor);
     if (duplicate) { alert('ეს ნომერი უკვე დაკავებულია — აირჩიე სხვა.'); return; }
   }
   const data = {
@@ -1226,6 +1227,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     person: document.getElementById('fPerson').value.trim(),
     images: pendingLinks.filter(u=>u.trim()),
     photos: pendingPhotos,
+    seqMajor, seqMinor,
     updatedAt: serverTimestamp(),
   };
   const btn = document.getElementById('saveIssue');
@@ -1234,7 +1236,6 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     if (editingId) {
       await updateDoc(doc(db,'projects',currentProjectId,'issues',editingId), data);
     } else {
-      data.seqMajor = seqMajor; data.seqMinor = seqMinor;
       data.section = currentSection;
       data.date = new Date().toISOString().slice(0,10);
       data.createdAt = serverTimestamp(); data.commentCount = 0;
