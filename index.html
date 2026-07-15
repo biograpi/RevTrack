@@ -51,8 +51,10 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .project-card:hover{border-color:var(--accent)}
 .project-card:hover .project-card-name,
 .project-card:hover .project-card-meta,
-.project-card:hover .project-card-creator{color:var(--soft-black)!important}
-.project-card-name{font-size:15px;font-weight:500;color:white;margin-bottom:6px}
+.project-card:hover .project-card-creator,
+.project-card:hover .section-label{color:var(--soft-black)!important}
+.project-card-name{font-size:16px;font-weight:600;color:white;margin-bottom:2px}
+.section-label{font-size:11px;font-weight:500;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
 .project-card-meta{font-size:12px;color:rgba(255,255,255,.4)}
 .project-card-creator{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;margin-bottom:6px}
 .project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:auto;align-self:flex-start;width:fit-content}
@@ -410,7 +412,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <div class="field"><label>სტატუსი</label>
           <select id="fStatus"><option value="active">აქტიური</option><option value="closed">დასრულებული</option></select>
         </div>
-        <div class="field"><label>პასუხისმგებელი</label><select id="fPerson"><option value="">— არჩევა —</option></select></div>
+        <div class="field">
+          <label>პასუხისმგებელი</label>
+          <select id="fPerson"><option value="">— არჩევა —</option></select>
+          <input id="fPersonText" style="display:none" placeholder="სახელი / კომპანია">
+        </div>
         <div class="field form-full">
           <label>სურათები (screenshot-ები — ჩააწებეთ Ctrl+V, ჩააგდეთ, ან აირჩიეთ ფაილი)</label>
           <div id="photoDropZone" class="photo-drop-zone" tabindex="0">
@@ -715,7 +721,8 @@ window.showProjectSections = async function(pid) {
     <div class="project-card" ${cardStyle} onclick="openProject('${pid}','review')">
       <div class="project-card-count" id="pcount-review"></div>
       <div class="project-card-body">
-        <div class="project-card-name">${esc(p.name)} — რევიზია</div>
+        <div class="project-card-name">${esc(p.name)}</div>
+        <div class="section-label">რევიზია</div>
         <div class="project-card-creator">რევიზორი: ${esc(p.createdByName||'ადმინი')}</div>
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
       </div>
@@ -723,7 +730,8 @@ window.showProjectSections = async function(pid) {
     ${canSeeInternal?`<div class="project-card" ${cardStyle} onclick="openProject('${pid}','internal')">
       <div class="project-card-count" id="pcount-internal"></div>
       <div class="project-card-body">
-        <div class="project-card-name">${esc(p.name)} — შიდა საკითხები</div>
+        <div class="project-card-name">${esc(p.name)}</div>
+        <div class="section-label">შიდა საკითხები</div>
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
       </div>
     </div>`:''}
@@ -955,7 +963,7 @@ function render() {
   }
   const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
   const canDeleteIssue = issue => currentRole==='admin' || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'));
-  const canDuplicate = currentRole==='admin'||currentRole==='reviewer';
+  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
   const showUnread = UNREAD_ROLES.includes(currentRole);
   tbody.innerHTML = arr.map(issue => {
     const canDelete = canDeleteIssue(issue);
@@ -1057,7 +1065,22 @@ function renderPersonSelect(selected) {
   }
   sel.innerHTML = html;
 }
+// Internal section = free text; review section = dropdown of assigned contractors.
+function setPersonField(selected) {
+  const sel = document.getElementById('fPerson');
+  const txt = document.getElementById('fPersonText');
+  if (currentSection === 'internal') {
+    sel.style.display = 'none';
+    txt.style.display = 'block';
+    txt.value = selected || '';
+  } else {
+    txt.style.display = 'none';
+    sel.style.display = 'block';
+    renderPersonSelect(selected);
+  }
+}
 document.getElementById('fDisc').addEventListener('change', () => {
+  if (currentSection === 'internal') return; // free-text field in the internal section — no contractor auto-suggest
   const c = (currentProjectData && currentProjectData.contractors) || {};
   const suggestion = ({arch:c.arch, mep:c.mep, struct:c.struct})[document.getElementById('fDisc').value];
   if (suggestion) {
@@ -1092,7 +1115,7 @@ async function openAdd() {
   document.getElementById('fStatus').value = 'active';
   document.getElementById('fTitle').value = '';
   document.getElementById('fDesc').value = '';
-  renderPersonSelect('');
+  setPersonField('');
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
 }
 function openEdit(id) {
@@ -1111,7 +1134,7 @@ function openEdit(id) {
   document.getElementById('fStatus').value = issue.status;
   document.getElementById('fTitle').value = issue.title;
   document.getElementById('fDesc').value = issue.desc||'';
-  renderPersonSelect(issue.person||'');
+  setPersonField(issue.person||'');
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(issue); om('issueModal');
 }
 document.getElementById('btnAddIssue').addEventListener('click', openAdd);
@@ -1224,7 +1247,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     disc: document.getElementById('fDisc').value,
     priority: document.getElementById('fPriority').checked,
     status, title, desc: document.getElementById('fDesc').value,
-    person: document.getElementById('fPerson').value.trim(),
+    person: (currentSection==='internal' ? document.getElementById('fPersonText').value : document.getElementById('fPerson').value).trim(),
     images: pendingLinks.filter(u=>u.trim()),
     photos: pendingPhotos,
     seqMajor, seqMinor,
@@ -1270,10 +1293,11 @@ async function copyIssueTo(id, targetSection, msg) {
       const snap = await getDocs(query(collection(db,'projects',currentProjectId,'issues'), where('section','==',targetSection)));
       snap.forEach(d => { maxMajor = Math.max(maxMajor, d.data().seqMajor||0); });
     }
+    const crossSection = targetSection !== currentSection;
     const newRef = doc(collection(db,'projects',currentProjectId,'issues'));
     await setDoc(newRef, {
       disc: issue.disc, priority: !!issue.priority, status: 'active',
-      title: issue.title, desc: issue.desc||'', person: issue.person||'',
+      title: issue.title, desc: issue.desc||'', person: crossSection ? '' : (issue.person||''),
       images: issue.images||[], photos: issue.photos||[],
       seqMajor: maxMajor+1, seqMinor: 0, section: targetSection,
       date: new Date().toISOString().slice(0,10),
@@ -1312,9 +1336,10 @@ async function openDetail(id) {
   currentDetailId = id;
   const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
   const canComment = true;
-  const canDuplicate = currentRole==='admin'||currentRole==='reviewer';
+  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
   document.getElementById('detailDupBtn').style.display = canDuplicate?'flex':'none';
-  document.getElementById('detailDupToReviewBtn').style.display = (canDuplicate && currentSection==='internal')?'flex':'none';
+  const canDuplicateToReview = currentRole==='admin'||currentRole==='reviewer';
+  document.getElementById('detailDupToReviewBtn').style.display = (canDuplicateToReview && currentSection==='internal')?'flex':'none';
   document.getElementById('detailTitle').textContent = formatIssueNum(issue.seqMajor, issue.seqMinor)+' — '+issue.title;
   document.getElementById('detailEditBtn').style.display = canEdit?'flex':'none';
   document.getElementById('detailBody').innerHTML = `
