@@ -961,21 +961,24 @@ function render() {
     tbody.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div>`;
     return;
   }
-  const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
+  const canCreateHere = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
+  const canEditIssue = issue => currentRole==='admin' || issue.createdBy===currentUser?.uid;
   const canDeleteIssue = issue => currentRole==='admin' || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'));
   const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
   const showUnread = UNREAD_ROLES.includes(currentRole);
+  const ph = icon => `<button class="icon-btn" style="visibility:hidden;pointer-events:none" tabindex="-1">${icon}</button>`;
   tbody.innerHTML = arr.map(issue => {
+    const canEditThis = canEditIssue(issue);
     const canDelete = canDeleteIssue(issue);
     const unread = showUnread && isIssueUnread(issue);
     const cmtHtml = (issue.commentCount||0)>0
       ? `<span class="issue-comment-count${unread?' unread':''}">${unread?ICON_COMMENT_FILLED:ICON_COMMENT}${issue.commentCount}</span>`
       : `<span class="issue-comment-count" style="opacity:.3">—</span>`;
-    const acts = (canEdit||canDuplicate)
+    const acts = (canEditThis||canDuplicate||canDelete)
       ? `<div class="action-cell">
-          ${canEdit?`<button class="icon-btn edit" data-id="${issue.id}" title="რედაქტირება">${ICON_EDIT}</button>`:''}
-          ${canDuplicate?`<button class="icon-btn dup" data-id="${issue.id}" title="დუბლირება">${ICON_DUPLICATE}</button>`:''}
-          ${canEdit?(canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:`<button class="icon-btn" style="visibility:hidden;pointer-events:none" tabindex="-1">${ICON_DELETE}</button>`):''}
+          ${canEditThis?`<button class="icon-btn edit" data-id="${issue.id}" title="რედაქტირება">${ICON_EDIT}</button>`:ph(ICON_EDIT)}
+          ${canDuplicate?`<button class="icon-btn dup" data-id="${issue.id}" title="დუბლირება">${ICON_DUPLICATE}</button>`:ph(ICON_DUPLICATE)}
+          ${canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:ph(ICON_DELETE)}
         </div>`
       : `<div></div>`;
     return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}" data-id="${issue.id}">
@@ -1334,7 +1337,7 @@ document.getElementById('btnAddLink').addEventListener('click', () => {
 async function openDetail(id) {
   const issue = issues[id]; if(!issue) return;
   currentDetailId = id;
-  const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
+  const canEdit = currentRole==='admin' || issue.createdBy===currentUser?.uid;
   const canComment = true;
   const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
   document.getElementById('detailDupBtn').style.display = canDuplicate?'flex':'none';
