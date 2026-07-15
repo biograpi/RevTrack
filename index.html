@@ -56,6 +56,10 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .project-card-meta{font-size:12px;color:rgba(255,255,255,.4)}
 .project-card-creator{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;margin-bottom:6px}
 .project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:auto;align-self:flex-start;width:fit-content}
+.project-card-bare{min-height:70px;justify-content:center;align-items:center}
+.project-card-bare .project-card-name{margin-bottom:0;text-align:center;font-size:17px}
+.section-back{grid-column:1/-1;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;margin-bottom:4px;width:fit-content}
+.section-back:hover{color:white}
 .project-card-count{position:absolute;top:10px;right:10px;font-size:80px;font-weight:800;line-height:1;color:rgba(255,255,255,.15);z-index:0;pointer-events:none;font-family:'JetBrains Mono',monospace}
 .role-admin{background:var(--soft-black);color:white}
 .role-design_manager{background:var(--purple);color:white}
@@ -93,7 +97,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 /* ── ISSUE LIST ── */
 .issues-wrap{padding:0 24px 24px}
-.issue-grid-row{display:grid;grid-template-columns:100px 108px minmax(120px,1fr) 56px 64px 120px 120px 40px 74px 68px;align-items:center;gap:10px;padding:0 4px;min-height:44px}
+.issue-grid-row{display:grid;grid-template-columns:100px 108px minmax(120px,1fr) 56px 64px 112px 120px 40px 74px 96px;align-items:center;gap:10px;padding:0 4px;min-height:44px}
 .issue-grid-row>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .issue-header-row{width:100%;border-top:1px solid var(--rule);margin-top:10px;padding-top:10px;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-mid)}
 .issue-header-row [data-col]{cursor:pointer;user-select:none}
@@ -141,6 +145,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .icon-btn{border:none;border-radius:5px;padding:5px;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;background:transparent}
 .icon-btn svg{width:16px;height:16px}
 .icon-btn.edit{color:var(--ink-mid)}.icon-btn.edit:hover{background:var(--accent-lo);color:var(--accent)}
+.icon-btn.dup{color:var(--ink-mid)}.icon-btn.dup:hover{background:var(--ok-lo);color:var(--ok)}
 .icon-btn.del{color:var(--ink-mid)}.icon-btn.del:hover{background:var(--warn-lo);color:var(--warn)}
 .empty-state{text-align:center;padding:60px 24px;color:var(--ink-light)}
 .empty-icon{font-size:44px;margin-bottom:10px}
@@ -205,7 +210,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .viewer-note svg{width:14px;height:14px;flex-shrink:0}
 
 /* ── USERS PANEL ── */
-.user-row{display:grid;grid-template-columns:1fr 150px 130px 30px;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.user-row-wrap{border-bottom:1px solid var(--rule)}
+.user-row-wrap .user-row{border-bottom:none}
+.user-row{display:grid;grid-template-columns:1fr 150px 130px 30px;align-items:center;gap:10px;padding:10px 0}
+.user-label-row{display:flex;align-items:center;gap:8px;padding:0 0 10px;font-size:12px;color:var(--ink-light)}
+.user-label-row input{border:1px solid var(--rule);border-radius:4px;padding:4px 8px;font-size:12px;font-family:inherit;width:160px}
 .user-row select{border:1px solid var(--rule);border-radius:4px;padding:5px 6px;font-size:12px;font-family:inherit;width:100%}
 .user-row .user-status{text-align:left}
 .user-info .ue{font-size:13px;font-weight:500;color:var(--ink)}
@@ -280,7 +289,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
           <option value="reviewer">რევიზორი</option>
           <option value="design_manager">დიზაინ მენეჯერი</option>
           <option value="contractor">კონტრაქტორი</option>
-          <option value="viewer">დამთვალიერებელი</option>
+          <option value="viewer">User</option>
         </select>
         <div class="auth-hint">როლს საბოლოოდ დაადასტურებს ადმინისტრატორი</div>
       </div>
@@ -431,6 +440,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="modal-body" id="detailBody"></div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="cm('detailModal')">დახურვა</button>
+      <button class="btn-secondary" id="detailDupBtn" style="display:none">${'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" style=\"width:12px;height:12px\"><rect x=\"9\" y=\"9\" width=\"12\" height=\"12\" rx=\"2\"/><path d=\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\"/></svg>'} დუბლირება</button>
       <button class="btn-primary" id="detailEditBtn" style="display:none"><svg viewBox="0 0 528.899 528.899" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="width:12px;height:12px"><path d="M328.883,89.125l107.59,107.589l-272.34,272.34L56.604,361.465L328.883,89.125z M518.113,63.177l-47.981-47.981 c-18.543-18.543-48.653-18.543-67.259,0l-45.961,45.961l107.59,107.59l53.611-53.611 C532.495,100.753,532.495,77.559,518.113,63.177z M0.3,512.69c-1.958,8.812,5.998,16.708,14.811,14.565l119.891-29.069 L27.473,390.597L0.3,512.69z"/></svg> რედაქტირება</button>
     </div>
   </div>
@@ -465,6 +475,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
           </div>
         </div>
         <div class="field form-full"><label>აღწერა</label><input id="pDesc" placeholder="მოკლე აღწერა"></div>
+        <div class="field form-full">
+          <label>პროექტის მენეჯერი (საინფორმაციო — უფლებებზე გავლენას არ ახდენს)</label>
+          <select id="pManager"><option value="">— არჩეული არ არის —</option></select>
+        </div>
       </div>
 
       <div class="detail-label" style="margin-bottom:8px">კონტრაქტორები</div>
@@ -546,6 +560,9 @@ let currentRole = 'viewer';
 let currentGlobalRole = 'contractor';
 let currentProjectId = null;
 let currentProjectData = null;
+let currentSection = null; // 'review' | 'internal'
+let sectionsViewProjectId = null; // set while viewing a project's 2 section-cards (before picking one)
+const SECTION_LABEL = { review: 'რევიზია', internal: 'შიდა საკითხები' };
 let currentProjectDesignManagers = []; // [{uid, name}] — cached names of design managers assigned to the open project
 let issues = {};
 let allUsers = {};
@@ -568,7 +585,7 @@ const initials = n => (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().sl
 
 const discL = {arch:'არქიტექტურა',struct:'კონსტრუქცია',mep:'MEP',other:'სხვა'};
 const statL = {active:'აქტიური', closed:'დასრულებული'};
-const roleL = {admin:'Admin', design_manager:'დიზაინ მენეჯერი', reviewer:'რევიზორი', contractor:'კონტრაქტორი', viewer:'დამთვალიერებელი'};
+const roleL = {admin:'Admin', design_manager:'დიზაინ მენეჯერი', reviewer:'რევიზორი', contractor:'კონტრაქტორი', viewer:'User'};
 
 // ── PROJECT BRAND COLORS ── (matched against the project name, Latin or Georgian, partial match)
 const PROJECT_COLORS = [
@@ -595,6 +612,7 @@ const ICON_EDIT = `<svg viewBox="0 0 528.899 528.899" fill="currentColor" xmlns=
 const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>`;
 const ICON_COMMENT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4525C3.22094 16.8088 3.28001 17.2161 3.17712 17.6006L2.58151 19.8267C2.32295 20.793 3.20701 21.677 4.17335 21.4185L6.39939 20.8229C6.78393 20.72 7.19121 20.7791 7.54753 20.9565C8.88837 21.6244 10.4003 22 12 22Z"/></svg>`;
 const ICON_COMMENT_FILLED = `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4525C3.22094 16.8088 3.28001 17.2161 3.17712 17.6006L2.58151 19.8267C2.32295 20.793 3.20701 21.677 4.17335 21.4185L6.39939 20.8229C6.78393 20.72 7.19121 20.7791 7.54753 20.9565C8.88837 21.6244 10.4003 22 12 22Z"/></svg>`;
+const ICON_DUPLICATE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 
 
 
@@ -647,6 +665,7 @@ function showAuth() {
 // ── SHOW PROJECTS ──
 async function showProjects() {
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+  sectionsViewProjectId = null;
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
@@ -675,50 +694,72 @@ async function showProjects() {
     html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${(currentGlobalRole==='admin'||currentGlobalRole==='reviewer')?'შექმენი პირველი პროექტი':'პროექტი არ მინიჭია — დაელოდე Admin-ს'}</div>`;
   } else {
     projects.forEach(p => {
-      const myRole = currentGlobalRole;
-      const isAssignedHere = !!(p.members||{})[currentUser.uid];
-      const isMyOwnProject = p.createdBy === currentUser.uid;
-      const showBadge = (myRole === 'design_manager' && isAssignedHere)
-        || (myRole === 'reviewer' && isMyOwnProject)
-        || (myRole !== 'design_manager' && myRole !== 'reviewer');
-      const roleLabel = roleL[myRole] || myRole;
       const brandColor = p.color || getProjectColor(p.name);
       const cardStyle = brandColor ? `style="background:${brandColor}"` : '';
-      const dmNames = Object.entries(p.members||{})
-        .filter(([,role])=>role==='design_manager')
-        .map(([uid])=>allUsers[uid]?.name || allUsers[uid]?.email)
-        .filter(Boolean);
-      html += `<div class="project-card${brandColor?' has-color':''}" ${cardStyle} onclick="openProject('${p.id}')">
-        <div class="project-card-count" id="pcount-${p.id}"></div>
+      html += `<div class="project-card${brandColor?' has-color':''} project-card-bare" ${cardStyle} onclick="showProjectSections('${p.id}')">
         <div class="project-card-body">
-          <div class="project-card-name">${esc(p.name)} ${p.code?`<span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:400;color:rgba(255,255,255,.5)">[${esc(p.code)}]</span>`:''}</div>
-          <div class="project-card-meta">${esc(p.desc||'')}</div>
-          <div class="project-card-creator">რევიზორი: ${esc(p.createdByName||'ადმინი')}</div>
-          <div class="project-card-creator">დიზაინ მენეჯერი: ${dmNames.length?esc(dmNames.join(', ')):'—'}</div>
-          ${showBadge?`<span class="project-card-role role-${myRole}">${roleLabel}</span>`:''}
+          <div class="project-card-name">${esc(p.name)}</div>
         </div>
       </div>`;
     });
   }
   grid.innerHTML = html;
+}
 
-  // Fetch each project's live issue count in parallel (cheap aggregation query — 1 read each, always accurate)
-  projects.forEach(async p => {
-    const el = document.getElementById(`pcount-${p.id}`);
+// ── SHOW A PROJECT'S TWO SECTIONS ──
+window.showProjectSections = async function(pid) {
+  sectionsViewProjectId = pid;
+  const pd = await getDoc(doc(db,'projects',pid));
+  if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
+  const p = {id:pid,...pd.data()};
+  currentProjectData = p;
+
+  await loadAllUsers();
+  const managerName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email) : null;
+
+  const canSeeInternal = currentGlobalRole !== 'contractor';
+
+  const brandColor = p.color || getProjectColor(p.name);
+  const cardStyle = brandColor ? `style="background:${brandColor}"` : '';
+  const hasColorClass = brandColor ? ' has-color' : '';
+
+  const grid = document.getElementById('projectsGrid');
+  grid.innerHTML = `
+    <div class="section-back" onclick="showProjects()">← პროექტები</div>
+    <div class="project-card${hasColorClass}" ${cardStyle} onclick="openProject('${pid}','review')">
+      <div class="project-card-count" id="pcount-review"></div>
+      <div class="project-card-body">
+        <div class="project-card-name">${esc(p.name)} — რევიზია</div>
+        <div class="project-card-creator">რევიზორი: ${esc(p.createdByName||'ადმინი')}</div>
+        <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
+      </div>
+    </div>
+    ${canSeeInternal?`<div class="project-card${hasColorClass}" ${cardStyle} onclick="openProject('${pid}','internal')">
+      <div class="project-card-count" id="pcount-internal"></div>
+      <div class="project-card-body">
+        <div class="project-card-name">${esc(p.name)} — შიდა საკითხები</div>
+        <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
+      </div>
+    </div>`:''}
+  `;
+
+  ['review','internal'].forEach(async sec => {
+    const el = document.getElementById(`pcount-${sec}`);
     if (!el) return;
     try {
-      const countSnap = await getCountFromServer(collection(db,'projects',p.id,'issues'));
+      const countSnap = await getCountFromServer(query(collection(db,'projects',pid,'issues'), where('section','==',sec)));
       el.textContent = countSnap.data().count;
     } catch(e) { el.textContent = '0'; }
   });
 }
 
 // ── OPEN PROJECT ──
-async function openProject(pid) {
+async function openProject(pid, section) {
   const pd = await getDoc(doc(db,'projects',pid));
   if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   currentProjectId = pid;
   currentProjectData = {id:pid,...pd.data()};
+  currentSection = section || currentSection || 'review';
 
   try {
     const readsSnap = await getDoc(doc(db,'users',currentUser.uid,'meta','commentReads'));
@@ -736,9 +777,9 @@ async function openProject(pid) {
 
   const myRole = currentGlobalRole;
   currentRole = myRole;
-  const isProjectMember = !!(currentProjectData.members||{})[currentUser.uid];
 
-  const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&isProjectMember);
+  // Review section: only reviewer/admin may open issues. Internal section: reviewer/manager/admin.
+  const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&currentSection==='internal');
   const canComment = true; // any real (registered, approved) role can comment
   const isMyOwnProject = currentProjectData.createdBy === currentUser.uid;
   const canManageProject = myRole==='admin'||(myRole==='reviewer'&&isMyOwnProject);
@@ -747,7 +788,7 @@ async function openProject(pid) {
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
-  document.getElementById('hdrProjectName').textContent = currentProjectData.name || 'პროექტი';
+  document.getElementById('hdrProjectName').textContent = (currentProjectData.name||'პროექტი') + ' — ' + SECTION_LABEL[currentSection];
   document.getElementById('hdrUserName').textContent = currentUserName;
   document.getElementById('hdrRoleBadge').textContent = roleLabel;
   document.getElementById('hdrRoleBadge').className = 'role-badge role-'+myRole;
@@ -758,15 +799,16 @@ async function openProject(pid) {
   document.getElementById('btnRecalcCounts').style.display = (myRole==='admin')?'flex':'none';
   document.getElementById('btnAppLogout').style.display = 'flex';
 
-  subscribeIssues(pid);
+  subscribeIssues(pid, currentSection);
 }
 
 window.openProject = openProject;
+window.showProjects = showProjects;
 
 // ── SUBSCRIBE ISSUES ──
-function subscribeIssues(pid) {
+function subscribeIssues(pid, section) {
   if (unsubIssues) unsubIssues();
-  const q = query(collection(db,'projects',pid,'issues'), orderBy('createdAt','asc'));
+  const q = query(collection(db,'projects',pid,'issues'), where('section','==',section), orderBy('createdAt','asc'));
   unsubIssues = onSnapshot(q, snap => {
     issues = {};
     snap.forEach(d => { issues[d.id] = {id:d.id,...d.data()}; });
@@ -922,9 +964,9 @@ function render() {
     tbody.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div>`;
     return;
   }
-  const isProjectMember = !!(currentProjectData?.members||{})[currentUser?.uid];
-  const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&isProjectMember);
+  const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
   const canDeleteIssue = issue => currentRole==='admin' || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'));
+  const canDuplicate = currentRole==='admin'||currentRole==='reviewer';
   const showUnread = UNREAD_ROLES.includes(currentRole);
   tbody.innerHTML = arr.map(issue => {
     const canDelete = canDeleteIssue(issue);
@@ -932,10 +974,11 @@ function render() {
     const cmtHtml = (issue.commentCount||0)>0
       ? `<span class="issue-comment-count${unread?' unread':''}">${unread?ICON_COMMENT_FILLED:ICON_COMMENT}${issue.commentCount}</span>`
       : `<span class="issue-comment-count" style="opacity:.3">—</span>`;
-    const acts = canEdit
+    const acts = (canEdit||canDuplicate)
       ? `<div class="action-cell">
-          <button class="icon-btn edit" data-id="${issue.id}" title="რედაქტირება">${ICON_EDIT}</button>
-          ${canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:`<button class="icon-btn" style="visibility:hidden;pointer-events:none" tabindex="-1">${ICON_DELETE}</button>`}
+          ${canEdit?`<button class="icon-btn edit" data-id="${issue.id}" title="რედაქტირება">${ICON_EDIT}</button>`:''}
+          ${canDuplicate?`<button class="icon-btn dup" data-id="${issue.id}" title="დუბლირება რევიზიაში">${ICON_DUPLICATE}</button>`:''}
+          ${canEdit?(canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:`<button class="icon-btn" style="visibility:hidden;pointer-events:none" tabindex="-1">${ICON_DELETE}</button>`):''}
         </div>`
       : `<div></div>`;
     return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}" data-id="${issue.id}">
@@ -959,6 +1002,7 @@ function render() {
   });
   tbody.querySelectorAll('.icon-btn.edit').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openEdit(b.dataset.id); }));
   tbody.querySelectorAll('.icon-btn.del').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); confirmDelete(b.dataset.id); }));
+  tbody.querySelectorAll('.icon-btn.dup').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); duplicateIssueHandler(b.dataset.id); }));
   document.querySelectorAll('.issue-header-row [data-col]').forEach(cell => {
     cell.classList.remove('sort-asc','sort-desc');
     if (cell.dataset.col===sortCol) cell.classList.add(sortDir==='asc'?'sort-asc':'sort-desc');
@@ -1202,6 +1246,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
       await updateDoc(doc(db,'projects',currentProjectId,'issues',editingId), data);
     } else {
       data.seqMajor = seqMajor; data.seqMinor = seqMinor;
+      data.section = currentSection;
       data.date = new Date().toISOString().slice(0,10);
       data.createdAt = serverTimestamp(); data.commentCount = 0;
       data.createdBy = currentUser.uid; data.createdByName = currentUserName;
@@ -1222,6 +1267,37 @@ async function confirmDelete(id) {
   }
   showToast('წაიშალა');
 }
+
+// ── DUPLICATE (always into "რევიზია") ──
+window.duplicateIssueHandler = async (id) => {
+  const issue = issues[id]; if (!issue) return;
+  const sameSection = currentSection === 'review';
+  const msg = sameSection
+    ? 'დუბლირდეს ეს საკითხი ახალი ნომრით ამავე ("რევიზია") განყოფილებაში?'
+    : 'დუბლირდეს ეს საკითხი "რევიზია" განყოფილებაში?';
+  if (!confirm(msg)) return;
+  try {
+    let maxMajor = 0;
+    if (sameSection) {
+      maxMajor = Object.values(issues).reduce((m,i)=>Math.max(m,i.seqMajor||0),0);
+    } else {
+      const snap = await getDocs(query(collection(db,'projects',currentProjectId,'issues'), where('section','==','review')));
+      snap.forEach(d => { maxMajor = Math.max(maxMajor, d.data().seqMajor||0); });
+    }
+    const newRef = doc(collection(db,'projects',currentProjectId,'issues'));
+    await setDoc(newRef, {
+      disc: issue.disc, priority: !!issue.priority, status: 'active',
+      title: issue.title, desc: issue.desc||'', person: issue.person||'',
+      images: issue.images||[], photos: issue.photos||[],
+      seqMajor: maxMajor+1, seqMinor: 0, section: 'review',
+      date: new Date().toISOString().slice(0,10),
+      createdAt: serverTimestamp(), commentCount: 0,
+      createdBy: currentUser.uid, createdByName: currentUserName,
+      duplicatedFrom: id
+    });
+    showToast('დუბლირებულია რევიზიაში!');
+  } catch(e) { alert('შეცდომა: '+e.message); }
+};
 
 // ── LINKS ──
 function renderLinks() {
@@ -1244,9 +1320,10 @@ document.getElementById('btnAddLink').addEventListener('click', () => {
 async function openDetail(id) {
   const issue = issues[id]; if(!issue) return;
   currentDetailId = id;
-  const isProjectMember = !!(currentProjectData?.members||{})[currentUser?.uid];
-  const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&isProjectMember);
+  const canEdit = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
   const canComment = true;
+  const canDuplicate = currentRole==='admin'||currentRole==='reviewer';
+  document.getElementById('detailDupBtn').style.display = canDuplicate?'flex':'none';
   document.getElementById('detailTitle').textContent = formatIssueNum(issue.seqMajor, issue.seqMinor)+' — '+issue.title;
   document.getElementById('detailEditBtn').style.display = canEdit?'flex':'none';
   document.getElementById('detailBody').innerHTML = `
@@ -1352,12 +1429,16 @@ async function sendComment(issueId) {
   btn.disabled = false;
 }
 document.getElementById('detailEditBtn').addEventListener('click', () => { cm('detailModal'); openEdit(currentDetailId); });
+document.getElementById('detailDupBtn').addEventListener('click', () => { duplicateIssueHandler(currentDetailId); });
 
 // ── NAVIGATION ──
 document.getElementById('btnBackProjects').addEventListener('click', () => {
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
-  currentProjectId = null; currentRole = currentGlobalRole;
-  showProjects();
+  const pid = currentProjectId;
+  currentProjectId = null; currentSection = null; currentRole = currentGlobalRole;
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('projectsScreen').style.display = 'block';
+  showProjectSections(pid);
 });
 document.getElementById('btnProjLogout').addEventListener('click', () => signOut(auth));
 document.getElementById('btnAppLogout').addEventListener('click', () => signOut(auth));
@@ -1455,24 +1536,34 @@ document.getElementById('btnGlobalUsers').addEventListener('click', async () => 
   const panel = document.getElementById('usersPanel');
   const users = Object.values(allUsers);
   panel.innerHTML = users.length ? users.map(u => `
-    <div class="user-row">
-      <div class="user-info">
-        <div class="ue">${esc(u.name)}</div>
-        <div class="um">${esc(u.email)}</div>
+    <div class="user-row-wrap">
+      <div class="user-row">
+        <div class="user-info">
+          <div class="ue">${esc(u.name)}</div>
+          <div class="um">${esc(u.email)}</div>
+        </div>
+        ${u.role!=='admin'?`
+          <select onchange="changeUserRole('${u.id}',this.value)">
+            <option value="reviewer" ${u.role==='reviewer'?'selected':''}>რევიზორი</option>
+            <option value="design_manager" ${u.role==='design_manager'?'selected':''}>დიზაინ მენეჯერი</option>
+            <option value="contractor" ${u.role==='contractor'?'selected':''}>კონტრაქტორი</option>
+            <option value="viewer" ${u.role==='viewer'?'selected':''}>User</option>
+          </select>
+          <div class="user-status">${!u.approved?`<button class="btn-primary" style="padding:5px 11px;font-size:12px;white-space:nowrap" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>`:'<span style="color:var(--ok);font-size:12px;white-space:nowrap">✓ დამტკიცებული</span>'}</div>
+          <button class="icon-btn del" title="მომხმარებლის წაშლა" onclick="deleteUser('${u.id}','${esc(u.name).replace(/'/g,"\\'")}')">${ICON_DELETE}</button>
+        `:'<div style="grid-column:2 / -1;color:var(--accent);font-size:12px;font-weight:600">Admin</div>'}
       </div>
-      ${u.role!=='admin'?`
-        <select onchange="changeUserRole('${u.id}',this.value)">
-          <option value="reviewer" ${u.role==='reviewer'?'selected':''}>რევიზორი</option>
-          <option value="design_manager" ${u.role==='design_manager'?'selected':''}>დიზაინ მენეჯერი</option>
-          <option value="contractor" ${u.role==='contractor'?'selected':''}>კონტრაქტორი</option>
-          <option value="viewer" ${u.role==='viewer'?'selected':''}>დამთვალიერებელი</option>
-        </select>
-        <div class="user-status">${!u.approved?`<button class="btn-primary" style="padding:5px 11px;font-size:12px;white-space:nowrap" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>`:'<span style="color:var(--ok);font-size:12px;white-space:nowrap">✓ დამტკიცებული</span>'}</div>
-        <button class="icon-btn del" title="მომხმარებლის წაშლა" onclick="deleteUser('${u.id}','${esc(u.name).replace(/'/g,"\\'")}')">${ICON_DELETE}</button>
-      `:'<div style="grid-column:2 / -1;color:var(--accent);font-size:12px;font-weight:600">Admin</div>'}
+      ${u.role==='viewer'?`<div class="user-label-row">
+        <span>ლეიბლი:</span>
+        <input type="text" value="${esc(u.statusLabel||'')}" placeholder="მაგ. DM, PM, TT..." onchange="updateUserLabel('${u.id}',this.value)">
+      </div>`:''}
     </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">მომხმარებელი არ არის</div>';
   om('usersModal');
 });
+window.updateUserLabel = async (uid, label) => {
+  try { await updateDoc(doc(db,'users',uid), {statusLabel: label.trim()}); }
+  catch(e) { alert('შეცდომა: '+e.message); }
+};
 window.approveUser = async uid => {
   await updateDoc(doc(db,'users',uid), {approved:true});
   showToast('დამტკიცდა!');
@@ -1512,6 +1603,9 @@ async function openProjectModal(pid) {
   document.getElementById('pDesc').value = pd.desc||'';
   document.getElementById('pColor').value = pd.color || '#1a1120';
   pendingColorCleared = false;
+  const managers = Object.values(allUsers).filter(u => u.role==='design_manager' && u.approved);
+  document.getElementById('pManager').innerHTML = '<option value="">— არჩეული არ არის —</option>' +
+    managers.map(m => `<option value="${m.id}" ${pd.managerUid===m.id?'selected':''}>${esc(m.name||m.email)}</option>`).join('');
   const contractors = pd.contractors || {};
   document.getElementById('cArch').value = contractors.arch||'';
   document.getElementById('cMep').value = contractors.mep||'';
@@ -1587,12 +1681,13 @@ async function saveProjectData(pid) {
   };
   const data = { name, code, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors,
     color: pendingColorCleared ? null : document.getElementById('pColor').value,
+    managerUid: document.getElementById('pManager').value || null,
     updatedAt: serverTimestamp() };
   try {
     if (pid) {
       await updateDoc(doc(db,'projects',pid), data);
       currentProjectData = {...currentProjectData,...data};
-      document.getElementById('hdrProjectName').textContent = name;
+      if (currentSection) document.getElementById('hdrProjectName').textContent = name + ' — ' + SECTION_LABEL[currentSection];
       render(); // re-render so all issue numbers reflect the (possibly changed) code immediately
     }
     cm('projectModal'); showToast('შენახულია!');
