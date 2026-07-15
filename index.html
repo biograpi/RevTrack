@@ -650,16 +650,6 @@ onAuthStateChanged(auth, async user => {
   // load all users for admin
   if (role === 'admin') await loadAllUsers();
 
-  // A contractor assigned to exactly one project skips straight to its
-  // "review" section — no list/selection step needed for a single option.
-  if (role === 'contractor') {
-    const snap = await getDocs(query(collection(db,'projects'), where('memberIds','array-contains',user.uid)));
-    if (snap.size === 1) {
-      await openProject(snap.docs[0].id, 'review');
-      return;
-    }
-  }
-
   await showProjects();
 });
 
@@ -704,8 +694,7 @@ async function showProjects() {
     projects.forEach(p => {
       const brandColor = p.color || DEFAULT_CARD_COLOR;
       const cardStyle = brandColor ? `style="background:${brandColor}"` : '';
-      const goTo = currentGlobalRole==='contractor' ? `openProject('${p.id}','review')` : `showProjectSections('${p.id}')`;
-      html += `<div class="project-card project-card-bare" ${cardStyle} onclick="${goTo}">
+      html += `<div class="project-card project-card-bare" ${cardStyle} onclick="showProjectSections('${p.id}')">
         <div class="project-card-body">
           <div class="project-card-name">${esc(p.name)}</div>
         </div>
