@@ -42,7 +42,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 
 /* ── PROJECTS SCREEN ── */
 .projects-screen{display:none;min-height:100vh;background:var(--soft-black)}
-.projects-header{height:52px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px}
+.projects-header{height:52px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px;position:sticky;top:0;z-index:100}
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
@@ -501,7 +501,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <div id="extraContractorsList"></div>
       <button type="button" class="btn-add-link" id="btnAddContractor" style="margin-bottom:16px">+ სხვა კონტრაქტორის დამატება</button>
 
-      <div class="detail-label" style="margin-bottom:8px">კონტრაქტორები</div>
+      <div class="detail-label" style="margin-bottom:8px">პროექტში ჩართული კონტრაქტორები</div>
       <div class="member-search-row">
         <input id="memberSearch" placeholder="მომხმარებლის ძებნა...">
       </div>
