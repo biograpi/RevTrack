@@ -135,6 +135,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .issue-row.closed:hover{background:#c9edd6}
 .issue-row.active{background:var(--carrot-lo)}
 .issue-row.active:hover{background:#ffd9b3}
+.issue-row-muted.closed{background:rgba(22,163,74,.05)}
+.issue-row-muted.closed:hover{background:rgba(22,163,74,.09)}
+.issue-row-muted.active{background:rgba(255,145,66,.05)}
+.issue-row-muted.active:hover{background:rgba(255,145,66,.09)}
+.dm-only-tag{font-size:10px;opacity:.55;vertical-align:middle}
 .issue-num-cell{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--ink)}
 .issue-row.sub-issue .issue-num-cell{padding-left:16px;color:var(--ink-light)}
 .issue-row.sub-issue .issue-title-cell{padding-left:16px}
@@ -291,6 +296,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   .issue-row{border-radius:var(--r);border:1px solid var(--rule);margin-bottom:10px}
   .issue-row.closed{border-color:var(--ok)}
   .issue-row.active{border-color:var(--carrot)}
+  .issue-row-muted.closed{border-color:rgba(22,163,74,.25)}
+  .issue-row-muted.active{border-color:rgba(255,145,66,.25)}
   .issue-grid-row{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:14px;min-height:0}
   .issue-num-cell,.issue-title-cell,.action-cell{grid-column:1 / -1}
   .issue-title-cell{white-space:normal;overflow:visible;font-size:15px}
@@ -447,6 +454,13 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
           <label class="priority-check">
             <input type="checkbox" id="fPriority">
             <span class="ptlabel" id="fPriorityLabel">ჩვეულებრივი</span>
+          </label>
+        </div>
+        <div class="field" id="fVisibleField" style="display:none">
+          <label>ხილვადობა</label>
+          <label class="priority-check">
+            <input type="checkbox" id="fVisibleToContractors">
+            <span class="ptlabel">ხილვადი ყველასთვის (კონტრაქტორისთვისაც)</span>
           </label>
         </div>
         <div class="field form-full"><label>სათაური</label><input id="fTitle" placeholder="საკითხის მოკლე სათაური"></div>
@@ -631,7 +645,7 @@ let currentProjectId = null;
 let currentProjectData = null;
 let currentSection = null; // 'review' | 'internal'
 let sectionsViewProjectId = null; // set while viewing a project's 2 section-cards (before picking one)
-const SECTION_LABEL = { review: 'რევიზია', internal: 'შიდა საკითხები' };
+const SECTION_LABEL = { review: 'რევიზია', internal: 'DM საკითხები' };
 let currentProjectDesignManagers = []; // [{uid, name}] — cached names of design managers assigned to the open project
 let issues = {};
 let allUsers = {};
@@ -849,8 +863,6 @@ window.showProjectSections = async function(pid) {
   await loadAllUsers();
   const managerName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email) : null;
 
-  const canSeeInternal = currentGlobalRole !== 'contractor';
-
   const brandColor = p.color || DEFAULT_CARD_COLOR;
   const cardStyle = brandColor ? `style="--card-color:${brandColor};border-color:${brandColor}"` : '';
 
@@ -869,21 +881,23 @@ window.showProjectSections = async function(pid) {
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
       </div>
     </div>
-    ${canSeeInternal?`<div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','internal')">
+    <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','internal')">
       <div class="project-card-count" id="pcount-internal"></div>
       <div class="project-card-body">
         <div class="project-card-name">${esc(p.name)}</div>
-        <div class="section-label">შიდა საკითხები</div>
+        <div class="section-label">DM საკითხები</div>
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
       </div>
-    </div>`:''}
+    </div>
   `;
 
   ['review','internal'].forEach(async sec => {
     const el = document.getElementById(`pcount-${sec}`);
     if (!el) return;
     try {
-      const countSnap = await getCountFromServer(query(collection(db,'projects',pid,'issues'), where('section','==',sec)));
+      const constraints = [where('section','==',sec)];
+      if (sec === 'internal' && currentGlobalRole === 'contractor') constraints.push(where('visibleToContractors','==',true));
+      const countSnap = await getCountFromServer(query(collection(db,'projects',pid,'issues'), ...constraints));
       el.textContent = countSnap.data().count;
     } catch(e) { el.textContent = '0'; }
   });
@@ -944,7 +958,9 @@ window.showProjects = showProjects;
 // ── SUBSCRIBE ISSUES ──
 function subscribeIssues(pid, section) {
   if (unsubIssues) unsubIssues();
-  const q = query(collection(db,'projects',pid,'issues'), where('section','==',section));
+  const constraints = [where('section','==',section)];
+  if (section === 'internal' && currentGlobalRole === 'contractor') constraints.push(where('visibleToContractors','==',true));
+  const q = query(collection(db,'projects',pid,'issues'), ...constraints);
   unsubIssues = onSnapshot(q, snap => {
     issues = {};
     snap.forEach(d => { issues[d.id] = {id:d.id,...d.data()}; });
@@ -1123,8 +1139,9 @@ function render() {
           ${canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:ph(ICON_DELETE)}
         </div>`
       : `<div></div>`;
-    return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}" data-id="${issue.id}">
-      <div class="issue-num-cell">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}</div>
+    const isMuted = currentSection==='internal' && !issue.visibleToContractors;
+    return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}${isMuted?' issue-row-muted':''}" data-id="${issue.id}">
+      <div class="issue-num-cell">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}${isMuted?` <span class="dm-only-tag" title="ხილვადია მხოლოდ დიზაინ მენეჯერისთვის/რევიზორისთვის">🔒</span>`:''}</div>
       <div data-label="დისციპლინა"><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div>
       <div class="issue-title-cell">${esc(issue.title)}</div>
       <div class="issue-photo-cell" data-label="სურათები">${(issue.photos&&issue.photos.length)?`<span class="photo-indicator" title="${issue.photos.length} სურათი">📷${issue.photos.length}</span>`:'—'}</div>
@@ -1158,7 +1175,7 @@ function formatIssueNum(seqMajor, seqMinor) {
   const code = currentProjectData?.code || '???';
   const major = String(seqMajor).padStart(3,'0');
   const base = seqMinor ? `${code}-${major}.${seqMinor}` : `${code}-${major}`;
-  return currentSection === 'internal' ? `${base}-INT` : base;
+  return currentSection === 'internal' ? `${base}-DM` : base;
 }
 // Parses manual entry like "3" or "2.1" -> {major, minor} (minor 0 = none). Returns null if not a valid positive number pattern.
 function parseManualSeq(text) {
@@ -1260,6 +1277,8 @@ async function openAdd() {
   document.getElementById('fStatus').value = 'active';
   document.getElementById('fTitle').value = '';
   document.getElementById('fDesc').value = '';
+  document.getElementById('fVisibleField').style.display = currentSection==='internal' ? 'block' : 'none';
+  document.getElementById('fVisibleToContractors').checked = false;
   setPersonField('');
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
 }
@@ -1279,6 +1298,8 @@ function openEdit(id) {
   document.getElementById('fStatus').value = issue.status;
   document.getElementById('fTitle').value = issue.title;
   document.getElementById('fDesc').value = issue.desc||'';
+  document.getElementById('fVisibleField').style.display = currentSection==='internal' ? 'block' : 'none';
+  document.getElementById('fVisibleToContractors').checked = !!issue.visibleToContractors;
   setPersonField(issue.person||'');
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(issue); om('issueModal');
 }
@@ -1398,6 +1419,9 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     seqMajor, seqMinor,
     updatedAt: serverTimestamp(),
   };
+  if (currentSection === 'internal') {
+    data.visibleToContractors = document.getElementById('fVisibleToContractors').checked;
+  }
   const btn = document.getElementById('saveIssue');
   btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
   try {
