@@ -374,6 +374,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <span class="header-logo" id="btnBackProjects">RevTrack <span style="opacity:.6;font-weight:400">1.0</span></span>
     <span class="header-sep">/</span>
     <span class="project-name-hdr" id="hdrProjectName">პროექტი</span>
+    <button class="btn-hdr" id="btnBackExplicit" style="margin-left:10px">← უკან დაბრუნება</button>
   </div>
   <div class="header-right">
     <span class="user-chip">
@@ -1647,14 +1648,16 @@ document.getElementById('detailDupBtn').addEventListener('click', () => { duplic
 document.getElementById('detailDupToReviewBtn').addEventListener('click', () => { duplicateToReviewHandler(currentDetailId); });
 
 // ── NAVIGATION ──
-document.getElementById('btnBackProjects').addEventListener('click', () => {
+function goBackToSections() {
   if (unsubIssues) { unsubIssues(); unsubIssues = null; }
   const pid = currentProjectId;
   currentProjectId = null; currentSection = null; currentRole = currentGlobalRole;
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
   showProjectSections(pid);
-});
+}
+document.getElementById('btnBackProjects').addEventListener('click', goBackToSections);
+document.getElementById('btnBackExplicit').addEventListener('click', goBackToSections);
 document.getElementById('btnProjLogout').addEventListener('click', () => signOut(auth));
 document.getElementById('btnAppLogout').addEventListener('click', () => signOut(auth));
 
