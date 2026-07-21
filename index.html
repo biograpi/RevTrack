@@ -504,6 +504,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="modal-footer">
       <button class="btn-secondary" onclick="cm('detailModal')">დახურვა</button>
       <button class="btn-secondary" id="detailDupToReviewBtn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> დუბლირება რევიზიაში</button>
+      <button class="btn-secondary" id="detailDupToDMBtn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> დუბლირება DM საკითხებში</button>
       <button class="btn-secondary" id="detailDupBtn" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> დუბლირება</button>
       <button class="btn-primary" id="detailEditBtn" style="display:none"><svg viewBox="0 0 528.899 528.899" fill="currentColor" xmlns="http://www.w3.org/2000/svg" style="width:12px;height:12px"><path d="M328.883,89.125l107.59,107.589l-272.34,272.34L56.604,361.465L328.883,89.125z M518.113,63.177l-47.981-47.981 c-18.543-18.543-48.653-18.543-67.259,0l-45.961,45.961l107.59,107.59l53.611-53.611 C532.495,100.753,532.495,77.559,518.113,63.177z M0.3,512.69c-1.958,8.812,5.998,16.708,14.811,14.565l119.891-29.069 L27.473,390.597L0.3,512.69z"/></svg> რედაქტირება</button>
     </div>
@@ -1464,7 +1465,7 @@ async function copyIssueTo(id, targetSection, msg) {
     }
     const crossSection = targetSection !== currentSection;
     const newRef = doc(collection(db,'projects',currentProjectId,'issues'));
-    await setDoc(newRef, {
+    const newData = {
       disc: issue.disc, priority: !!issue.priority, status: 'active',
       title: issue.title, desc: issue.desc||'', person: crossSection ? '' : (issue.person||''),
       images: issue.images||[], photos: issue.photos||[],
@@ -1473,14 +1474,17 @@ async function copyIssueTo(id, targetSection, msg) {
       createdAt: serverTimestamp(), commentCount: 0,
       createdBy: currentUser.uid, createdByName: currentUserName,
       duplicatedFrom: id
-    });
-    showToast(targetSection===currentSection ? 'დუბლირებულია!' : 'დუბლირებულია რევიზიაში!');
+    };
+    if (targetSection === 'internal') newData.visibleToContractors = false;
+    await setDoc(newRef, newData);
+    showToast(targetSection===currentSection ? 'დუბლირებულია!' : `დუბლირებულია "${SECTION_LABEL[targetSection]}"-ში!`);
   } catch(e) { alert('შეცდომა: '+e.message); }
 }
 // Row/detail button: always stays in the SAME section you're currently in.
 window.duplicateIssueHandler = (id) => copyIssueTo(id, currentSection, 'დუბლირდეს ეს საკითხი ახალი ნომრით ამავე განყოფილებაში?');
 // Detail-only button (internal section only): copies across into "რევიზია".
 window.duplicateToReviewHandler = (id) => copyIssueTo(id, 'review', 'დუბლირდეს ეს საკითხი "რევიზია" განყოფილებაში?');
+window.duplicateToDMHandler = (id) => copyIssueTo(id, 'internal', 'დუბლირდეს ეს საკითხი "DM საკითხების" განყოფილებაში?');
 
 // ── LINKS ──
 function renderLinks() {
@@ -1509,6 +1513,7 @@ async function openDetail(id) {
   document.getElementById('detailDupBtn').style.display = canDuplicate?'flex':'none';
   const canDuplicateToReview = currentRole==='admin'||currentRole==='reviewer';
   document.getElementById('detailDupToReviewBtn').style.display = (canDuplicateToReview && currentSection==='internal')?'flex':'none';
+  document.getElementById('detailDupToDMBtn').style.display = (canDuplicateToReview && currentSection==='review')?'flex':'none';
   document.getElementById('detailTitle').textContent = formatIssueNum(issue.seqMajor, issue.seqMinor)+' — '+issue.title;
   document.getElementById('detailEditBtn').style.display = canEdit?'flex':'none';
   document.getElementById('detailBody').innerHTML = `
@@ -1646,6 +1651,7 @@ async function sendComment(issueId) {
 document.getElementById('detailEditBtn').addEventListener('click', () => { cm('detailModal'); openEdit(currentDetailId); });
 document.getElementById('detailDupBtn').addEventListener('click', () => { duplicateIssueHandler(currentDetailId); });
 document.getElementById('detailDupToReviewBtn').addEventListener('click', () => { duplicateToReviewHandler(currentDetailId); });
+document.getElementById('detailDupToDMBtn').addEventListener('click', () => { duplicateToDMHandler(currentDetailId); });
 
 // ── NAVIGATION ──
 function goBackToSections() {
