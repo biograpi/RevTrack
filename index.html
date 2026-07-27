@@ -359,6 +359,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
       <button class="btn-hdr" id="btnFixNames" style="display:none" title="ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე">🔄 სახელების გასწორება</button>
+      <button class="btn-hdr" id="btnFixVisibility" style="display:none" title="ძველ საკითხებს ანიჭებს ხილვადობის მნიშვნელობას (მანამდე ეს ველი არ არსებობდა)">🔄 ხილვადობის გასწორება</button>
       <span id="projScreenUser"></span>
       <button class="btn-hdr" id="btnProjLogout">გამოსვლა</button>
     </div>
@@ -457,12 +458,13 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
             <span class="ptlabel" id="fPriorityLabel">ჩვეულებრივი</span>
           </label>
         </div>
-        <div class="field" id="fVisibleField" style="display:none">
+        <div class="field form-full" id="fVisibleField" style="display:none">
           <label>ხილვადობა</label>
-          <label class="priority-check">
-            <input type="checkbox" id="fVisibleToContractors">
-            <span class="ptlabel">ხილვადი ყველასთვის (კონტრაქტორისთვისაც)</span>
-          </label>
+          <select id="fVisibility">
+            <option value="draft">დრაფტი (ხედავს მხოლოდ შემქმნელი)</option>
+            <option value="biograpi">ბიოგრაფის თანამშრომლები (არა კონტრაქტორი)</option>
+            <option value="everyone">ყველა (კონტრაქტორის ჩათვლით)</option>
+          </select>
         </div>
         <div class="field form-full"><label>სათაური</label><input id="fTitle" placeholder="საკითხის მოკლე სათაური"></div>
         <div class="field form-full"><label>დეტალური აღწერა</label><textarea id="fDesc" placeholder="სად არის, რა პრობლემაა..."></textarea></div>
@@ -801,7 +803,7 @@ function showAuth() {
 
 // ── SHOW PROJECTS ──
 async function showProjects() {
-  if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+  if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
   sectionsViewProjectId = null;
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
@@ -809,6 +811,7 @@ async function showProjects() {
   document.getElementById('projScreenUser').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
   document.getElementById('btnGlobalUsers').style.display = isAdminLike() ? 'flex' : 'none';
   document.getElementById('btnFixNames').style.display = isAdminLike() ? 'flex' : 'none';
+  document.getElementById('btnFixVisibility').style.display = isAdminLike() ? 'flex' : 'none';
   document.getElementById('btnNewProjectHdr').style.display = (currentGlobalRole==='admin'||currentGlobalRole==='reviewer') ? 'flex' : 'none';
 
   const grid = document.getElementById('projectsGrid');
@@ -896,9 +899,8 @@ window.showProjectSections = async function(pid) {
     const el = document.getElementById(`pcount-${sec}`);
     if (!el) return;
     try {
-      const constraints = [where('section','==',sec)];
-      if (sec === 'internal' && currentGlobalRole === 'contractor') constraints.push(where('visibleToContractors','==',true));
-      const countSnap = await getCountFromServer(query(collection(db,'projects',pid,'issues'), ...constraints));
+      const visStates = (sec === 'internal' && currentGlobalRole !== 'contractor') ? ['biograpi','everyone'] : ['everyone'];
+      const countSnap = await getCountFromServer(query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates)));
       el.textContent = countSnap.data().count;
     } catch(e) { el.textContent = '0'; }
   });
@@ -958,18 +960,31 @@ window.showProjects = showProjects;
 
 // ── SUBSCRIBE ISSUES ──
 function subscribeIssues(pid, section) {
-  if (unsubIssues) unsubIssues();
-  const constraints = [where('section','==',section)];
-  if (section === 'internal' && currentGlobalRole === 'contractor') constraints.push(where('visibleToContractors','==',true));
-  const q = query(collection(db,'projects',pid,'issues'), ...constraints);
-  unsubIssues = onSnapshot(q, snap => {
-    issues = {};
-    snap.forEach(d => { issues[d.id] = {id:d.id,...d.data()}; });
-    render();
+  if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
+  let mainIssues = {}, draftIssues = {};
+  function mergeAndRender() { issues = {...mainIssues, ...draftIssues}; render(); }
+
+  const visStates = (section === 'internal' && currentGlobalRole !== 'contractor')
+    ? ['biograpi','everyone']
+    : ['everyone'];
+  const mainQ = query(collection(db,'projects',pid,'issues'), where('section','==',section), where('visibility','in',visStates));
+  const unsub1 = onSnapshot(mainQ, snap => {
+    mainIssues = {};
+    snap.forEach(d => { mainIssues[d.id] = {id:d.id,...d.data()}; });
+    mergeAndRender();
   }, err => {
-    console.error('subscribeIssues error:', err);
+    console.error('subscribeIssues (main) error:', err);
     showToast('შეცდომა საკითხების ჩატვირთვისას: ' + err.message);
   });
+
+  const draftQ = query(collection(db,'projects',pid,'issues'), where('section','==',section), where('visibility','==','draft'), where('createdBy','==',currentUser.uid));
+  const unsub2 = onSnapshot(draftQ, snap => {
+    draftIssues = {};
+    snap.forEach(d => { draftIssues[d.id] = {id:d.id,...d.data()}; });
+    mergeAndRender();
+  }, err => { console.error('subscribeIssues (drafts) error:', err); });
+
+  unsubIssues = [unsub1, unsub2];
 }
 
 // ── RECALCULATE COMMENT COUNTS (admin repair tool for the old undercount bug) ──
@@ -1101,6 +1116,14 @@ function filtered() {
 function sorted(arr) {
   return [...arr].sort((a,b)=>{
     if (sortCol === 'num') {
+      const aIsDraft = a.seqMajor == null, bIsDraft = b.seqMajor == null;
+      if (aIsDraft && bIsDraft) {
+        const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return at - bt;
+      }
+      if (aIsDraft) return 1;
+      if (bIsDraft) return -1;
       const diff = (a.seqMajor??0)-(b.seqMajor??0) || ((a.seqMinor||0)-(b.seqMinor||0));
       return sortDir==='asc' ? diff : -diff;
     }
@@ -1140,9 +1163,11 @@ function render() {
           ${canDelete?`<button class="icon-btn del" data-id="${issue.id}" title="წაშლა">${ICON_DELETE}</button>`:ph(ICON_DELETE)}
         </div>`
       : `<div></div>`;
-    const isMuted = currentSection==='internal' && !issue.visibleToContractors;
+    const isDraft = issue.visibility === 'draft';
+    const isMuted = currentSection==='internal' && (issue.visibility === 'biograpi' || isDraft);
+    const lockTitle = isDraft ? 'დრაფტი — ხედავს მხოლოდ შემქმნელი' : 'ხილვადია მხოლოდ დიზაინ მენეჯერისთვის/რევიზორისთვის';
     return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}${isMuted?' issue-row-muted':''}" data-id="${issue.id}">
-      <div class="issue-num-cell">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}${isMuted?` <span class="dm-only-tag" title="ხილვადია მხოლოდ დიზაინ მენეჯერისთვის/რევიზორისთვის">🔒</span>`:''}</div>
+      <div class="issue-num-cell">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}${isMuted?` <span class="dm-only-tag" title="${lockTitle}">🔒</span>`:''}</div>
       <div data-label="დისციპლინა"><span class="disc-tag disc-${issue.disc}">${discL[issue.disc]||issue.disc}</span></div>
       <div class="issue-title-cell">${esc(issue.title)}</div>
       <div class="issue-photo-cell" data-label="სურათები">${(issue.photos&&issue.photos.length)?`<span class="photo-indicator" title="${issue.photos.length} სურათი">📷${issue.photos.length}</span>`:'—'}</div>
@@ -1173,6 +1198,7 @@ function render() {
 
 // ── ISSUE NUMBERING (project code + live sequence + optional sub-numbers) ──
 function formatIssueNum(seqMajor, seqMinor) {
+  if (seqMajor == null) return 'დრაფტი';
   const code = currentProjectData?.code || '???';
   const major = String(seqMajor).padStart(3,'0');
   const base = seqMinor ? `${code}-${major}.${seqMinor}` : `${code}-${major}`;
@@ -1256,6 +1282,36 @@ document.getElementById('fPriority').addEventListener('change', e => {
 
 // ── ADD/EDIT ISSUE ──
 let previewSeqMajor = null;
+// ── VISIBILITY FIELD (section-aware: review has 2 states, internal has 3) ──
+function setupVisibilityField(currentValue) {
+  const sel = document.getElementById('fVisibility');
+  if (currentSection === 'review') {
+    sel.innerHTML = `
+      <option value="draft">დრაფტი (ხედავს მხოლოდ შემქმნელი)</option>
+      <option value="everyone">ყველასთვის</option>`;
+  } else {
+    sel.innerHTML = `
+      <option value="draft">დრაფტი (ხედავს მხოლოდ შემქმნელი)</option>
+      <option value="biograpi">ბიოგრაფის თანამშრომლები (არა კონტრაქტორი)</option>
+      <option value="everyone">ყველა (კონტრაქტორის ჩათვლით)</option>`;
+  }
+  sel.value = currentValue || 'everyone';
+}
+
+function updateNumFieldForVisibility() {
+  const fNumEl = document.getElementById('fNum');
+  const isDraft = document.getElementById('fVisibility').value === 'draft';
+  if (isDraft) {
+    fNumEl.value = ''; fNumEl.disabled = true; fNumEl.placeholder = 'დრაფტს ნომერი არ სჭირდება';
+    fNumEl.style.background = 'var(--rule)'; fNumEl.style.cursor = 'not-allowed';
+  } else {
+    fNumEl.disabled = false; fNumEl.placeholder = '';
+    fNumEl.style.background = 'white'; fNumEl.style.cursor = 'text';
+    if (!fNumEl.value) fNumEl.value = String(previewSeqMajor||1);
+  }
+}
+document.getElementById('fVisibility').addEventListener('change', updateNumFieldForVisibility);
+
 async function openAdd() {
   editingId = null; pendingLinks = [];
   currentIssueStorageId = doc(collection(db,'projects',currentProjectId,'issues')).id;
@@ -1278,8 +1334,9 @@ async function openAdd() {
   document.getElementById('fStatus').value = 'active';
   document.getElementById('fTitle').value = '';
   document.getElementById('fDesc').value = '';
-  document.getElementById('fVisibleField').style.display = currentSection==='internal' ? 'block' : 'none';
-  document.getElementById('fVisibleToContractors').checked = false;
+  document.getElementById('fVisibleField').style.display = 'block';
+  setupVisibilityField('everyone');
+  updateNumFieldForVisibility();
   setPersonField('');
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
 }
@@ -1291,7 +1348,7 @@ function openEdit(id) {
   document.getElementById('modalTitle').textContent = 'საკითხის რედაქტირება';
   const fNumEl = document.getElementById('fNum');
   fNumEl.readOnly = false; fNumEl.style.background = 'white'; fNumEl.style.cursor = 'text';
-  fNumEl.value = issue.seqMinor ? `${issue.seqMajor}.${issue.seqMinor}` : String(issue.seqMajor);
+  fNumEl.value = issue.seqMajor != null ? (issue.seqMinor ? `${issue.seqMajor}.${issue.seqMinor}` : String(issue.seqMajor)) : '';
   document.getElementById('fDate').value = issue.date||'';
   document.getElementById('fDisc').value = issue.disc;
   document.getElementById('fPriority').checked = !!issue.priority;
@@ -1299,15 +1356,16 @@ function openEdit(id) {
   document.getElementById('fStatus').value = issue.status;
   document.getElementById('fTitle').value = issue.title;
   document.getElementById('fDesc').value = issue.desc||'';
-  document.getElementById('fVisibleField').style.display = currentSection==='internal' ? 'block' : 'none';
-  document.getElementById('fVisibleToContractors').checked = !!issue.visibleToContractors;
+  document.getElementById('fVisibleField').style.display = 'block';
+  setupVisibilityField(issue.visibility || (issue.visibleToContractors===true ? 'everyone' : (currentSection==='internal' ? 'biograpi' : 'everyone')));
+  updateNumFieldForVisibility();
   setPersonField(issue.person||'');
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(issue); om('issueModal');
 }
 document.getElementById('btnAddIssue').addEventListener('click', openAdd);
 
 // ── PHOTOS (screenshots) ──
-function compressImage(file, maxDim = 1600, quality = 0.82) {
+function compressImage(file, maxDim = 2400, quality = 0.94) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('ფაილის წაკითხვა ჩავარდა'));
@@ -1398,17 +1456,26 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     alert('საკითხის დახურვა შეუძლია მხოლოდ ადმინს ან მისი შემქმნელს.');
     return;
   }
-  let seqMajor, seqMinor;
-  {
-    const parsed = parseManualSeq(document.getElementById('fNum').value);
-    if (!parsed) { alert('ნომრის ფორმატი არასწორია (მაგ. 3 ან 2.1)'); return; }
-    seqMajor = parsed.major; seqMinor = parsed.minor;
-    if (seqMinor > 0) {
-      const parentExists = Object.values(issues).some(i => i.id!==editingId && i.seqMajor === seqMajor && (i.seqMinor||0) === 0);
-      if (!parentExists) { alert(`ვერ მოიძებნა ${String(seqMajor).padStart(3,'0')} საკითხი — ქვე-საკითხი მხოლოდ არსებული საკითხისთვის შეიძლება.`); return; }
+  const visibility = document.getElementById('fVisibility').value;
+  const wasDraft = existingIssue && existingIssue.visibility === 'draft';
+  const stayingDraft = visibility === 'draft';
+
+  let seqMajor = null, seqMinor = 0, assignFreshNumber = false;
+  if (!stayingDraft) {
+    if (editingId && wasDraft) {
+      // Transitioning OUT of draft — this is the one moment a number gets assigned.
+      assignFreshNumber = true;
+    } else {
+      const parsed = parseManualSeq(document.getElementById('fNum').value);
+      if (!parsed) { alert('ნომრის ფორმატი არასწორია (მაგ. 3 ან 2.1)'); return; }
+      seqMajor = parsed.major; seqMinor = parsed.minor;
+      if (seqMinor > 0) {
+        const parentExists = Object.values(issues).some(i => i.id!==editingId && i.seqMajor === seqMajor && (i.seqMinor||0) === 0);
+        if (!parentExists) { alert(`ვერ მოიძებნა ${String(seqMajor).padStart(3,'0')} საკითხი — ქვე-საკითხი მხოლოდ არსებული საკითხისთვის შეიძლება.`); return; }
+      }
+      const duplicate = Object.values(issues).some(i => i.id!==editingId && i.seqMajor === seqMajor && (i.seqMinor||0) === seqMinor);
+      if (duplicate) { alert('ეს ნომერი უკვე დაკავებულია — აირჩიე სხვა.'); return; }
     }
-    const duplicate = Object.values(issues).some(i => i.id!==editingId && i.seqMajor === seqMajor && (i.seqMinor||0) === seqMinor);
-    if (duplicate) { alert('ეს ნომერი უკვე დაკავებულია — აირჩიე სხვა.'); return; }
   }
   const data = {
     disc: document.getElementById('fDisc').value,
@@ -1417,11 +1484,16 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
     person: (currentSection==='internal' ? document.getElementById('fPersonText').value : document.getElementById('fPerson').value).trim(),
     images: pendingLinks.filter(u=>u.trim()),
     photos: pendingPhotos,
-    seqMajor, seqMinor,
+    visibility,
     updatedAt: serverTimestamp(),
   };
-  if (currentSection === 'internal') {
-    data.visibleToContractors = document.getElementById('fVisibleToContractors').checked;
+  if (!stayingDraft) {
+    if (assignFreshNumber) {
+      const maxMajor = Object.values(issues).reduce((m,i)=> i.seqMajor!=null ? Math.max(m,i.seqMajor) : m, 0);
+      data.seqMajor = maxMajor + 1; data.seqMinor = 0;
+    } else {
+      data.seqMajor = seqMajor; data.seqMinor = seqMinor;
+    }
   }
   const btn = document.getElementById('saveIssue');
   btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
@@ -1460,7 +1532,8 @@ async function copyIssueTo(id, targetSection, msg) {
     if (targetSection === currentSection) {
       maxMajor = Object.values(issues).reduce((m,i)=>Math.max(m,i.seqMajor||0),0);
     } else {
-      const snap = await getDocs(query(collection(db,'projects',currentProjectId,'issues'), where('section','==',targetSection)));
+      const safeStates = targetSection === 'internal' ? ['biograpi','everyone'] : ['everyone'];
+      const snap = await getDocs(query(collection(db,'projects',currentProjectId,'issues'), where('section','==',targetSection), where('visibility','in',safeStates)));
       snap.forEach(d => { maxMajor = Math.max(maxMajor, d.data().seqMajor||0); });
     }
     const crossSection = targetSection !== currentSection;
@@ -1470,12 +1543,12 @@ async function copyIssueTo(id, targetSection, msg) {
       title: issue.title, desc: issue.desc||'', person: crossSection ? '' : (issue.person||''),
       images: issue.images||[], photos: issue.photos||[],
       seqMajor: maxMajor+1, seqMinor: 0, section: targetSection,
+      visibility: 'everyone',
       date: new Date().toISOString().slice(0,10),
       createdAt: serverTimestamp(), commentCount: 0,
       createdBy: currentUser.uid, createdByName: currentUserName,
       duplicatedFrom: id
     };
-    if (targetSection === 'internal') newData.visibleToContractors = false;
     await setDoc(newRef, newData);
     showToast(targetSection===currentSection ? 'დუბლირებულია!' : `დუბლირებულია "${SECTION_LABEL[targetSection]}"-ში!`);
   } catch(e) { alert('შეცდომა: '+e.message); }
@@ -1655,7 +1728,7 @@ document.getElementById('detailDupToDMBtn').addEventListener('click', () => { du
 
 // ── NAVIGATION ──
 function goBackToSections() {
-  if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+  if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
   const pid = currentProjectId;
   currentProjectId = null; currentSection = null; currentRole = currentGlobalRole;
   document.getElementById('appScreen').style.display = 'none';
@@ -1966,7 +2039,7 @@ async function deleteProjectFully(pid, name) {
     try { await deleteDoc(doc(db,'projects',pid,'meta','counter')); } catch(e) { /* already gone, ignore */ }
     cm('projectModal');
     showToast('პროექტი წაიშალა');
-    if (unsubIssues) { unsubIssues(); unsubIssues = null; }
+    if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
     currentProjectId = null; currentRole = currentGlobalRole;
     await showProjects();
   } catch(e) {
@@ -1996,6 +2069,33 @@ document.getElementById('btnFixNames').addEventListener('click', async () => {
     }
     showToast(fixed ? `გასწორდა ${fixed} პროექტი` : 'ყველა სახელი უკვე სწორი იყო');
     await showProjects();
+  } catch(e) { alert('შეცდომა: '+e.message); }
+  btn.disabled = false; btn.textContent = origText;
+});
+document.getElementById('btnFixVisibility').addEventListener('click', async () => {
+  if (!confirm('გადავამოწმო ყველა პროექტის ყველა საკითხი და მივანიჭო ხილვადობის მნიშვნელობა მათ, ვისაც ჯერ არა აქვს (ძველი საკითხები)? გაუშვი ეს მხოლოდ ერთხელ, სასურველია ახლავე, სანამ ვინმე ახალ დრაფტს შექმნის.')) return;
+  const btn = document.getElementById('btnFixVisibility');
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'მუშავდება...';
+  try {
+    const projSnap = await getDocs(collection(db,'projects'));
+    let fixed = 0;
+    for (const pDoc of projSnap.docs) {
+      const issuesSnap = await getDocs(collection(db,'projects',pDoc.id,'issues'));
+      for (const iDoc of issuesSnap.docs) {
+        const i = iDoc.data();
+        if (i.visibility) continue; // already migrated
+        let newVisibility;
+        if (i.section === 'review') {
+          newVisibility = 'everyone';
+        } else {
+          newVisibility = i.visibleToContractors === true ? 'everyone' : 'biograpi';
+        }
+        await updateDoc(doc(db,'projects',pDoc.id,'issues',iDoc.id), { visibility: newVisibility });
+        fixed++;
+      }
+    }
+    showToast(fixed ? `გასწორდა ${fixed} საკითხი` : 'ყველა საკითხს უკვე ჰქონდა ხილვადობა მინიჭებული');
   } catch(e) { alert('შეცდომა: '+e.message); }
   btn.disabled = false; btn.textContent = origText;
 });
