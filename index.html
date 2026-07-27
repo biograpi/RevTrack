@@ -201,6 +201,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .modal-overlay.open{display:flex}
 .modal{background:white;border-radius:10px;width:100%;max-width:680px;box-shadow:var(--shadow-md);margin:auto;overflow:hidden}
 .modal-header{background:var(--ink);color:white;padding:15px 20px;display:flex;align-items:center;justify-content:space-between}
+.detail-header-nav{display:flex;align-items:center;gap:8px;min-width:0}
+.detail-header-nav h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.detail-nav-btn{background:rgba(255,255,255,.12);border:none;color:white;width:26px;height:26px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;line-height:1}
+.detail-nav-btn:hover:not(:disabled){background:rgba(255,255,255,.25)}
+.detail-nav-btn:disabled{opacity:.25;cursor:not-allowed}
 .modal-header h2{font-size:15px;font-weight:500}
 .modal-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;line-height:1;padding:0 4px}
 .modal-close:hover{color:white}
@@ -501,7 +506,14 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <!-- Detail -->
 <div class="modal-overlay" id="detailModal">
   <div class="modal" style="max-width:720px">
-    <div class="modal-header"><h2 id="detailTitle">საკითხი</h2><button class="modal-close" onclick="cm('detailModal')">✕</button></div>
+    <div class="modal-header">
+      <div class="detail-header-nav">
+        <button class="detail-nav-btn" id="detailPrevBtn" title="წინა საკითხი (←)">‹</button>
+        <h2 id="detailTitle">საკითხი</h2>
+        <button class="detail-nav-btn" id="detailNextBtn" title="შემდეგი საკითხი (→)">›</button>
+      </div>
+      <button class="modal-close" onclick="cm('detailModal')">✕</button>
+    </div>
     <div class="modal-body" id="detailBody"></div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="cm('detailModal')">დახურვა</button>
@@ -700,6 +712,25 @@ document.addEventListener('keydown', e => {
   if (document.getElementById('lightboxModal').classList.contains('open')) return;
   const openModal = document.querySelector('.modal-overlay.open');
   if (openModal) cm(openModal.id);
+});
+// ← → move between issues while the detail view is open (stops at the ends, no wrap-around).
+function navigateDetail(dir) {
+  const navList = sorted(filtered());
+  const idx = navList.findIndex(i => i.id === currentDetailId);
+  if (idx === -1) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= navList.length) return;
+  openDetail(navList[newIdx].id);
+}
+document.getElementById('detailPrevBtn').addEventListener('click', () => navigateDetail(-1));
+document.getElementById('detailNextBtn').addEventListener('click', () => navigateDetail(1));
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('detailModal').classList.contains('open')) return;
+  if (document.getElementById('lightboxModal').classList.contains('open')) return; // lightbox's own arrows take priority
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return; // don't hijack arrows while typing
+  if (e.key === 'ArrowLeft') navigateDetail(-1);
+  else if (e.key === 'ArrowRight') navigateDetail(1);
 });
 const initials = n => (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
 
@@ -1589,6 +1620,10 @@ document.getElementById('btnAddLink').addEventListener('click', () => {
 async function openDetail(id) {
   const issue = issues[id]; if(!issue) return;
   currentDetailId = id;
+  const navList = sorted(filtered());
+  const navIndex = navList.findIndex(i => i.id === id);
+  document.getElementById('detailPrevBtn').disabled = navIndex <= 0;
+  document.getElementById('detailNextBtn').disabled = navIndex === -1 || navIndex >= navList.length-1;
   const canEdit = isAdminLike() || issue.createdBy===currentUser?.uid;
   const canComment = true;
   const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
