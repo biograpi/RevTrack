@@ -529,6 +529,16 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <div class="modal-overlay" id="usersModal">
   <div class="modal" style="max-width:720px">
     <div class="modal-header"><h2>👥 ყველა მომხმარებელი</h2><button class="modal-close" onclick="cm('usersModal')">✕</button></div>
+    <div style="padding:14px 20px 0">
+      <select id="usersRoleFilter" style="width:100%;border:1px solid var(--rule);border-radius:var(--r);padding:8px;font-family:inherit;font-size:13px">
+        <option value="">ყველა როლი</option>
+        <option value="admin">Admin</option>
+        <option value="reviewer">რევიზორი</option>
+        <option value="design_manager">დიზაინ მენეჯერი</option>
+        <option value="contractor">კონტრაქტორი</option>
+        <option value="viewer">User</option>
+      </select>
+    </div>
     <div class="modal-body" id="usersPanel" style="max-height:60vh;overflow-y:auto">იტვირთება...</div>
     <div class="modal-footer"><button class="btn-secondary" onclick="cm('usersModal')">დახურვა</button></div>
   </div>
@@ -1882,10 +1892,10 @@ async function loadAllUsers() {
     showToast('შეცდომა: ' + e.message);
   }
 }
-document.getElementById('btnGlobalUsers').addEventListener('click', async () => {
-  await loadAllUsers();
+function renderUsersPanel() {
   const panel = document.getElementById('usersPanel');
-  const users = Object.values(allUsers);
+  const roleFilter = document.getElementById('usersRoleFilter').value;
+  const users = Object.values(allUsers).filter(u => !roleFilter || u.role === roleFilter);
   panel.innerHTML = users.length ? users.map(u => `
     <div class="user-row-wrap">
       <div class="user-row">
@@ -1915,6 +1925,11 @@ document.getElementById('btnGlobalUsers').addEventListener('click', async () => 
         <input type="text" value="${esc(u.statusLabel||'')}" placeholder="მაგ. DM, PM, TT..." onchange="updateUserLabel('${u.id}',this.value)">
       </div>`:''}
     </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">მომხმარებელი არ არის</div>';
+}
+document.getElementById('usersRoleFilter').addEventListener('change', renderUsersPanel);
+document.getElementById('btnGlobalUsers').addEventListener('click', async () => {
+  await loadAllUsers();
+  renderUsersPanel();
   om('usersModal');
 });
 window.updateUserLabel = async (uid, label) => {
