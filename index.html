@@ -898,11 +898,20 @@ window.showProjectSections = async function(pid) {
   ['review','internal'].forEach(async sec => {
     const el = document.getElementById(`pcount-${sec}`);
     if (!el) return;
+    const visStates = (sec === 'internal' && currentGlobalRole !== 'contractor') ? ['biograpi','everyone'] : ['everyone'];
+    const fetchCount = () => getCountFromServer(query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates))).then(s=>s.data().count);
     try {
-      const visStates = (sec === 'internal' && currentGlobalRole !== 'contractor') ? ['biograpi','everyone'] : ['everyone'];
-      const countSnap = await getCountFromServer(query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates)));
-      el.textContent = countSnap.data().count;
-    } catch(e) { el.textContent = '0'; }
+      el.textContent = await fetchCount();
+    } catch(e) {
+      console.warn(`count fetch failed for "${sec}", retrying once in a moment:`, e);
+      try {
+        await new Promise(r => setTimeout(r, 900));
+        el.textContent = await fetchCount();
+      } catch(e2) {
+        console.error(`count fetch failed again for "${sec}" — showing 0:`, e2);
+        el.textContent = '0';
+      }
+    }
   });
 }
 
