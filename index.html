@@ -673,6 +673,7 @@ let editingId = null;
 let pendingLinks = [];
 let pendingPhotos = [];
 let originalPhotos = [];
+let photosToDeleteOnSave = []; // removed during editing, but the actual Storage file is only deleted once the form is truly saved
 let currentIssueStorageId = null;
 let currentDetailId = null;
 let sortCol = 'num', sortDir = 'asc';
@@ -1357,7 +1358,7 @@ document.getElementById('fVisibility').addEventListener('change', updateNumField
 async function openAdd() {
   editingId = null; pendingLinks = [];
   currentIssueStorageId = doc(collection(db,'projects',currentProjectId,'issues')).id;
-  pendingPhotos = []; originalPhotos = [];
+  pendingPhotos = []; originalPhotos = []; photosToDeleteOnSave = [];
   document.getElementById('modalTitle').textContent = 'ახალი საკითხი';
   const fNumEl = document.getElementById('fNum');
   fNumEl.readOnly = false;
@@ -1386,7 +1387,7 @@ function openEdit(id) {
   const issue = issues[id]; if(!issue) return;
   editingId = id; pendingLinks = [...(issue.images||[])];
   currentIssueStorageId = id;
-  pendingPhotos = [...(issue.photos||[])]; originalPhotos = [...pendingPhotos];
+  pendingPhotos = [...(issue.photos||[])]; originalPhotos = [...pendingPhotos]; photosToDeleteOnSave = [];
   document.getElementById('modalTitle').textContent = 'საკითხის რედაქტირება';
   const fNumEl = document.getElementById('fNum');
   fNumEl.readOnly = false; fNumEl.style.background = 'white'; fNumEl.style.cursor = 'text';
@@ -1435,13 +1436,20 @@ function renderPhotoThumbs() {
   c.innerHTML = pendingPhotos.map((url,i) => `
     <div class="photo-thumb"><img src="${url}" onclick="window.open('${url}','_blank')"><button type="button" class="photo-rm" data-i="${i}">✕</button></div>
   `).join('');
-  c.querySelectorAll('.photo-rm').forEach(b => b.addEventListener('click', async e => {
+  c.querySelectorAll('.photo-rm').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
     const i = +b.dataset.i;
     const url = pendingPhotos[i];
     pendingPhotos.splice(i,1);
     renderPhotoThumbs();
-    try { await deleteObject(storageRef(storage, url)); } catch(err) { /* already gone or never existed, ignore */ }
+    if (originalPhotos.includes(url)) {
+      // Part of the already-saved issue — only delete the real file once
+      // this edit is actually saved, so cancelling leaves it untouched.
+      photosToDeleteOnSave.push(url);
+    } else {
+      // Uploaded during this session and never saved yet — safe to remove now.
+      deleteObject(storageRef(storage, url)).catch(()=>{});
+    }
   }));
 }
 async function uploadPhotoFile(file) {
@@ -1485,7 +1493,10 @@ document.addEventListener('paste', e => {
 });
 window.cancelIssueModal = async () => {
   // Clean up any photos uploaded during this session that were never saved.
+  // Photos marked in photosToDeleteOnSave (removed from an EXISTING issue during
+  // this edit) are deliberately left untouched — cancelling should not delete them.
   const toRemove = pendingPhotos.filter(u => !originalPhotos.includes(u));
+  photosToDeleteOnSave = [];
   cm('issueModal');
   for (const url of toRemove) { try { await deleteObject(storageRef(storage, url)); } catch(e) {} }
 };
@@ -1549,6 +1560,8 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
       data.createdBy = currentUser.uid; data.createdByName = currentUserName;
       await setDoc(doc(db,'projects',currentProjectId,'issues',currentIssueStorageId), data);
     }
+    for (const url of photosToDeleteOnSave) { try { await deleteObject(storageRef(storage, url)); } catch(e) {} }
+    photosToDeleteOnSave = [];
     cm('issueModal'); showToast(editingId?'განახლდა!':'საკითხი დაემატა!');
   } catch(e) { alert('შეცდომა: '+e.message); }
   btn.innerHTML = 'შენახვა'; btn.disabled = false;
