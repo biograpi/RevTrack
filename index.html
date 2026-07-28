@@ -47,18 +47,9 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
-.project-card{background:transparent;border:2px solid var(--card-color, rgba(255,255,255,.3));border-radius:10px;padding:20px;cursor:pointer;transition:border-color .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
+.project-card{background:transparent;border:2px solid var(--card-color, rgba(255,255,255,.3));border-radius:10px;padding:20px;cursor:pointer;transition:background .3s ease .12s, border-color .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
 .project-card-body{position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
-.project-card:hover{animation:cardFlicker .5s steps(1) forwards}
-@keyframes cardFlicker{
-  0%   { background: transparent; }
-  12%  { background: color-mix(in srgb, var(--card-color) 30%, transparent); }
-  24%  { background: transparent; }
-  36%  { background: color-mix(in srgb, var(--card-color) 50%, transparent); }
-  48%  { background: transparent; }
-  60%  { background: var(--card-color); }
-  100% { background: var(--card-color); }
-}
+.project-card:hover{background:var(--card-color)}
 /* Section cards (inside a project) are always solid — no outline/flicker,
    but darken the text on hover for contrast/feedback like before. */
 .project-card.project-card-filled{background:var(--card-color);animation:none}
@@ -529,8 +520,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <div class="modal-overlay" id="usersModal">
   <div class="modal" style="max-width:720px">
     <div class="modal-header"><h2>👥 ყველა მომხმარებელი</h2><button class="modal-close" onclick="cm('usersModal')">✕</button></div>
-    <div style="padding:14px 20px 0">
-      <select id="usersRoleFilter" style="width:100%;border:1px solid var(--rule);border-radius:var(--r);padding:8px;font-family:inherit;font-size:13px">
+    <div style="padding:14px 20px 0;display:flex;align-items:center;gap:10px">
+      <select id="usersRoleFilter" style="flex:1;border:1px solid var(--rule);border-radius:var(--r);padding:8px;font-family:inherit;font-size:13px">
         <option value="">ყველა როლი</option>
         <option value="admin">Admin</option>
         <option value="reviewer">რევიზორი</option>
@@ -538,6 +529,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <option value="contractor">კონტრაქტორი</option>
         <option value="viewer">User</option>
       </select>
+      <span id="usersTotalCount" style="font-size:12px;color:var(--ink-light);white-space:nowrap"></span>
     </div>
     <div class="modal-body" id="usersPanel" style="max-height:60vh;overflow-y:auto">იტვირთება...</div>
     <div class="modal-footer"><button class="btn-secondary" onclick="cm('usersModal')">დახურვა</button></div>
@@ -1895,6 +1887,8 @@ async function loadAllUsers() {
 function renderUsersPanel() {
   const panel = document.getElementById('usersPanel');
   const roleFilter = document.getElementById('usersRoleFilter').value;
+  const allCount = Object.keys(allUsers).length;
+  document.getElementById('usersTotalCount').textContent = `სულ დარეგისტრირებულია: ${allCount}`;
   const users = Object.values(allUsers).filter(u => !roleFilter || u.role === roleFilter);
   panel.innerHTML = users.length ? users.map(u => `
     <div class="user-row-wrap">
