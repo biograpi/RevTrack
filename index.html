@@ -1605,10 +1605,31 @@ async function copyIssueTo(id, targetSection, msg) {
     }
     const crossSection = targetSection !== currentSection;
     const newRef = doc(collection(db,'projects',currentProjectId,'issues'));
+
+    // Actually duplicate each photo FILE (not just its URL) — otherwise the
+    // copy and the original point at the exact same Storage object, and
+    // deleting either one later breaks the other.
+    let newPhotoUrls = [];
+    if (issue.photos && issue.photos.length) {
+      showToast('სურათების კოპირება...');
+      newPhotoUrls = (await Promise.all(issue.photos.map(async url => {
+        try {
+          const blob = await (await fetch(url)).blob();
+          const path = `projects/${currentProjectId}/issues/${newRef.id}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
+          const ref = storageRef(storage, path);
+          await uploadBytes(ref, blob);
+          return await getDownloadURL(ref);
+        } catch(photoErr) {
+          console.warn('photo copy failed, skipping this one:', photoErr);
+          return null;
+        }
+      }))).filter(Boolean);
+    }
+
     const newData = {
       disc: issue.disc, priority: !!issue.priority, status: 'active',
       title: issue.title, desc: issue.desc||'', person: crossSection ? '' : (issue.person||''),
-      images: issue.images||[], photos: issue.photos||[],
+      images: issue.images||[], photos: newPhotoUrls,
       seqMajor: maxMajor+1, seqMinor: 0, section: targetSection,
       visibility: 'everyone',
       date: new Date().toISOString().slice(0,10),
