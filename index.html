@@ -140,7 +140,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .photo-gallery-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .15s}
 .photo-gallery-item:hover img{transform:scale(1.08)}
 .lightbox-content{position:relative;display:flex;align-items:center;justify-content:center;width:100%;max-width:1100px;margin:auto}
-.lightbox-content img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px}
+.lightbox-content img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;transition:transform .12s ease-out;cursor:zoom-in}
 .lightbox-close{position:absolute;top:-44px;right:0;background:rgba(255,255,255,.1);border:none;color:white;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer}
 .lightbox-close:hover{background:rgba(255,255,255,.2)}
 .lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.1);border:none;color:white;width:48px;height:48px;border-radius:50%;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -689,11 +689,19 @@ const om = id => document.getElementById(id).classList.add('open');
 // ── PHOTO LIGHTBOX ──
 let lightboxPhotos = [];
 let lightboxIndex = 0;
+let lightboxZoom = 1;
+function resetLightboxZoom() {
+  lightboxZoom = 1;
+  const img = document.getElementById('lightboxImg');
+  img.style.transform = 'scale(1)';
+  img.style.cursor = 'zoom-in';
+}
 function updateLightboxUI() {
   document.getElementById('lightboxImg').src = lightboxPhotos[lightboxIndex];
   document.getElementById('lightboxCounter').textContent = `${lightboxIndex+1} / ${lightboxPhotos.length}`;
   document.getElementById('lightboxPrevBtn').disabled = lightboxIndex <= 0;
   document.getElementById('lightboxNextBtn').disabled = lightboxIndex >= lightboxPhotos.length-1;
+  resetLightboxZoom();
 }
 window.openLightbox = (photos, index) => {
   lightboxPhotos = photos; lightboxIndex = index;
@@ -707,6 +715,21 @@ window.lightboxNav = dir => {
   lightboxIndex = newIndex;
   updateLightboxUI();
 };
+document.getElementById('lightboxImg').addEventListener('wheel', e => {
+  e.preventDefault();
+  const img = e.currentTarget;
+  const rect = img.getBoundingClientRect();
+  const originX = ((e.clientX - rect.left) / rect.width) * 100;
+  const originY = ((e.clientY - rect.top) / rect.height) * 100;
+  img.style.transformOrigin = `${originX}% ${originY}%`;
+  lightboxZoom = Math.min(4, Math.max(1, lightboxZoom + (e.deltaY < 0 ? 0.3 : -0.3)));
+  img.style.transform = `scale(${lightboxZoom})`;
+  img.style.cursor = lightboxZoom > 1 ? 'zoom-out' : 'zoom-in';
+}, { passive: false });
+document.getElementById('lightboxImg').addEventListener('click', e => {
+  e.stopPropagation();
+  if (lightboxZoom > 1) resetLightboxZoom();
+});
 document.addEventListener('keydown', e => {
   if (!document.getElementById('lightboxModal').classList.contains('open')) return;
   if (e.key === 'ArrowLeft') lightboxNav(-1);
@@ -1073,7 +1096,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
   const origText = btn.textContent;
   btn.disabled = true; btn.textContent = 'მუშავდება...';
   try {
-    const allIssues = filtered().sort((a,b) => (a.seqMajor-b.seqMajor) || ((a.seqMinor||0)-(b.seqMinor||0)));
+    const allIssues = sorted(filtered());
 
     const issueRows = allIssues.map(i => ({
       num: formatIssueNum(i.seqMajor, i.seqMinor), disc: discL[i.disc]||i.disc||'', title: i.title||'', desc: i.desc||'',
