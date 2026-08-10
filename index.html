@@ -1145,9 +1145,12 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
 
     const xlsxBuffer = await wb.xlsx.writeBuffer();
     const safeName = (currentProjectData?.name || 'პროექტი').replace(/[\\\/*?:[\]]/g,'').slice(0,30);
+    const dateStr = new Date().toISOString().slice(0,10);
+    const sectionTag = currentSection === 'internal' ? 'DM' : 'rev';
+    const baseName = `${dateStr}_${safeName}-${sectionTag}`;
 
     const zip = new JSZip();
-    zip.file(`${safeName}.xlsx`, xlsxBuffer);
+    zip.file(`${baseName}.xlsx`, xlsxBuffer);
     const photosFolder = zip.folder('photos');
     let photoFetchFailures = 0;
     for (const iss of allIssues) {
@@ -1165,7 +1168,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
     const zipBlob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
-    a.href = url; a.download = `${safeName}_${new Date().toISOString().slice(0,10)}.zip`;
+    a.href = url; a.download = `${baseName}.zip`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
     if (photoFetchFailures) showToast(`გაფრთხილება: ${photoFetchFailures} სურათი ვერ ჩაიტვირთა`);
