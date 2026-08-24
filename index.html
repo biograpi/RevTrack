@@ -282,29 +282,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
 .spinner-dark{display:inline-block;width:18px;height:18px;border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:700px){
-  .form-grid,.detail-grid{grid-template-columns:1fr}
-  .stats-row{display:none}
-  .search-box{width:140px}
-
-  /* ── issue list becomes a stacked card view on narrow screens ── */
-  .issue-header-row{display:none}
-  .issues-wrap{padding:0 10px 16px}
-  .issue-row{border-radius:var(--r);border:1px solid var(--rule);margin-bottom:10px}
-  .issue-row.closed{border-color:var(--ok)}
-  .issue-row.active{border-color:var(--carrot)}
-  .issue-row-muted.closed{border-color:rgba(22,163,74,.25)}
-  .issue-row-muted.active{border-color:rgba(255,145,66,.25)}
-  .issue-grid-row{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:14px;min-height:0}
-  .issue-num-cell,.issue-title-cell,.action-cell{grid-column:1 / -1}
-  .issue-title-cell{white-space:normal;overflow:visible;font-size:15px}
-  .issue-num-cell{font-size:13px}
-  .issue-row.sub-issue .issue-num-cell,.issue-row.sub-issue .issue-title-cell{padding-left:14px}
-  .issue-grid-row>div[data-label]{overflow:visible;white-space:normal}
-  .issue-grid-row>div[data-label]::before{content:attr(data-label);display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-light);margin-bottom:3px}
-  .issue-photo-cell,.issue-priority-cell{justify-content:flex-start}
-  .action-cell{justify-content:flex-end;border-top:1px solid var(--rule);padding-top:10px;margin-top:2px}
-}
 </style>
 </head>
 <body>
@@ -1445,7 +1422,7 @@ function openEdit(id) {
 document.getElementById('btnAddIssue').addEventListener('click', openAdd);
 
 // ── PHOTOS (screenshots) ──
-function compressImage(file, maxDim = 2400, quality = 0.94) {
+function compressImage(file, maxDim = 4000, quality = 0.90) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('ფაილის წაკითხვა ჩავარდა'));
