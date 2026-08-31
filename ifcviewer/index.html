@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="ka">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Biograpi OpenBIM Viewer</title>
+    <style>
+      html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; background: #1a1a1a; }
+      #app { display: flex; height: 100%; }
+      #viewer-container { flex: 1; position: relative; }
+      #sidebar {
+        width: 280px;
+        background: #212121;
+        color: #eee;
+        padding: 16px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        border-right: 1px solid #333;
+      }
+      #sidebar h1 { font-size: 15px; margin: 0 0 4px; }
+      #sidebar p.hint { font-size: 12px; color: #999; margin: 0 0 16px; }
+      #upload-zone {
+        border: 2px dashed #555;
+        border-radius: 8px;
+        padding: 20px 10px;
+        text-align: center;
+        cursor: pointer;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: #bbb;
+      }
+      #upload-zone.dragover { border-color: #4da3ff; color: #4da3ff; background: #1c2733; }
+      #file-input { display: none; }
+      #layer-list { list-style: none; padding: 0; margin: 0; }
+      #layer-list li {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 6px;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      #layer-list li:hover { background: #2a2a2a; }
+      #layer-list .swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+      #layer-list .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #layer-list .count { color: #888; font-size: 11px; }
+      #layer-list .layer-opacity { width: 48px; flex-shrink: 0; }
+      #layer-list .export-frag-btn { flex-shrink: 0; background: #2a2a2a; border: 1px solid #444; color: #ccc; border-radius: 4px; width: 22px; height: 22px; cursor: pointer; font-size: 12px; }
+      #layer-list .export-frag-btn:hover:not(:disabled) { background: #3a3a3a; color: #fff; }
+      #layer-list .export-frag-btn:disabled { opacity: .5; cursor: default; }
+      #status { font-size: 12px; color: #4da3ff; min-height: 16px; margin-top: 10px; }
+      #loading-overlay {
+        position: absolute; inset: 0;
+        display: none;
+        align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.5);
+        color: #fff; font-size: 14px;
+      }
+      #properties-panel {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 320px;
+        max-height: calc(100% - 32px);
+        overflow-y: auto;
+        background: rgba(24,24,24,0.94);
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        color: #eee;
+        font-size: 12px;
+        display: none;
+      }
+      #properties-panel.visible { display: block; }
+      #properties-panel .pp-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 12px;
+        border-bottom: 1px solid #3a3a3a;
+        position: sticky; top: 0;
+        background: rgba(24,24,24,0.98);
+      }
+      #properties-panel .pp-header .pp-class {
+        font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+        color: #4da3ff; margin-bottom: 2px;
+      }
+      #properties-panel .pp-header .pp-name { font-size: 14px; font-weight: 600; }
+      #properties-panel .pp-close {
+        cursor: pointer; color: #999; font-size: 18px; line-height: 1; padding: 2px 6px;
+        border-radius: 4px; flex-shrink: 0;
+      }
+      #properties-panel .pp-close:hover { background: #333; color: #fff; }
+      #properties-panel .pp-body { padding: 8px 12px 14px; }
+      #properties-panel .pp-attr-row {
+        display: flex; justify-content: space-between; gap: 10px;
+        padding: 3px 0; border-bottom: 1px solid #2a2a2a;
+      }
+      #properties-panel .pp-attr-row .k { color: #999; flex-shrink: 0; }
+      #properties-panel .pp-attr-row .v { text-align: right; word-break: break-word; }
+      #properties-panel .pp-pset-title {
+        margin: 12px 0 4px; font-size: 11px; font-weight: 600; color: #f2d94e;
+        text-transform: uppercase; letter-spacing: 0.03em;
+      }
+      #properties-panel .pp-empty { color: #888; padding: 10px 12px; }
+      #properties-panel .pp-actions {
+        display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+        border-bottom: 1px solid #3a3a3a;
+      }
+      #properties-panel .pp-actions button {
+        flex: 1 1 auto; min-width: 88px; font-size: 11px; padding: 6px 4px; border-radius: 5px;
+        border: 1px solid #444; background: #2a2a2a; color: #ccc; cursor: pointer;
+      }
+      #properties-panel .pp-actions button:hover { background: #363636; }
+      #properties-panel .pp-actions .pp-count {
+        font-size: 11px; color: #888; padding: 6px 4px 2px; text-align: center; flex-shrink: 0; width: 100%;
+      }
+      #viewer-container.has-hint::after {
+        content: "დააკლიკეთ ელემენტს — ინფოს ნახვისთვის";
+        /* sits in its own band above #nav-toolbar's row, so a centered
+           viewport doesn't run text into the nav buttons */
+        position: absolute; bottom: 58px; left: 50%; transform: translateX(-50%);
+        font-size: 11px; color: #888; background: rgba(0,0,0,0.5);
+        padding: 4px 10px; border-radius: 12px; pointer-events: none;
+      }
+      #sidebar h2 {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+        color: #888; margin: 20px 0 8px; padding-top: 12px; border-top: 1px solid #333;
+      }
+      #sidebar h2:first-of-type { border-top: none; padding-top: 0; }
+      #type-list { list-style: none; padding: 0; margin: 0; max-height: 260px; overflow-y: auto; }
+      #type-list li {
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 6px; border-radius: 6px; font-size: 12px;
+        cursor: pointer;
+      }
+      #type-list li:hover { background: #2a2a2a; }
+      #type-list li.selected {
+        background: rgba(77,163,255,0.16);
+        box-shadow: inset 2px 0 0 #4da3ff;
+      }
+      #type-list li.selected:hover { background: rgba(77,163,255,0.24); }
+      #type-list .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #type-list .count { color: #777; font-size: 11px; }
+      #type-list .type-color {
+        width: 16px; height: 16px; padding: 0; border: 1px solid #444; border-radius: 3px;
+        background: transparent; cursor: pointer; flex-shrink: 0;
+      }
+      #type-list .type-color::-webkit-color-swatch-wrapper { padding: 1px; }
+      #type-list .type-color::-webkit-color-swatch { border: none; border-radius: 2px; }
+      #type-file-scope {
+        width: 100%; box-sizing: border-box; font-size: 12px; padding: 6px 8px;
+        margin-bottom: 8px; border-radius: 5px; border: 1px solid #444;
+        background: #2a2a2a; color: #ccc; cursor: pointer;
+      }
+      #type-actions { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+      #type-actions button {
+        flex: 1; font-size: 11px; padding: 5px 4px; border-radius: 5px;
+        border: 1px solid #444; background: #2a2a2a; color: #ccc; cursor: pointer;
+      }
+      #type-actions button:hover { background: #363636; }
+      #type-empty-hint { font-size: 11px; color: #777; }
+
+      #clash-upload-zone {
+        border: 2px dashed #555; border-radius: 8px; padding: 12px 10px;
+        text-align: center; cursor: pointer; margin-bottom: 8px;
+        font-size: 12px; color: #bbb;
+      }
+      #clash-upload-zone.dragover { border-color: #ff5f5f; color: #ff8080; background: #2a1c1c; }
+      #clash-input { display: none; }
+      #clash-summary { font-size: 11px; color: #999; margin-bottom: 8px; min-height: 14px; }
+      #clash-actions { display: flex; gap: 6px; margin-bottom: 8px; }
+      #clash-actions button {
+        flex: 1; font-size: 11px; padding: 5px 4px; border-radius: 5px;
+        border: 1px solid #444; background: #2a2a2a; color: #ccc; cursor: pointer;
+      }
+      #clash-actions button:hover { background: #363636; }
+      #clash-list { list-style: none; padding: 0; margin: 0; max-height: 260px; overflow-y: auto; }
+      #clash-list li {
+        display: flex; flex-direction: column; gap: 2px;
+        padding: 6px 8px; border-radius: 6px; margin-bottom: 3px;
+        font-size: 12px; cursor: pointer; background: #262020;
+        border-left: 3px solid transparent;
+      }
+      #clash-list li:hover { background: #302626; }
+      #clash-list li.active { border-left-color: #ff5f5f; background: rgba(255,95,95,0.14); }
+      #clash-list li.unresolved { opacity: 0.45; cursor: not-allowed; }
+      #clash-list .clash-pair { display: flex; align-items: center; gap: 5px; font-weight: 600; }
+      #clash-list .clash-x { color: #888; font-weight: 400; }
+      #clash-list .clash-meta { display: flex; justify-content: space-between; gap: 6px; font-size: 10.5px; color: #999; }
+      #clash-list .clash-files { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #clash-list .clash-dist { flex-shrink: 0; color: #ff9f9f; font-family: monospace; }
+
+      .visual-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #ccc; margin-bottom: 10px; }
+      .visual-row label { display: flex; align-items: center; gap: 6px; flex-shrink: 0; cursor: pointer; }
+      .visual-row input[type="range"] { flex: 1; }
+
+      #section-toolbar {
+        position: absolute; top: 16px; left: 16px;
+        display: flex; gap: 6px; align-items: center;
+      }
+      #section-toolbar button {
+        font-size: 12px; padding: 7px 12px; border-radius: 6px;
+        border: 1px solid #3a3a3a; background: rgba(24,24,24,0.9); color: #ccc;
+        cursor: pointer;
+      }
+      #section-toolbar button:hover { background: #2a2a2a; }
+      #section-toolbar button.active { background: #4da3ff; color: #111; border-color: #4da3ff; }
+      #section-hint {
+        position: absolute; top: 60px; left: 16px;
+        font-size: 11px; color: #888; background: rgba(0,0,0,0.5);
+        padding: 4px 10px; border-radius: 12px; display: none; max-width: 220px;
+      }
+      #section-hint.visible { display: block; }
+
+      #nav-toolbar {
+        /* left offset clears the free-tier "That Open Company" watermark
+           (0.75rem + 6rem wide) that the renderer draws in this same corner */
+        position: absolute; bottom: 16px; left: 130px;
+        display: flex; gap: 6px; align-items: center;
+      }
+      #nav-toolbar button {
+        font-size: 12px; padding: 7px 12px; border-radius: 6px;
+        border: 1px solid #3a3a3a; background: rgba(24,24,24,0.9); color: #ccc;
+        cursor: pointer;
+      }
+      #nav-toolbar button:hover { background: #2a2a2a; }
+      #nav-toolbar button.active { background: #4da3ff; color: #111; border-color: #4da3ff; }
+      #nav-toolbar .nav-sep { width: 1px; height: 18px; background: #3a3a3a; margin: 0 2px; }
+    </style>
+    <script type="module" crossorigin src="./assets/index-C1nz2vNs.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div id="sidebar">
+        <h1>Biograpi OpenBIM Viewer</h1>
+        <p class="hint">ატვირთეთ IFC ფაილი(ები) — თითო ფაილი ცალკე დისციპლინის ფენად ჩაითვლება</p>
+        <div id="upload-zone">
+          + IFC ფაილის ატვირთვა<br /><span style="font-size:11px">(.ifc, drag &amp; drop ან click)</span>
+        </div>
+        <input id="file-input" type="file" accept=".ifc" multiple />
+        <ul id="layer-list"></ul>
+        <div id="status"></div>
+
+        <h2>ვიზუალი</h2>
+        <div class="visual-row">
+          <label><input type="checkbox" id="shadow-toggle" /> ჩრდილები</label>
+        </div>
+        <div class="visual-row">
+          <label for="ambient-slider">განათება</label>
+          <input type="range" id="ambient-slider" min="0" max="5" step="0.1" value="1" />
+        </div>
+
+        <h2>ტიპების მიხედვით</h2>
+        <select id="type-file-scope" title="ტიპების სია და ქვემოთ მოქმედებები დაფილტრეთ კონკრეტულ ფაილზე">
+          <option value="">ყველა ფაილი</option>
+        </select>
+        <div id="type-actions">
+          <button id="type-show-all">ყველას ჩართვა</button>
+          <button id="type-hide-all">ყველას გამორთვა</button>
+          <button id="type-reset-colors">ფერების გასუფთავება</button>
+        </div>
+        <div id="type-empty-hint">ატვირთვის შემდეგ ტიპები აქ გამოჩნდება</div>
+        <ul id="type-list"></ul>
+
+        <h2>შეჯახებები (Clash)</h2>
+        <p class="hint" style="margin:0 0 8px;">ატვირთეთ backend სკრიპტით გამოთვლილი *_viewer.json ფაილი — clash რომელიმე მხარის ფაილი ვიუერში ჩატვირთული უნდა იყოს, რომ გამოკვეთვადი იყოს</p>
+        <div id="clash-upload-zone">+ Clash JSON-ის ატვირთვა</div>
+        <input id="clash-input" type="file" accept=".json" multiple />
+        <div id="clash-summary"></div>
+        <div id="clash-actions">
+          <button id="clash-clear-highlight">გამოკვეთის მოხსნა</button>
+          <button id="clash-clear-list">სიის გასუფთავება</button>
+        </div>
+        <ul id="clash-list"></ul>
+      </div>
+      <div id="viewer-container" class="has-hint">
+        <div id="loading-overlay">იტვირთება...</div>
+        <div id="section-toolbar">
+          <button id="section-toggle" title="ჭრილის რეჯიმი">✂ ჭრილი</button>
+          <button id="section-clear" title="ყველა ჭრილის გასუფთავება">გასუფთავება</button>
+        </div>
+        <div id="section-hint">ჭრილის რეჯიმი ჩართულია — დააჭერეთ ორმაგ click მოდელის ზედაპირზე, რომ ჭრილი შექმნათ. Delete/Backspace წაშლის ჭრილს (კურსორის ქვეშ).</div>
+        <div id="nav-toolbar">
+          <button id="nav-fit" title="მთელი მოდელის ჩატევა ხედში">⤢ ყველას ჩვენება</button>
+          <div class="nav-sep"></div>
+          <button id="nav-orbit" class="active" title="მაუსით ტრიალი მოდელის გარშემო">↻ ორბიტი</button>
+          <button id="nav-walk" title="პირველი პირის სიარული — მაუსის drag მოტრიალებს, wheel გადაადგილებთ წინ/უკან">🚶 სიარული</button>
+        </div>
+        <div id="properties-panel">
+          <div class="pp-header">
+            <div>
+              <div class="pp-class" id="pp-class"></div>
+              <div class="pp-name" id="pp-name"></div>
+            </div>
+            <div class="pp-close" id="pp-close">&times;</div>
+          </div>
+          <div class="pp-actions" id="pp-actions">
+            <button id="pp-isolate">იზოლაცია</button>
+            <button id="pp-isolate-category" title="დამალავს ყველაფერს, გარდა მონიშნული ობიექტ(ებ)ის კატეგორიისა">ტიპის იზოლაცია</button>
+            <button id="pp-hide">დამალვა</button>
+            <button id="pp-hide-category" title="დამალავს მონიშნული ობიექტ(ებ)ის მთელ კატეგორიას">ტიპის დამალვა</button>
+            <button id="pp-show-all">ყველას ჩვენება</button>
+            <div class="pp-count" id="pp-count"></div>
+          </div>
+          <div class="pp-body" id="pp-body"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
