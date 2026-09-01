@@ -859,6 +859,9 @@ onAuthStateChanged(auth, async user => {
   currentRole = role;
   currentGlobalRole = role;
 
+  // Record last-login time (admin-only visibility, shown in the users panel).
+  try { await updateDoc(doc(db,'users',user.uid), { lastLoginAt: serverTimestamp() }); } catch(e) {}
+
   // load all users for admin
   if (role === 'admin') await loadAllUsers();
 
@@ -1990,14 +1993,16 @@ function renderUsersPanel() {
   const allCount = Object.keys(allUsers).length;
   document.getElementById('usersTotalCount').textContent = `სულ დარეგისტრირებულია: ${allCount}`;
   const users = Object.values(allUsers).filter(u => !roleFilter || u.role === roleFilter);
+  const canManageUsers = isAdminLike();
   panel.innerHTML = users.length ? users.map(u => `
     <div class="user-row-wrap">
       <div class="user-row">
         <div class="user-info">
           <div class="ue">${esc(u.name)}</div>
           <div class="um">${esc(u.email)}</div>
+          <div class="um" style="opacity:.7">ბოლო შესვლა: ${u.lastLoginAt?.toDate ? u.lastLoginAt.toDate().toLocaleString('ka-GE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'უცნობია'}</div>
         </div>
-        ${u.role!=='admin'?`
+        ${!canManageUsers ? `<div style="grid-column:2 / -1;color:var(--ink-light);font-size:12px">${roleL[u.role]||u.role}</div>` : u.role!=='admin'?`
           <select onchange="changeUserRole('${u.id}',this.value)">
             <option value="reviewer" ${u.role==='reviewer'?'selected':''}>რევიზორი</option>
             <option value="design_manager" ${u.role==='design_manager'?'selected':''}>დიზაინ მენეჯერი</option>
@@ -2014,7 +2019,7 @@ function renderUsersPanel() {
           <button class="icon-btn del" title="მომხმარებლის წაშლა" onclick="deleteUser('${u.id}','${esc(u.name).replace(/'/g,"\\'")}')">${ICON_DELETE}</button>
         `:'<div style="grid-column:2 / -1;color:var(--accent);font-size:12px;font-weight:600">Admin</div>'}
       </div>
-      ${u.role==='viewer'?`<div class="user-label-row">
+      ${canManageUsers && u.role==='viewer'?`<div class="user-label-row">
         <span>ლეიბლი:</span>
         <input type="text" value="${esc(u.statusLabel||'')}" placeholder="მაგ. DM, PM, TT..." onchange="updateUserLabel('${u.id}',this.value)">
       </div>`:''}
