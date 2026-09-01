@@ -89,6 +89,8 @@
       }
       #properties-panel .pp-close:hover { background: #333; color: #fff; }
       #properties-panel .pp-body { padding: 8px 12px 14px; }
+      .pp-details-toggle { display: block; width: 100%; text-align: left; background: none; border: none; border-top: 1px solid #2a2a2a; color: #999; font-size: 11px; padding: 8px 12px; cursor: pointer; font-family: inherit; }
+      .pp-details-toggle:hover { color: #fff; background: #232323; }
       #properties-panel .pp-attr-row {
         display: flex; justify-content: space-between; gap: 10px;
         padding: 3px 0; border-bottom: 1px solid #2a2a2a;
@@ -113,6 +115,9 @@
       .pp-opacity-row label { flex-shrink: 0; width: 120px; }
       .pp-opacity-row input[type="range"] { flex: 1; }
       .pp-opacity-row span { flex-shrink: 0; width: 36px; text-align: right; color: #999; }
+      .pp-opacity-row input[type="color"] { flex: 1; height: 24px; padding: 0; border: 1px solid #3a3a3a; border-radius: 4px; background: none; cursor: pointer; }
+      #pp-color-reset { flex-shrink: 0; background: #2a2a2a; border: 1px solid #444; color: #ccc; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 13px; }
+      #pp-color-reset:hover { background: #3a3a3a; color: #fff; }
       #properties-panel .pp-actions .pp-count {
         font-size: 11px; color: #888; padding: 6px 4px 2px; text-align: center; flex-shrink: 0; width: 100%;
       }
@@ -229,7 +234,7 @@
       #nav-toolbar button.active { background: #4da3ff; color: #111; border-color: #4da3ff; }
       #nav-toolbar .nav-sep { width: 1px; height: 18px; background: #3a3a3a; margin: 0 2px; }
     </style>
-    <script type="module" crossorigin src="./assets/index-DjGsifj5.js"></script>
+    <script type="module" crossorigin src="./assets/index-IY3k9V2i.js"></script>
   </head>
   <body>
     <div id="app">
@@ -284,9 +289,6 @@
         <div id="section-hint">ჭრილის რეჯიმი ჩართულია — დააჭერეთ ორმაგ click მოდელის ზედაპირზე, რომ ჭრილი შექმნათ. Delete/Backspace წაშლის ჭრილს (კურსორის ქვეშ).</div>
         <div id="nav-toolbar">
           <button id="nav-fit" title="მთელი მოდელის ჩატევა ხედში">⤢ ყველას ჩვენება</button>
-          <div class="nav-sep"></div>
-          <button id="nav-orbit" class="active" title="მაუსით ტრიალი მოდელის გარშემო">↻ ორბიტი</button>
-          <button id="nav-walk" title="პირველი პირის სიარული — მაუსის drag მოტრიალებს, wheel გადაადგილებთ წინ/უკან">🚶 სიარული</button>
         </div>
         <div id="properties-panel">
           <div class="pp-header">
@@ -305,6 +307,11 @@
             <div class="pp-count" id="pp-count"></div>
           </div>
           <div class="pp-opacity-row">
+            <label for="pp-color-object">ფერი (ობიექტი)</label>
+            <input type="color" id="pp-color-object" value="#ffcc00" />
+            <button type="button" id="pp-color-reset" title="საკუთარი ფერის მოხსნა">↺</button>
+          </div>
+          <div class="pp-opacity-row">
             <label for="pp-opacity-object">გამჭვირვალობა (ობიექტი)</label>
             <input type="range" id="pp-opacity-object" min="0" max="100" value="100" />
             <span id="pp-opacity-object-val">100%</span>
@@ -314,7 +321,8 @@
             <input type="range" id="pp-opacity-type" min="0" max="100" value="100" />
             <span id="pp-opacity-type-val">100%</span>
           </div>
-          <div class="pp-body" id="pp-body"></div>
+          <button type="button" id="pp-details-toggle" class="pp-details-toggle">▸ დეტალები (ტიპი, თვისებები...)</button>
+          <div class="pp-body" id="pp-body" style="display:none"></div>
         </div>
       </div>
     </div>
