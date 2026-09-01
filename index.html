@@ -58,6 +58,8 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .project-card.project-card-filled:hover .project-card-meta,
 .project-card.project-card-filled:hover .project-card-creator,
 .project-card.project-card-filled:hover .section-label{color:var(--soft-black)!important}
+.project-card-disabled{cursor:not-allowed;opacity:.55}
+.project-card-disabled:hover{animation:none!important}
 .project-card-name{font-size:16px;font-weight:600;color:white;margin-bottom:2px}
 .section-label{font-size:11px;font-weight:500;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
 .project-card-meta{font-size:12px;color:rgba(255,255,255,.4)}
@@ -140,6 +142,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .photo-gallery-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .15s}
 .photo-gallery-item:hover img{transform:scale(1.08)}
 .lightbox-content{position:relative;display:flex;align-items:center;justify-content:center;width:100%;max-width:1100px;margin:auto}
+.ifc-viewer-shell{position:relative;width:100%;height:100%;display:flex}
+.ifc-viewer-shell iframe{width:100%;height:100%;border:none}
+.ifc-viewer-shell .lightbox-close{z-index:2}
+.ifc-viewer-back{position:absolute;top:14px;left:14px;z-index:2;background:rgba(255,255,255,.1);border:none;color:white;padding:8px 14px;border-radius:var(--r);font-size:13px;font-family:inherit;cursor:pointer}
+.ifc-viewer-back:hover{background:rgba(255,255,255,.2)}
 .lightbox-content img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;transition:transform .12s ease-out;cursor:zoom-in}
 .lightbox-close{position:absolute;top:-44px;right:0;background:rgba(255,255,255,.1);border:none;color:white;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer}
 .lightbox-close:hover{background:rgba(255,255,255,.2)}
@@ -555,6 +562,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <input id="memberSearch" placeholder="მომხმარებლის ძებნა...">
       </div>
       <div class="member-list" id="memberList"></div>
+
+      <div class="detail-label" style="margin-bottom:8px;margin-top:16px">IFC ვიუერის ფაილები</div>
+      <div id="ifcFilesList" style="margin-bottom:8px"></div>
+      <input type="file" id="ifcFileInput" accept=".frag" style="display:none">
+      <button type="button" class="btn-add-link" id="btnAddIfcFile">+ Fragments ფაილის ატვირთვა (.frag)</button>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" id="btnDeleteProject" style="display:none;color:var(--warn);border-color:var(--warn-lo);margin-right:auto">🗑 პროექტის წაშლა</button>
@@ -585,6 +597,14 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 
 <!-- Photo Lightbox -->
+<div class="modal-overlay" id="ifcViewerModal" style="background:rgba(10,8,12,.96)">
+  <div class="ifc-viewer-shell">
+    <button class="ifc-viewer-back" onclick="closeIfcViewer()">← უკან დაბრუნება</button>
+    <button class="lightbox-close" onclick="closeIfcViewer()">✕</button>
+    <iframe id="ifcViewerFrame" title="IFC ვიუერი" allow="fullscreen"></iframe>
+  </div>
+</div>
+
 <div class="modal-overlay" id="lightboxModal" style="background:rgba(10,8,12,.92)">
   <div class="lightbox-content">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
@@ -603,7 +623,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
-  onSnapshot, orderBy, query, serverTimestamp, increment, where, getCountFromServer }
+  onSnapshot, orderBy, query, serverTimestamp, increment, where, getCountFromServer, Timestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -686,6 +706,18 @@ window.openLightbox = (photos, index) => {
   om('lightboxModal');
 };
 window.closeLightbox = () => cm('lightboxModal');
+const IFC_VIEWER_URL = 'https://biograpi.github.io/RevTrack/ifcviewer/';
+window.openIfcViewer = (pid) => {
+  const files = (currentProjectData?.ifcFiles || []).map(f => ({ name: f.name, url: f.url }));
+  if (!files.length) return;
+  const param = encodeURIComponent(JSON.stringify(files));
+  document.getElementById('ifcViewerFrame').src = `${IFC_VIEWER_URL}?files=${param}`;
+  om('ifcViewerModal');
+};
+window.closeIfcViewer = () => {
+  cm('ifcViewerModal');
+  document.getElementById('ifcViewerFrame').src = 'about:blank'; // stop the viewer once closed
+};
 window.lightboxNav = dir => {
   const newIndex = lightboxIndex + dir;
   if (newIndex < 0 || newIndex >= lightboxPhotos.length) return; // stop at the ends, no wrap-around
@@ -914,6 +946,16 @@ window.showProjectSections = async function(pid) {
 
   const canManage = currentGlobalRole==='admin' || (currentGlobalRole==='reviewer' && p.createdBy===currentUser.uid);
 
+  const ifcFiles = p.ifcFiles || [];
+  const hasIfc = ifcFiles.length > 0;
+  const ifcNames = ifcFiles.map(f => esc(f.name)).join(', ');
+  const ifcLastUpdated = hasIfc
+    ? ifcFiles.reduce((latest, f) => {
+        const ms = f.uploadedAt?.toDate ? f.uploadedAt.toDate().getTime() : 0;
+        return ms > latest.ms ? { ms, date: f.uploadedAt?.toDate ? f.uploadedAt.toDate().toLocaleDateString('ka-GE') : '' } : latest;
+      }, { ms: 0, date: '' }).date
+    : '';
+
   const grid = document.getElementById('projectsGrid');
   grid.innerHTML = `
     <div class="section-back" onclick="showProjects()">← პროექტები</div>
@@ -933,6 +975,17 @@ window.showProjectSections = async function(pid) {
         <div class="project-card-name">${esc(p.name)}</div>
         <div class="section-label">DM საკითხები</div>
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
+      </div>
+    </div>
+    <div class="project-card project-card-filled${hasIfc?'':' project-card-disabled'}" ${cardStyle} ${hasIfc?`onclick="openIfcViewer('${pid}')"`:''}>
+      <div class="project-card-body">
+        <div class="project-card-name">IFC ვიუერი</div>
+        ${hasIfc ? `
+          <div class="project-card-creator" title="${ifcNames}">${ifcNames}</div>
+          <div class="project-card-creator">განახლდა: ${ifcLastUpdated}</div>
+        ` : `
+          <div class="project-card-creator">ფაილი არ არის ატვირთული</div>
+        `}
       </div>
     </div>
   `;
@@ -2037,6 +2090,14 @@ async function openProjectModal(pid) {
   renderMemberList(pid ? (pd.members||{}) : {});
   document.getElementById('memberSearch').oninput = e => renderMemberList(pid?(pd.members||{}):{}, e.target.value);
   document.getElementById('saveProject').onclick = () => saveProjectData(pid);
+
+  document.getElementById('btnAddIfcFile').style.display = pid ? 'inline-block' : 'none';
+  if (pid) {
+    renderIfcFilesList(pid, pd.ifcFiles||[]);
+  } else {
+    document.getElementById('ifcFilesList').innerHTML = '<div style="font-size:12px;color:var(--ink-light)">ჯერ შეინახე პროექტი, შემდეგ დაემატება IFC ფაილების ატვირთვის საშუალება.</div>';
+  }
+
   const delBtn = document.getElementById('btnDeleteProject');
   const canDeleteThisProject = pid && (currentGlobalRole === 'admin' || (currentGlobalRole === 'reviewer' && pd.createdBy === currentUser.uid));
   if (canDeleteThisProject) {
@@ -2050,6 +2111,58 @@ async function openProjectModal(pid) {
   om('projectModal');
 }
 window.openProjectModal = openProjectModal;
+
+function renderIfcFilesList(pid, files) {
+  const list = document.getElementById('ifcFilesList');
+  list.innerHTML = files.length ? files.map((f,i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--rule);font-size:12px">
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.name)}</span>
+      <span style="color:var(--ink-light)">${f.uploadedAt?.toDate ? f.uploadedAt.toDate().toLocaleDateString('ka-GE') : ''}</span>
+      <button type="button" class="icon-btn del" title="წაშლა" onclick="deleteIfcFile('${pid}',${i})">${ICON_DELETE}</button>
+    </div>`).join('') : '<div style="font-size:12px;color:var(--ink-light)">ფაილი არ არის ატვირთული</div>';
+}
+
+document.getElementById('btnAddIfcFile').addEventListener('click', () => document.getElementById('ifcFileInput').click());
+document.getElementById('ifcFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const pid = currentProjectData?.id;
+  if (!pid) return;
+  const btn = document.getElementById('btnAddIfcFile');
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'იტვირთება...';
+  try {
+    const path = `projects/${pid}/ifc/${Date.now()}_${file.name}`;
+    const ref = storageRef(storage, path);
+    await uploadBytes(ref, file);
+    const url = await getDownloadURL(ref);
+    const newEntry = { name: file.name, url, uploadedAt: Timestamp.now(), uploadedBy: currentUser.uid, uploadedByName: currentUserName };
+    const freshDoc = await getDoc(doc(db,'projects',pid));
+    const existing = freshDoc.data().ifcFiles || [];
+    const updated = [...existing, newEntry];
+    await updateDoc(doc(db,'projects',pid), { ifcFiles: updated });
+    currentProjectData.ifcFiles = updated;
+    renderIfcFilesList(pid, updated);
+    showToast('ფაილი აიტვირთა');
+  } catch(err) { alert('შეცდომა: '+err.message); }
+  btn.disabled = false; btn.textContent = origText;
+});
+window.deleteIfcFile = async (pid, index) => {
+  if (!confirm('წავშალო ეს ფაილი?')) return;
+  try {
+    const freshDoc = await getDoc(doc(db,'projects',pid));
+    const existing = freshDoc.data().ifcFiles || [];
+    const target = existing[index];
+    if (!target) return;
+    const updated = existing.filter((_,i) => i !== index);
+    await updateDoc(doc(db,'projects',pid), { ifcFiles: updated });
+    try { await deleteObject(storageRef(storage, target.url)); } catch(e) {}
+    currentProjectData.ifcFiles = updated;
+    renderIfcFilesList(pid, updated);
+    showToast('ფაილი წაიშალა');
+  } catch(err) { alert('შეცდომა: '+err.message); }
+};
 function renderExtraContractors() {
   const c = document.getElementById('extraContractorsList');
   c.innerHTML = pendingExtraContractors.map((e,i) => `
