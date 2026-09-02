@@ -66,7 +66,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .project-card-creator{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;margin-bottom:6px}
 .project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:auto;align-self:flex-start;width:fit-content}
 .project-card-bare{min-height:70px;justify-content:center;align-items:center}
-.project-card-pill{border-radius:999px;aspect-ratio:984/323;min-height:0;padding:16px 32px}
+.project-card-pill{border-radius:999px;aspect-ratio:984/323;min-height:0;padding:16px 32px;background:color-mix(in srgb, var(--card-color) var(--activity-pct, 0%), transparent)}
 .project-card-pill .project-card-body{align-items:center;justify-content:center}
 .project-card-logo{width:100%;display:flex;align-items:center;justify-content:center}
 .project-card-logo svg{width:auto;height:clamp(34px,8vw,58px);display:block;max-width:92%}
@@ -337,8 +337,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="projects-user">
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
-      <button class="btn-hdr" id="btnFixNames" style="display:none" title="ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე">🔄 სახელების გასწორება</button>
-      <button class="btn-hdr" id="btnFixVisibility" style="display:none" title="ძველ საკითხებს ანიჭებს ხილვადობის მნიშვნელობას (მანამდე ეს ველი არ არსებობდა)">🔄 ხილვადობის გასწორება</button>
+      <button class="btn-hdr" id="btnAdminTools" style="display:none">🛠 ხელსაწყოები</button>
       <span id="projScreenUser"></span>
       <button class="btn-hdr" id="btnProjLogout">გამოსვლა</button>
     </div>
@@ -517,6 +516,18 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     </div>
     <div class="modal-body" id="usersPanel" style="max-height:60vh;overflow-y:auto">იტვირთება...</div>
     <div class="modal-footer"><button class="btn-secondary" onclick="cm('usersModal')">დახურვა</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="adminToolsModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><h2>🛠 ხელსაწყოები</h2><button class="modal-close" onclick="cm('adminToolsModal')">✕</button></div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn-secondary" id="btnFixNames" style="width:100%;justify-content:flex-start" title="ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე">🔄 სახელების გასწორება</button>
+      <button class="btn-secondary" id="btnFixVisibility" style="width:100%;justify-content:flex-start" title="ძველ საკითხებს ანიჭებს ხილვადობის მნიშვნელობას (მანამდე ეს ველი არ არსებობდა)">🔄 ხილვადობის გასწორება</button>
+      <button class="btn-secondary" id="btnRecalcIssueCounts" style="width:100%;justify-content:flex-start" title="გადაითვლის თითოეული პროექტის საკითხების რაოდენობას ბარათის ფერის გრადაციისთვის (მანამდე ეს ველი არ არსებობდა)">🔄 საკითხების რაოდენობის გადათვლა</button>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cm('adminToolsModal')">დახურვა</button></div>
   </div>
 </div>
 
@@ -876,6 +887,18 @@ function showAuth() {
 }
 
 // ── SHOW PROJECTS ──
+// Maps a project's total issue count (both sections, any status — kept up
+// to date incrementally on create/duplicate/delete, see saveIssue/copyIssueTo/
+// confirmDelete) to a background-opacity tier for the main project card.
+function issueCountToActivityPct(count) {
+  const n = count || 0;
+  if (n <= 0) return 0;
+  if (n < 10) return 20;
+  if (n < 20) return 40;
+  if (n < 30) return 60;
+  return 80;
+}
+
 async function showProjects() {
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
   sectionsViewProjectId = null;
@@ -884,8 +907,7 @@ async function showProjects() {
   document.getElementById('projectsScreen').style.display = 'block';
   document.getElementById('projScreenUser').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
   document.getElementById('btnGlobalUsers').style.display = isAdminLike() ? 'flex' : 'none';
-  document.getElementById('btnFixNames').style.display = isAdminLike() ? 'flex' : 'none';
-  document.getElementById('btnFixVisibility').style.display = isAdminLike() ? 'flex' : 'none';
+  document.getElementById('btnAdminTools').style.display = isAdminLike() ? 'flex' : 'none';
   document.getElementById('btnNewProjectHdr').style.display = (currentGlobalRole==='admin'||currentGlobalRole==='reviewer') ? 'flex' : 'none';
 
   const grid = document.getElementById('projectsGrid');
@@ -916,7 +938,8 @@ async function showProjects() {
     ];
     projects.forEach(p => {
       const brandColor = p.color || DEFAULT_CARD_COLOR;
-      const cardStyle = brandColor ? `style="--card-color:${brandColor};border-color:${brandColor}"` : '';
+      const activityPct = issueCountToActivityPct(p.issueCount);
+      const cardStyle = brandColor ? `style="--card-color:${brandColor};border-color:${brandColor};--activity-pct:${activityPct}%"` : '';
       // Logos temporarily disabled — sizes didn't match design standards yet.
       // Re-enable by restoring the PROJECT_LOGOS lookup once exact SVGs are ready.
       const nameHtml = `<div class="project-card-name">${esc(p.name)}</div>`;
@@ -1619,6 +1642,14 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
   const btn = document.getElementById('saveIssue');
   btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
   try {
+    let countDelta = 0;
+    if (!editingId) {
+      if (!stayingDraft) countDelta = 1; // brand-new, immediately-visible issue
+    } else if (wasDraft && !stayingDraft) {
+      countDelta = 1; // draft just became visible for the first time
+    } else if (!wasDraft && stayingDraft) {
+      countDelta = -1; // a previously-counted issue was turned into a draft
+    }
     if (editingId) {
       await updateDoc(doc(db,'projects',currentProjectId,'issues',editingId), data);
     } else {
@@ -1627,6 +1658,9 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
       data.createdAt = serverTimestamp(); data.commentCount = 0;
       data.createdBy = currentUser.uid; data.createdByName = currentUserName;
       await setDoc(doc(db,'projects',currentProjectId,'issues',currentIssueStorageId), data);
+    }
+    if (countDelta !== 0) {
+      try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(countDelta) }); } catch(e) {}
     }
     for (const url of photosToDeleteOnSave) { try { await deleteObject(storageRef(storage, url)); } catch(e) {} }
     photosToDeleteOnSave = [];
@@ -1642,6 +1676,9 @@ async function confirmDelete(id) {
   await deleteDoc(doc(db,'projects',currentProjectId,'issues',id));
   for (const url of (issue?.photos||[])) {
     try { await deleteObject(storageRef(storage, url)); } catch(e) { /* already gone, ignore */ }
+  }
+  if (issue && issue.visibility !== 'draft') {
+    try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(-1) }); } catch(e) {}
   }
   showToast('წაიშალა');
 }
@@ -1694,6 +1731,7 @@ async function copyIssueTo(id, targetSection, msg) {
       duplicatedFrom: id
     };
     await setDoc(newRef, newData);
+    try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(1) }); } catch(e) {}
     showToast(targetSection===currentSection ? 'დუბლირებულია!' : `დუბლირებულია "${SECTION_LABEL[targetSection]}"-ში!`);
   } catch(e) { alert('შეცდომა: '+e.message); }
 }
@@ -1786,7 +1824,12 @@ async function loadComments(issueId) {
   const now = Date.now();
   list.innerHTML = snap.docs.map(d => {
     const c = d.data();
-    const time = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('ka-GE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    const time = c.createdAt?.toDate ? (() => {
+      const d = c.createdAt.toDate();
+      const date = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+      const clock = d.toLocaleString('ka-GE',{hour:'2-digit',minute:'2-digit'});
+      return `${date} ${clock}`;
+    })() : '';
     const createdMs = c.createdAt?.toDate ? c.createdAt.toDate().getTime() : 0;
     const withinEditWindow = createdMs && (now - createdMs) < 24*60*60*1000;
     const isOwn = c.authorId === currentUser?.uid;
@@ -2031,6 +2074,7 @@ document.getElementById('btnGlobalUsers').addEventListener('click', async () => 
   renderUsersPanel();
   om('usersModal');
 });
+document.getElementById('btnAdminTools').addEventListener('click', () => om('adminToolsModal'));
 window.updateUserLabel = async (uid, label) => {
   try { await updateDoc(doc(db,'users',uid), {statusLabel: label.trim()}); }
   catch(e) { alert('შეცდომა: '+e.message); }
@@ -2314,6 +2358,29 @@ document.getElementById('btnFixVisibility').addEventListener('click', async () =
       }
     }
     showToast(fixed ? `გასწორდა ${fixed} საკითხი` : 'ყველა საკითხს უკვე ჰქონდა ხილვადობა მინიჭებული');
+  } catch(e) { alert('შეცდომა: '+e.message); }
+  btn.disabled = false; btn.textContent = origText;
+});
+document.getElementById('btnRecalcIssueCounts').addEventListener('click', async () => {
+  if (!confirm('გადაითვალოს ყველა პროექტის საკითხების რაოდენობა (დრაფტების გარეშე) და შეინახოს პროექტზე, ბარათის ფერის გრადაციისთვის?')) return;
+  const btn = document.getElementById('btnRecalcIssueCounts');
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'მუშავდება...';
+  try {
+    const projSnap = await getDocs(collection(db,'projects'));
+    let fixed = 0;
+    for (const pDoc of projSnap.docs) {
+      let total = 0;
+      for (const sec of ['review','internal']) {
+        const visStates = sec === 'internal' ? ['biograpi','everyone'] : ['everyone'];
+        const countSnap = await getCountFromServer(query(collection(db,'projects',pDoc.id,'issues'), where('section','==',sec), where('visibility','in',visStates)));
+        total += countSnap.data().count;
+      }
+      await updateDoc(doc(db,'projects',pDoc.id), { issueCount: total });
+      fixed++;
+    }
+    showToast(`გადაითვალა ${fixed} პროექტი`);
+    await showProjects();
   } catch(e) { alert('შეცდომა: '+e.message); }
   btn.disabled = false; btn.textContent = origText;
 });
