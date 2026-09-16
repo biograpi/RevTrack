@@ -636,7 +636,70 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 <!-- ══ FIREBASE ══ -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script>
+// Minimal built-in date adapter for Chart.js's "time" scale — avoids relying
+// on an external chartjs-adapter-date-fns CDN build, which kept failing to
+// register correctly against this Chart.js version. Only the units this
+// app actually uses (day-level ticks) need to be fully accurate; the rest
+// have simple, reasonable fallbacks.
+(function() {
+  const MS = { millisecond:1, second:1000, minute:60000, hour:3600000, day:86400000, week:604800000, month:2629800000, quarter:7889400000, year:31557600000 };
+  Chart._adapters._date.override({
+    formats: function() {
+      return { datetime:'yyyy-MM-dd HH:mm', millisecond:'HH:mm:ss.SSS', second:'HH:mm:ss', minute:'HH:mm', hour:'HH:00', day:'MMM d', week:'MMM d', month:'MMM yyyy', quarter:'qqq yyyy', year:'yyyy' };
+    },
+    parse: function(value) {
+      if (value instanceof Date) return value.getTime();
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d.getTime();
+    },
+    format: function(time) {
+      const d = new Date(time);
+      return d.toLocaleDateString('ka-GE', { year:'numeric', month:'short', day:'numeric' });
+    },
+    add: function(time, amount, unit) {
+      const d = new Date(time);
+      switch(unit) {
+        case 'day': d.setDate(d.getDate()+amount); return d.getTime();
+        case 'week': d.setDate(d.getDate()+amount*7); return d.getTime();
+        case 'month': d.setMonth(d.getMonth()+amount); return d.getTime();
+        case 'quarter': d.setMonth(d.getMonth()+amount*3); return d.getTime();
+        case 'year': d.setFullYear(d.getFullYear()+amount); return d.getTime();
+        default: return time + amount * (MS[unit] || MS.day);
+      }
+    },
+    diff: function(max, min, unit) { return (max - min) / (MS[unit] || MS.day); },
+    startOf: function(time, unit) {
+      const d = new Date(time);
+      switch(unit) {
+        case 'second': d.setMilliseconds(0); break;
+        case 'minute': d.setSeconds(0,0); break;
+        case 'hour': d.setMinutes(0,0,0); break;
+        case 'day': d.setHours(0,0,0,0); break;
+        case 'week': d.setHours(0,0,0,0); d.setDate(d.getDate()-d.getDay()); break;
+        case 'month': d.setHours(0,0,0,0); d.setDate(1); break;
+        case 'quarter': d.setHours(0,0,0,0); d.setDate(1); d.setMonth(Math.floor(d.getMonth()/3)*3); break;
+        case 'year': d.setHours(0,0,0,0); d.setMonth(0,1); break;
+      }
+      return d.getTime();
+    },
+    endOf: function(time, unit) {
+      const d = new Date(time);
+      switch(unit) {
+        case 'second': d.setMilliseconds(999); break;
+        case 'minute': d.setSeconds(59,999); break;
+        case 'hour': d.setMinutes(59,59,999); break;
+        case 'day': d.setHours(23,59,59,999); break;
+        case 'week': d.setDate(d.getDate()+(6-d.getDay())); d.setHours(23,59,59,999); break;
+        case 'month': d.setMonth(d.getMonth()+1,0); d.setHours(23,59,59,999); break;
+        case 'quarter': d.setMonth(Math.floor(d.getMonth()/3)*3+3,0); d.setHours(23,59,59,999); break;
+        case 'year': d.setMonth(11,31); d.setHours(23,59,59,999); break;
+      }
+      return d.getTime();
+    },
+  });
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="module">
