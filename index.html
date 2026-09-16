@@ -47,6 +47,9 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
+.activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 24px;background:var(--white);border:1px solid var(--rule);border-radius:12px}
+.activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.activity-chart-head h3{font-size:14px;font-weight:600;color:var(--ink)}
 .project-card{background:transparent;border:2px solid var(--card-color, rgba(255,255,255,.3));border-radius:10px;padding:20px;cursor:pointer;transition:background .3s ease .12s, border-color .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
 .project-card-body{position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
 .project-card:hover{background:var(--card-color)}
@@ -344,6 +347,13 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     </div>
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
+  <div class="activity-chart-wrap" id="activityChartWrap" style="display:none">
+    <div class="activity-chart-head">
+      <h3>აქტივობა დროში</h3>
+      <span id="activityChartStatus" style="font-size:12px;color:var(--ink-light)"></span>
+    </div>
+    <canvas id="activityChartCanvas" height="90"></canvas>
+  </div>
 </div>
 
 <!-- ══ APP ══ -->
@@ -625,6 +635,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 </div>
 
 <!-- ══ FIREBASE ══ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="module">
@@ -671,6 +683,8 @@ let currentProjectId = null;
 let currentProjectData = null;
 let currentSection = null; // 'review' | 'internal'
 let sectionsViewProjectId = null; // set while viewing a project's 2 section-cards (before picking one)
+let unsubActivityChart = null; // listeners for the project-level activity chart (see showProjectSections)
+let activityChartInstance = null;
 const SECTION_LABEL = { review: 'რევიზია', internal: 'DM საკითხები' };
 let currentProjectDesignManagers = []; // [{uid, name}] — cached names of design managers assigned to the open project
 let issues = {};
@@ -902,7 +916,9 @@ function issueCountToActivityPct(count) {
 
 async function showProjects() {
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
+  if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
   sectionsViewProjectId = null;
+  document.getElementById('activityChartWrap').style.display = 'none';
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
@@ -1032,10 +1048,133 @@ window.showProjectSections = async function(pid) {
       }
     }
   });
+
+  setupActivityChart(pid);
+}
+
+// ── PROJECT ACTIVITY CHART (cumulative issues + comments over time) ──
+function setupActivityChart(pid) {
+  document.getElementById('activityChartWrap').style.display = 'block';
+  const chartIssues = {}; // issueId -> {createdAt, createdByName}
+
+  async function redrawChart() {
+    document.getElementById('activityChartStatus').textContent = 'იტვირთება...';
+    let commentPoints = [];
+    try {
+      const commentFetches = Object.entries(chartIssues).map(async ([issueId, iss]) => {
+        try {
+          const snap = await getDocs(collection(db,'projects',pid,'issues',issueId,'comments'));
+          return snap.docs.map(d => d.data().createdAt).filter(Boolean);
+        } catch(e) { return []; }
+      });
+      const results = await Promise.all(commentFetches);
+      commentPoints = results.flat();
+    } catch(e) { console.warn('activity chart: comment fetch failed', e); }
+    renderActivityChart(chartIssues, commentPoints);
+    document.getElementById('activityChartStatus').textContent = `${Object.keys(chartIssues).length} საკითხი`;
+  }
+
+  const unsubFns = [];
+  for (const sec of ['review','internal']) {
+    const visStates = (sec === 'internal' && currentGlobalRole !== 'contractor') ? ['biograpi','everyone'] : ['everyone'];
+    const q = query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates));
+    const unsub = onSnapshot(q, snap => {
+      for (const d of snap.docs) {
+        chartIssues[`${sec}:${d.id}`] = { createdAt: d.data().createdAt, createdByName: d.data().createdByName || 'უცნობი' };
+      }
+      snap.docChanges().forEach(change => {
+        if (change.type === 'removed') delete chartIssues[`${sec}:${change.doc.id}`];
+      });
+      redrawChart();
+    }, err => console.error('activity chart issues listener error:', err));
+    unsubFns.push(unsub);
+  }
+  unsubActivityChart = unsubFns;
+}
+
+function renderActivityChart(issuesMap, commentTimestamps) {
+  const issues = Object.values(issuesMap).filter(i => i.createdAt?.toDate);
+  if (activityChartInstance) { activityChartInstance.destroy(); activityChartInstance = null; }
+  if (!issues.length) return;
+
+  // Sort by creation time, build a cumulative running total (overall + per creator).
+  issues.sort((a,b) => a.createdAt.toDate() - b.createdAt.toDate());
+  const creators = [...new Set(issues.map(i => i.createdByName))];
+  const totalPoints = [];
+  const perCreatorPoints = {};
+  for (const name of creators) perCreatorPoints[name] = [];
+  const runningPerCreator = {};
+  for (const name of creators) runningPerCreator[name] = 0;
+
+  issues.forEach((iss, idx) => {
+    const t = iss.createdAt.toDate();
+    totalPoints.push({ x: t, y: idx+1 });
+    runningPerCreator[iss.createdByName]++;
+    for (const name of creators) {
+      perCreatorPoints[name].push({ x: t, y: runningPerCreator[name] });
+    }
+  });
+
+  const commentDataPoints = commentTimestamps
+    .filter(ts => ts?.toDate)
+    .map(ts => ({ x: ts.toDate(), y: 0 }));
+
+  const palette = ['#b63a32','#2563eb','#16a34a','#d97706','#7c3aed','#0891b2','#db2777'];
+  const datasets = [
+    {
+      label: 'სულ საკითხები (დაგროვებით)',
+      data: totalPoints,
+      borderColor: '#1a1120',
+      backgroundColor: 'rgba(26,17,32,.08)',
+      borderWidth: 2.5,
+      tension: 0.35,
+      fill: true,
+      pointRadius: 0,
+    },
+    ...creators.map((name,i) => ({
+      label: name,
+      data: perCreatorPoints[name],
+      borderColor: palette[i % palette.length],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderDash: [4,3],
+      tension: 0.35,
+      fill: false,
+      pointRadius: 0,
+    })),
+    {
+      label: 'კომენტარები',
+      data: commentDataPoints,
+      type: 'scatter',
+      borderColor: '#b63a32',
+      backgroundColor: '#b63a32',
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      showLine: false,
+    },
+  ];
+
+  const ctx = document.getElementById('activityChartCanvas').getContext('2d');
+  activityChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      scales: {
+        x: { type: 'time', time: { unit: 'day' }, title: { display: false } },
+        y: { beginAtZero: true, title: { display: true, text: 'რაოდენობა' } },
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+      },
+    },
+  });
 }
 
 // ── OPEN PROJECT ──
 async function openProject(pid, section) {
+  if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
   const pd = await getDoc(doc(db,'projects',pid));
   if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   currentProjectId = pid;
