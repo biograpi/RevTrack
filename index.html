@@ -636,7 +636,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 <!-- ══ FIREBASE ══ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script type="module">
@@ -1070,8 +1070,13 @@ function setupActivityChart(pid) {
       const results = await Promise.all(commentFetches);
       commentPoints = results.flat();
     } catch(e) { console.warn('activity chart: comment fetch failed', e); }
-    renderActivityChart(chartIssues, commentPoints);
-    document.getElementById('activityChartStatus').textContent = `${Object.keys(chartIssues).length} საკითხი`;
+    try {
+      renderActivityChart(chartIssues, commentPoints);
+      document.getElementById('activityChartStatus').textContent = `${Object.keys(chartIssues).length} საკითხი`;
+    } catch(e) {
+      console.error('activity chart: render failed', e);
+      document.getElementById('activityChartStatus').textContent = 'შეცდომა გრაფიკის აგებისას — იხილეთ Console';
+    }
   }
 
   const unsubFns = [];
