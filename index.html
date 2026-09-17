@@ -47,9 +47,9 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
-.activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 24px;background:var(--white);border:1px solid var(--rule);border-radius:12px}
+.activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 0;background:transparent}
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.activity-chart-head h3{font-size:14px;font-weight:600;color:var(--ink)}
+.activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
 .project-card{background:transparent;border:2px solid var(--card-color, rgba(255,255,255,.3));border-radius:10px;padding:20px;cursor:pointer;transition:background .3s ease .12s, border-color .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
 .project-card-body{position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
 .project-card:hover{background:var(--card-color)}
@@ -350,7 +350,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   <div class="activity-chart-wrap" id="activityChartWrap" style="display:none">
     <div class="activity-chart-head">
       <h3>აქტივობა დროში</h3>
-      <span id="activityChartStatus" style="font-size:12px;color:var(--ink-light)"></span>
+      <span id="activityChartStatus" style="font-size:12px;color:rgba(255,255,255,.6)"></span>
     </div>
     <canvas id="activityChartCanvas" height="90"></canvas>
   </div>
@@ -1165,35 +1165,69 @@ function renderActivityChart(issuesMap, commentTimestamps) {
   if (activityChartInstance) { activityChartInstance.destroy(); activityChartInstance = null; }
   if (!issues.length) return;
 
-  // Sort by creation time, build a cumulative running total (overall + per creator).
+  // Sort by creation time, build a cumulative running total (overall line).
   issues.sort((a,b) => a.createdAt.toDate() - b.createdAt.toDate());
   const creators = [...new Set(issues.map(i => i.createdByName))];
-  const totalPoints = [];
-  const perCreatorPoints = {};
-  for (const name of creators) perCreatorPoints[name] = [];
-  const runningPerCreator = {};
-  for (const name of creators) runningPerCreator[name] = 0;
+  const totalPoints = issues.map((iss, idx) => ({ x: iss.createdAt.toDate(), y: idx+1 }));
+  const startTime = totalPoints[0].x.getTime();
+  const endTime = Math.max(totalPoints[totalPoints.length-1].x.getTime(), Date.now());
 
-  issues.forEach((iss, idx) => {
-    const t = iss.createdAt.toDate();
-    totalPoints.push({ x: t, y: idx+1 });
-    runningPerCreator[iss.createdByName]++;
-    for (const name of creators) {
-      perCreatorPoints[name].push({ x: t, y: runningPerCreator[name] });
+  // Step function lookup: how many issues existed in total as of time t.
+  function totalValueAt(t) {
+    let count = 0;
+    for (const p of totalPoints) { if (p.x.getTime() <= t) count = p.y; else break; }
+    return count;
+  }
+
+  // Per-creator: an artificial "spike then decay" curve — each day a creator
+  // opened at least one issue produces a peak on that day, decaying smoothly
+  // toward zero afterward (until the next spike). This is a stylistic
+  // choice, not a literal count — it's meant to visualise "bursts of
+  // activity" rather than accumulate like the total line does.
+  function dayKey(d) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+  const activityDaysByCreator = {};
+  for (const name of creators) activityDaysByCreator[name] = new Map(); // dayKey -> {time, count}
+  for (const iss of issues) {
+    const d = iss.createdAt.toDate();
+    const key = dayKey(d);
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const map = activityDaysByCreator[iss.createdByName];
+    if (!map.has(key)) map.set(key, { time: dayStart, count: 0 });
+    map.get(key).count++;
+  }
+  const PEAK = 3, DECAY_PER_DAY = 0.8, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
+  function buildDecayCurve(activityDays) {
+    const days = [...activityDays.values()].sort((a,b) => a.time - b.time);
+    const points = [];
+    for (let t = startTime; t <= endTime; t += SAMPLE_STEP_MS) {
+      let val = 0;
+      for (const day of days) {
+        if (t >= day.time) {
+          const daysSince = (t - day.time) / 86400000;
+          const contribution = PEAK * Math.min(day.count, 3) / 3 * Math.exp(-DECAY_PER_DAY * daysSince);
+          if (contribution > val) val = contribution;
+        }
+      }
+      points.push({ x: new Date(t), y: val });
     }
-  });
+    return points;
+  }
+  const perCreatorPoints = {};
+  for (const name of creators) perCreatorPoints[name] = buildDecayCurve(activityDaysByCreator[name]);
 
+  // Comments ride ON the total-issues line — their y-value is however many
+  // issues existed at that moment, not a fixed baseline.
   const commentDataPoints = commentTimestamps
     .filter(ts => ts?.toDate)
-    .map(ts => ({ x: ts.toDate(), y: 0 }));
+    .map(ts => { const t = ts.toDate(); return { x: t, y: totalValueAt(t.getTime()) }; });
 
-  const palette = ['#b63a32','#2563eb','#16a34a','#d97706','#7c3aed','#0891b2','#db2777'];
+  const palette = ['#f2a8a8','#7dd3fc','#86efac','#fcd34d','#c4b5fd','#67e8f9','#f9a8d4'];
   const datasets = [
     {
       label: 'სულ საკითხები (დაგროვებით)',
       data: totalPoints,
-      borderColor: '#1a1120',
-      backgroundColor: 'rgba(26,17,32,.08)',
+      borderColor: '#ffffff',
+      backgroundColor: 'rgba(255,255,255,.08)',
       borderWidth: 2.5,
       tension: 0.35,
       fill: true,
@@ -1205,7 +1239,6 @@ function renderActivityChart(issuesMap, commentTimestamps) {
       borderColor: palette[i % palette.length],
       backgroundColor: 'transparent',
       borderWidth: 1.5,
-      borderDash: [4,3],
       tension: 0.35,
       fill: false,
       pointRadius: 0,
@@ -1214,8 +1247,8 @@ function renderActivityChart(issuesMap, commentTimestamps) {
       label: 'კომენტარები',
       data: commentDataPoints,
       type: 'scatter',
-      borderColor: '#b63a32',
-      backgroundColor: '#b63a32',
+      borderColor: '#ffffff',
+      backgroundColor: '#ffffff',
       pointRadius: 4,
       pointHoverRadius: 6,
       showLine: false,
@@ -1230,11 +1263,37 @@ function renderActivityChart(issuesMap, commentTimestamps) {
       responsive: true,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
       scales: {
-        x: { type: 'time', time: { unit: 'day' }, title: { display: false } },
-        y: { beginAtZero: true, title: { display: true, text: 'რაოდენობა' } },
+        x: {
+          type: 'time',
+          time: { unit: 'day' },
+          title: { display: false },
+          ticks: {
+            color: 'rgba(255,255,255,.75)',
+            // Only the very first tick (start of data) and the 1st of each
+            // following month get a label — a daily tick for a multi-month
+            // range is unreadably dense otherwise.
+            callback: function(value, index, ticks) {
+              const d = new Date(value);
+              if (index === 0 || d.getDate() === 1) {
+                return d.toLocaleDateString('ka-GE', { year:'numeric', month:'short', day:'numeric' });
+              }
+              return '';
+            },
+          },
+          grid: { color: 'rgba(255,255,255,.08)' },
+          afterBuildTicks: axis => {
+            axis.ticks = axis.ticks.filter((tick, i) => i === 0 || new Date(tick.value).getDate() === 1);
+          },
+        },
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'რაოდენობა', color: 'rgba(255,255,255,.75)' },
+          ticks: { color: 'rgba(255,255,255,.75)' },
+          grid: { color: 'rgba(255,255,255,.08)' },
+        },
       },
       plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: 'rgba(255,255,255,.85)' } },
       },
     },
   });
