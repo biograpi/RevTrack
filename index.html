@@ -1118,15 +1118,15 @@ window.showProjectSections = async function(pid) {
 // ── PROJECT ACTIVITY CHART (cumulative issues + comments over time) ──
 function setupActivityChart(pid) {
   document.getElementById('activityChartWrap').style.display = 'block';
-  const chartIssues = {}; // issueId -> {createdAt, createdByName}
+  const chartIssues = {}; // compositeKey -> {id, createdAt, createdByName}
 
   async function redrawChart() {
     document.getElementById('activityChartStatus').textContent = 'იტვირთება...';
     let commentPoints = [];
     try {
-      const commentFetches = Object.entries(chartIssues).map(async ([issueId, iss]) => {
+      const commentFetches = Object.values(chartIssues).map(async (iss) => {
         try {
-          const snap = await getDocs(collection(db,'projects',pid,'issues',issueId,'comments'));
+          const snap = await getDocs(collection(db,'projects',pid,'issues',iss.id,'comments'));
           return snap.docs.map(d => d.data().createdAt).filter(Boolean);
         } catch(e) { return []; }
       });
@@ -1148,7 +1148,7 @@ function setupActivityChart(pid) {
     const q = query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates));
     const unsub = onSnapshot(q, snap => {
       for (const d of snap.docs) {
-        chartIssues[`${sec}:${d.id}`] = { createdAt: d.data().createdAt, createdByName: d.data().createdByName || 'უცნობი' };
+        chartIssues[`${sec}:${d.id}`] = { id: d.id, createdAt: d.data().createdAt, createdByName: d.data().createdByName || 'უცნობი' };
       }
       snap.docChanges().forEach(change => {
         if (change.type === 'removed') delete chartIssues[`${sec}:${change.doc.id}`];
@@ -1170,7 +1170,14 @@ function renderActivityChart(issuesMap, commentTimestamps) {
   const creators = [...new Set(issues.map(i => i.createdByName))];
   const totalPoints = issues.map((iss, idx) => ({ x: iss.createdAt.toDate(), y: idx+1 }));
   const startTime = totalPoints[0].x.getTime();
-  const endTime = Math.max(totalPoints[totalPoints.length-1].x.getTime(), Date.now());
+  const now = Date.now();
+  const endTime = Math.max(totalPoints[totalPoints.length-1].x.getTime(), now);
+  // Extend the line flat to "today" — without this, the white line would
+  // just stop at the last real issue instead of stretching across the full
+  // axis, and the middle dates wouldn't distribute proportionally.
+  if (totalPoints[totalPoints.length-1].x.getTime() < now) {
+    totalPoints.push({ x: new Date(now), y: totalPoints[totalPoints.length-1].y });
+  }
 
   // Step function lookup: how many issues existed in total as of time t.
   function totalValueAt(t) {
@@ -1209,12 +1216,28 @@ function renderActivityChart(issuesMap, commentTimestamps) {
         const contribution = PEAK * Math.min(day.count, 3) / 3 * Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
         if (contribution > val) val = contribution;
       }
+      // Never let the stylised bump rise higher than the real cumulative
+      // total at that moment — early on, when the total is still small,
+      // an unclamped bump could visually overshoot it.
+      val = Math.min(val, totalValueAt(t));
       points.push({ x: new Date(t), y: val });
     }
     return points;
   }
   const perCreatorPoints = {};
   for (const name of creators) perCreatorPoints[name] = buildDecayCurve(activityDaysByCreator[name]);
+
+  // Real (non-stylised) per-creator cumulative count, for the tooltip —
+  // the bump curve's own y-value is a visual device, not a real count.
+  function perCreatorCumulativeAt(name, t) {
+    let count = 0;
+    for (const iss of issues) {
+      if (iss.createdByName === name && iss.createdAt.toDate().getTime() <= t) count++;
+    }
+    return count;
+  }
+  // First name only (e.g. "ანა გოგოლაძე" -> "ანა") for the legend/tooltip label.
+  function firstName(fullName) { return (fullName||'').trim().split(/\s+/)[0] || fullName; }
 
   // Comments ride ON the total-issues line — their y-value is however many
   // issues existed at that moment, not a fixed baseline.
@@ -1235,7 +1258,8 @@ function renderActivityChart(issuesMap, commentTimestamps) {
       pointRadius: 0,
     },
     ...creators.map((name,i) => ({
-      label: name,
+      label: firstName(name),
+      fullCreatorName: name,
       data: perCreatorPoints[name],
       borderColor: palette[i % palette.length],
       backgroundColor: 'transparent',
@@ -1268,6 +1292,8 @@ function renderActivityChart(issuesMap, commentTimestamps) {
         x: {
           type: 'time',
           time: { unit: 'day' },
+          min: startTime,
+          max: endTime,
           title: { display: false },
           ticks: {
             color: 'rgba(255,255,255,.75)',
@@ -1296,6 +1322,18 @@ function renderActivityChart(issuesMap, commentTimestamps) {
       },
       plugins: {
         legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: 'rgba(255,255,255,.85)' } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const ds = ctx.dataset;
+              if (ds.fullCreatorName) {
+                const t = ctx.parsed.x;
+                return `${ds.label}: ${perCreatorCumulativeAt(ds.fullCreatorName, t)}`;
+              }
+              return `${ds.label}: ${ctx.parsed.y}`;
+            },
+          },
+        },
       },
     },
   });
