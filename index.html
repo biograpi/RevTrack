@@ -1127,12 +1127,12 @@ function setupActivityChart(pid, reviewerName, managerName) {
 
   async function redrawChart() {
     document.getElementById('activityChartStatus').textContent = 'იტვირთება...';
-    const contractorCommentsByName = {};
+    const contractorCommentsByName = { review: {}, internal: {} };
     try {
       const commentFetches = Object.values(chartIssues).map(async (iss) => {
         try {
           const snap = await getDocs(collection(db,'projects',pid,'issues',iss.id,'comments'));
-          return snap.docs.map(d => d.data());
+          return snap.docs.map(d => ({ ...d.data(), section: iss.section }));
         } catch(e) { return []; }
       });
       const results = (await Promise.all(commentFetches)).flat();
@@ -1141,8 +1141,10 @@ function setupActivityChart(pid, reviewerName, managerName) {
         const user = allUsers[c.authorId];
         if (user?.role !== 'contractor') continue;
         const name = c.authorName || 'უცნობი';
-        if (!contractorCommentsByName[name]) contractorCommentsByName[name] = [];
-        contractorCommentsByName[name].push(c.createdAt.toDate().getTime());
+        const bucket = contractorCommentsByName[c.section];
+        if (!bucket) continue;
+        if (!bucket[name]) bucket[name] = [];
+        bucket[name].push(c.createdAt.toDate().getTime());
       }
     } catch(e) { console.warn('activity chart: comment fetch failed', e); }
     try {
@@ -1250,15 +1252,18 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     return count;
   }
 
-  // Per-creator: an artificial "spike then decay" curve — each day a creator
-  // opened at least one issue produces a peak on that day, decaying smoothly
-  // toward zero afterward (until the next spike). This is a stylistic
-  // choice, not a literal count — it's meant to visualise "bursts of
-  // activity" rather than accumulate like the total line does.
-  const activityTimesByCreator = {};
-  for (const name of creators) activityTimesByCreator[name] = [];
+  // Per-creator: an artificial "spike then decay" curve — each event (issue
+  // creation or comment) produces a peak on that day, decaying smoothly
+  // toward zero afterward. This is a stylistic choice, not a literal count.
+  // Each person's line is SIGNED per event by which section it happened in
+  // (positive for review, negative for DM) and the two are summed into one
+  // combined line — so, e.g., a reviewer who also occasionally opens a DM
+  // issue shows both sides on their own single line, instead of assuming
+  // their role fixes them to only one section.
+  const activityEventsByCreator = {};
+  for (const name of creators) activityEventsByCreator[name] = [];
   for (const iss of issues) {
-    activityTimesByCreator[iss.createdByName].push(iss.createdAt.toDate().getTime());
+    activityEventsByCreator[iss.createdByName].push({ time: iss.createdAt.toDate().getTime(), section: iss.section });
   }
   const BUMP_SIGMA_DAYS = 0.8, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
   // Generic step-function lookup, reused for the review/DM/total lines below.
@@ -1267,54 +1272,55 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     for (const p of points) { if (p.x.getTime() <= t) count = p.y; else break; }
     return count;
   }
-  function buildDecayCurve(activityTimes, capFn) {
-    const times = [...activityTimes].sort((a,b) => a - b);
+  function negate(points) { return points.map(p => ({ x: p.x, y: -p.y })); }
+  function bumpValueAt(times, t) {
+    let val = 0;
+    for (const at of times) {
+      const daysFromCenter = (t - at) / 86400000;
+      // Symmetric, rounded bump — rises and falls at the same rate on both
+      // sides (an upside-down, smoothed parabola), instead of a sharp spike
+      // with a one-sided tail.
+      val += Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
+    }
+    return val;
+  }
+  // events: array of {time, section: 'review'|'internal'}. Builds ONE
+  // combined line: positive contributions from "review" events (capped by
+  // reviewCapFn), negative contributions from "internal" events (capped by
+  // internalCapFn), summed together at each sampled moment.
+  function buildSignedDecayCurve(events, reviewCapFn, internalCapFn) {
+    const reviewTimes = events.filter(e => e.section === 'review').map(e => e.time).sort((a,b)=>a-b);
+    const internalTimes = events.filter(e => e.section === 'internal').map(e => e.time).sort((a,b)=>a-b);
     const points = [];
     for (let t = startTime; t <= endTime; t += SAMPLE_STEP_MS) {
-      // Summed (not maxed) so a cluster of several issues close in time
-      // produces a proportionally taller combined bump, precisely aligned
-      // with when they actually happened — not rounded to day boundaries.
-      let val = 0;
-      for (const at of times) {
-        const daysFromCenter = (t - at) / 86400000;
-        // Symmetric, rounded bump — rises and falls at the same rate on
-        // both sides (an upside-down, smoothed parabola), instead of a
-        // sharp spike with a one-sided tail.
-        val += Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
-      }
-      // Never let the stylised bump rise higher than the relevant real
-      // line at that moment (the reviewer is capped by "review", the
-      // manager by "DM", everyone else by the overall total) — otherwise,
-      // early on, an unclamped bump could visually cross above it.
-      val = Math.min(val, capFn(t));
-      points.push({ x: new Date(t), y: val });
+      const pos = Math.min(bumpValueAt(reviewTimes, t), reviewCapFn(t));
+      const neg = Math.min(bumpValueAt(internalTimes, t), internalCapFn(t));
+      points.push({ x: new Date(t), y: pos - neg });
     }
     return points;
   }
-  // Same step-style lookup, but against the already-smoothed dense render
-  // points — used for capping so the cap boundary itself is smooth, instead
-  // of a sparse step function creating angular kinks where a bump gets
-  // clamped against it.
-  function valueAtFromDensePoints(densePoints, t) {
-    let count = 0;
-    for (const p of densePoints) { if (p.x.getTime() <= t) count = p.y; else break; }
-    return count;
-  }
+  const capByReview = reviewPoints.length ? (t => valueAtFromPoints(reviewPoints, t)) : (() => Infinity);
+  const capByInternal = internalPoints.length ? (t => valueAtFromPoints(internalPoints, t)) : (() => Infinity);
   const perCreatorPoints = {};
   for (const name of creators) {
-    const capFn = name === reviewerName && reviewRenderPoints.length ? (t => valueAtFromDensePoints(reviewRenderPoints, t))
-      : name === managerName && internalRenderPoints.length ? (t => valueAtFromDensePoints(internalRenderPoints, t))
-      : (t => valueAtFromDensePoints(totalRenderPoints, t));
-    perCreatorPoints[name] = buildDecayCurve(activityTimesByCreator[name], capFn);
+    perCreatorPoints[name] = buildSignedDecayCurve(activityEventsByCreator[name], capByReview, capByInternal);
   }
 
-  // Same bump technique, but for contractor COMMENT activity rather than
-  // issue creation — one line per contractor who has written at least one
-  // comment on this project.
-  const contractorNames = Object.keys(contractorCommentsByName || {});
+  // Same idea for contractor COMMENT activity: one merged line per
+  // contractor, positive for comments on review-section issues, negative
+  // for comments on DM-section issues — not capped, since comment volume
+  // isn't meant to be bounded by issue count.
+  const commentEventsByContractor = {};
+  for (const section of ['review','internal']) {
+    for (const [name, times] of Object.entries(contractorCommentsByName?.[section] || {})) {
+      if (!commentEventsByContractor[name]) commentEventsByContractor[name] = [];
+      for (const time of times) commentEventsByContractor[name].push({ time, section });
+    }
+  }
+  const contractorNames = Object.keys(commentEventsByContractor);
   const perContractorCommentPoints = {};
   for (const name of contractorNames) {
-    perContractorCommentPoints[name] = buildDecayCurve(contractorCommentsByName[name], () => Infinity);
+    perContractorCommentPoints[name] = buildSignedDecayCurve(commentEventsByContractor[name], () => Infinity, () => Infinity);
   }
 
   // First name only (e.g. "ანა გოგოლაძე" -> "ანა") for the legend label.
@@ -1335,17 +1341,6 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   }
 
   const datasets = [
-    {
-      label: 'სულ საკითხები',
-      data: totalRenderPoints,
-      borderColor: '#ffffff',
-      backgroundColor: 'rgba(255,255,255,.08)',
-      borderWidth: 2.5,
-      tension: 0.3,
-      fill: true,
-      pointRadius: 0,
-      hidden: true,
-    },
     ...(reviewRenderPoints.length ? [{
       label: 'რევიზია',
       data: reviewRenderPoints,
@@ -1359,7 +1354,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     }] : []),
     ...(internalRenderPoints.length ? [{
       label: 'DM საკითხები',
-      data: internalRenderPoints,
+      data: negate(internalRenderPoints),
       borderColor: '#22d3ee',
       backgroundColor: 'transparent',
       borderWidth: 1.75,
@@ -1432,9 +1427,12 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
           },
         },
         y: {
-          beginAtZero: true,
           title: { display: true, text: 'რაოდენობა', color: 'rgba(255,255,255,.75)' },
-          ticks: { color: 'rgba(255,255,255,.75)' },
+          ticks: {
+            color: 'rgba(255,255,255,.75)',
+            stepSize: 1,
+            callback: value => Number.isInteger(value) ? Math.abs(value) : null,
+          },
           grid: { color: 'rgba(255,255,255,.08)' },
         },
       },
