@@ -47,7 +47,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
-.activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 0;background:transparent}
+.activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 32px;background:transparent}
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
 .project-card{background:transparent;border:2px solid var(--card-color, rgba(255,255,255,.3));border-radius:10px;padding:20px;cursor:pointer;transition:background .3s ease .12s, border-color .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
@@ -1195,18 +1195,19 @@ function renderActivityChart(issuesMap, commentTimestamps) {
     if (!map.has(key)) map.set(key, { time: dayStart, count: 0 });
     map.get(key).count++;
   }
-  const PEAK = 3, DECAY_PER_DAY = 0.8, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
+  const PEAK = 3, BUMP_SIGMA_DAYS = 0.8, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
   function buildDecayCurve(activityDays) {
     const days = [...activityDays.values()].sort((a,b) => a.time - b.time);
     const points = [];
     for (let t = startTime; t <= endTime; t += SAMPLE_STEP_MS) {
       let val = 0;
       for (const day of days) {
-        if (t >= day.time) {
-          const daysSince = (t - day.time) / 86400000;
-          const contribution = PEAK * Math.min(day.count, 3) / 3 * Math.exp(-DECAY_PER_DAY * daysSince);
-          if (contribution > val) val = contribution;
-        }
+        const daysFromCenter = (t - day.time) / 86400000;
+        // Symmetric, rounded bump centred on the activity day — rises and
+        // falls at the same rate on both sides (an upside-down, smoothed
+        // parabola), instead of a sharp spike with a one-sided tail.
+        const contribution = PEAK * Math.min(day.count, 3) / 3 * Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
+        if (contribution > val) val = contribution;
       }
       points.push({ x: new Date(t), y: val });
     }
@@ -1229,7 +1230,7 @@ function renderActivityChart(issuesMap, commentTimestamps) {
       borderColor: '#ffffff',
       backgroundColor: 'rgba(255,255,255,.08)',
       borderWidth: 2.5,
-      tension: 0.35,
+      cubicInterpolationMode: 'monotone',
       fill: true,
       pointRadius: 0,
     },
@@ -1247,10 +1248,11 @@ function renderActivityChart(issuesMap, commentTimestamps) {
       label: 'კომენტარები',
       data: commentDataPoints,
       type: 'scatter',
-      borderColor: '#ffffff',
-      backgroundColor: '#ffffff',
-      pointRadius: 4,
-      pointHoverRadius: 6,
+      borderColor: '#1a1120',
+      backgroundColor: '#fbbf24',
+      borderWidth: 2,
+      pointRadius: 7,
+      pointHoverRadius: 9,
       showLine: false,
     },
   ];
