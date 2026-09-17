@@ -1185,6 +1185,22 @@ function renderActivityChart(issuesMap, commentTimestamps) {
     for (const p of totalPoints) { if (p.x.getTime() <= t) count = p.y; else break; }
     return count;
   }
+  // Linear interpolation between the two surrounding real points — a close
+  // approximation of the smoothed (monotone) curve Chart.js actually draws,
+  // so a comment point sitting between two data points still lands ON the
+  // rendered line instead of at the flatter step-function value.
+  function totalCurveValueAt(t) {
+    for (let i = 0; i < totalPoints.length - 1; i++) {
+      const p0 = totalPoints[i], p1 = totalPoints[i+1];
+      if (t >= p0.x.getTime() && t <= p1.x.getTime()) {
+        const span = p1.x.getTime() - p0.x.getTime();
+        if (span === 0) return p1.y;
+        const frac = (t - p0.x.getTime()) / span;
+        return p0.y + (p1.y - p0.y) * frac;
+      }
+    }
+    return totalValueAt(t);
+  }
 
   // Per-creator: an artificial "spike then decay" curve — each day a creator
   // opened at least one issue produces a peak on that day, decaying smoothly
@@ -1202,7 +1218,7 @@ function renderActivityChart(issuesMap, commentTimestamps) {
     if (!map.has(key)) map.set(key, { time: dayStart, count: 0 });
     map.get(key).count++;
   }
-  const PEAK = 3, BUMP_SIGMA_DAYS = 0.8, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
+  const BUMP_SIGMA_DAYS = 0.8, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
   function buildDecayCurve(activityDays) {
     const days = [...activityDays.values()].sort((a,b) => a.time - b.time);
     const points = [];
@@ -1213,7 +1229,7 @@ function renderActivityChart(issuesMap, commentTimestamps) {
         // Symmetric, rounded bump centred on the activity day — rises and
         // falls at the same rate on both sides (an upside-down, smoothed
         // parabola), instead of a sharp spike with a one-sided tail.
-        const contribution = PEAK * Math.min(day.count, 3) / 3 * Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
+        const contribution = day.count * Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
         if (contribution > val) val = contribution;
       }
       // Never let the stylised bump rise higher than the real cumulative
@@ -1243,12 +1259,18 @@ function renderActivityChart(issuesMap, commentTimestamps) {
   // issues existed at that moment, not a fixed baseline.
   const commentDataPoints = commentTimestamps
     .filter(ts => ts?.toDate)
-    .map(ts => { const t = ts.toDate(); return { x: t, y: totalValueAt(t.getTime()) }; });
+    .map(ts => { const t = ts.toDate(); return { x: t, y: totalCurveValueAt(t.getTime()) }; });
+  const commentsPerDay = new Map(); // dayKey -> count
+  for (const ts of commentTimestamps) {
+    if (!ts?.toDate) continue;
+    const key = dayKey(ts.toDate());
+    commentsPerDay.set(key, (commentsPerDay.get(key)||0) + 1);
+  }
 
   const palette = ['#f2a8a8','#7dd3fc','#86efac','#fcd34d','#c4b5fd','#67e8f9','#f9a8d4'];
   const datasets = [
     {
-      label: 'სულ საკითხები (დაგროვებით)',
+      label: 'სულ საკითხები',
       data: totalPoints,
       borderColor: '#ffffff',
       backgroundColor: 'rgba(255,255,255,.08)',
@@ -1273,10 +1295,10 @@ function renderActivityChart(issuesMap, commentTimestamps) {
       data: commentDataPoints,
       type: 'scatter',
       borderColor: '#1a1120',
-      backgroundColor: '#fbbf24',
-      borderWidth: 2,
-      pointRadius: 7,
-      pointHoverRadius: 9,
+      backgroundColor: '#ffffff',
+      borderWidth: 1.5,
+      pointRadius: 4,
+      pointHoverRadius: 6,
       showLine: false,
     },
   ];
@@ -1329,6 +1351,11 @@ function renderActivityChart(issuesMap, commentTimestamps) {
               if (ds.fullCreatorName) {
                 const t = ctx.parsed.x;
                 return `${ds.label}: ${perCreatorCumulativeAt(ds.fullCreatorName, t)}`;
+              }
+              if (ds.label === 'კომენტარები') {
+                const d = new Date(ctx.parsed.x);
+                const key = dayKey(d);
+                return `კომენტარები ამ დღეს: ${commentsPerDay.get(key) || 0}`;
               }
               return `${ds.label}: ${ctx.parsed.y}`;
             },
