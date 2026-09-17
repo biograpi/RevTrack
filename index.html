@@ -50,6 +50,10 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 32px;background:transparent}
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
+.activity-chart-legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:12px}
+.activity-legend-item{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.85);user-select:none}
+.activity-legend-swatch{width:11px;height:11px;border-radius:2px;flex-shrink:0;border-width:1.75px;border-style:solid;box-sizing:border-box}
+.activity-legend-item.is-hidden{opacity:.45}
 .project-card{background:transparent;border:2px solid var(--card-color, rgba(255,255,255,.3));border-radius:10px;padding:20px;cursor:pointer;transition:background .3s ease .12s, border-color .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:140px}
 .project-card-body{position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
 .project-card:hover{background:var(--card-color)}
@@ -353,6 +357,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <span id="activityChartStatus" style="font-size:12px;color:rgba(255,255,255,.6)"></span>
     </div>
     <canvas id="activityChartCanvas" height="90"></canvas>
+    <div class="activity-chart-legend" id="activityChartLegend"></div>
   </div>
 </div>
 
@@ -1120,9 +1125,28 @@ function setupActivityChart(pid, reviewerName, managerName) {
   document.getElementById('activityChartWrap').style.display = 'block';
   const chartIssues = {}; // compositeKey -> {id, section, createdAt, createdByName}
 
-  function redrawChart() {
+  async function redrawChart() {
+    document.getElementById('activityChartStatus').textContent = 'იტვირთება...';
+    const contractorCommentsByName = {};
     try {
-      renderActivityChart(chartIssues, reviewerName, managerName);
+      const commentFetches = Object.values(chartIssues).map(async (iss) => {
+        try {
+          const snap = await getDocs(collection(db,'projects',pid,'issues',iss.id,'comments'));
+          return snap.docs.map(d => d.data());
+        } catch(e) { return []; }
+      });
+      const results = (await Promise.all(commentFetches)).flat();
+      for (const c of results) {
+        if (!c.createdAt?.toDate) continue;
+        const user = allUsers[c.authorId];
+        if (user?.role !== 'contractor') continue;
+        const name = c.authorName || 'უცნობი';
+        if (!contractorCommentsByName[name]) contractorCommentsByName[name] = [];
+        contractorCommentsByName[name].push(c.createdAt.toDate().getTime());
+      }
+    } catch(e) { console.warn('activity chart: comment fetch failed', e); }
+    try {
+      renderActivityChart(chartIssues, reviewerName, managerName, contractorCommentsByName);
       document.getElementById('activityChartStatus').textContent = `${Object.keys(chartIssues).length} საკითხი`;
     } catch(e) {
       console.error('activity chart: render failed', e);
@@ -1148,7 +1172,12 @@ function setupActivityChart(pid, reviewerName, managerName) {
   unsubActivityChart = unsubFns;
 }
 
-function renderActivityChart(issuesMap, reviewerName, managerName) {
+const GEORGIAN_MONTHS_ABBR = ['იან.','თებ.','მარ.','აპრ.','მაი.','ივნ.','ივლ.','აგვ.','სექ.','ოქტ.','ნოე.','დეკ.'];
+function formatGeorgianDate(d) {
+  return `${d.getDate()} ${GEORGIAN_MONTHS_ABBR[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function renderActivityChart(issuesMap, reviewerName, managerName, contractorCommentsByName) {
   const issues = Object.values(issuesMap).filter(i => i.createdAt?.toDate);
   if (activityChartInstance) { activityChartInstance.destroy(); activityChartInstance = null; }
   if (!issues.length) return;
@@ -1181,6 +1210,39 @@ function renderActivityChart(issuesMap, reviewerName, managerName) {
   const reviewPoints = buildSectionLine('review');
   const internalPoints = buildSectionLine('internal');
 
+  // Turns a sparse, step-like cumulative series (jumps instantly at each
+  // real event) into a densely-sampled curve that eases smoothly through
+  // each jump instead of relying on Chart.js's "monotone" interpolation —
+  // monotone avoids overshoot but can look sharp/angular right at a
+  // plateau-then-rise-then-plateau shape, which is common in bursty data.
+  // This version is only for RENDERING; totalValueAt/valueAtFromPoints
+  // below still read the original sparse points for accurate lookups.
+  function smoothstep(x) { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); }
+  function buildSmoothedRenderLine(sparsePoints) {
+    if (!sparsePoints.length) return [];
+    const EASE_HALF_MS = 1.5 * 86400000; // eases over ~3 days total per jump — needs to be visible on a multi-week chart
+    const jumps = [];
+    let prevY = 0;
+    for (const p of sparsePoints) {
+      const size = p.y - prevY;
+      if (size > 0) jumps.push({ t: p.x.getTime(), size });
+      prevY = p.y;
+    }
+    const dense = [];
+    for (let t = startTime; t <= endTime; t += 3 * 3600 * 1000) {
+      let y = 0;
+      for (const j of jumps) {
+        const frac = (t - j.t) / (2*EASE_HALF_MS) + 0.5;
+        y += j.size * smoothstep(frac);
+      }
+      dense.push({ x: new Date(t), y });
+    }
+    return dense;
+  }
+  const totalRenderPoints = buildSmoothedRenderLine(totalPoints);
+  const reviewRenderPoints = buildSmoothedRenderLine(reviewPoints);
+  const internalRenderPoints = buildSmoothedRenderLine(internalPoints);
+
   // Step function lookup: how many issues existed in total as of time t.
   function totalValueAt(t) {
     let count = 0;
@@ -1193,91 +1255,137 @@ function renderActivityChart(issuesMap, reviewerName, managerName) {
   // toward zero afterward (until the next spike). This is a stylistic
   // choice, not a literal count — it's meant to visualise "bursts of
   // activity" rather than accumulate like the total line does.
-  function dayKey(d) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
-  const activityDaysByCreator = {};
-  for (const name of creators) activityDaysByCreator[name] = new Map(); // dayKey -> {time, count}
+  const activityTimesByCreator = {};
+  for (const name of creators) activityTimesByCreator[name] = [];
   for (const iss of issues) {
-    const d = iss.createdAt.toDate();
-    const key = dayKey(d);
-    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-    const map = activityDaysByCreator[iss.createdByName];
-    if (!map.has(key)) map.set(key, { time: dayStart, count: 0 });
-    map.get(key).count++;
+    activityTimesByCreator[iss.createdByName].push(iss.createdAt.toDate().getTime());
   }
   const BUMP_SIGMA_DAYS = 0.8, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
-  function buildDecayCurve(activityDays) {
-    const days = [...activityDays.values()].sort((a,b) => a.time - b.time);
+  // Generic step-function lookup, reused for the review/DM/total lines below.
+  function valueAtFromPoints(points, t) {
+    let count = 0;
+    for (const p of points) { if (p.x.getTime() <= t) count = p.y; else break; }
+    return count;
+  }
+  function buildDecayCurve(activityTimes, capFn) {
+    const times = [...activityTimes].sort((a,b) => a - b);
     const points = [];
     for (let t = startTime; t <= endTime; t += SAMPLE_STEP_MS) {
+      // Summed (not maxed) so a cluster of several issues close in time
+      // produces a proportionally taller combined bump, precisely aligned
+      // with when they actually happened — not rounded to day boundaries.
       let val = 0;
-      for (const day of days) {
-        const daysFromCenter = (t - day.time) / 86400000;
-        // Symmetric, rounded bump centred on the activity day — rises and
-        // falls at the same rate on both sides (an upside-down, smoothed
-        // parabola), instead of a sharp spike with a one-sided tail.
-        const contribution = day.count * Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
-        if (contribution > val) val = contribution;
+      for (const at of times) {
+        const daysFromCenter = (t - at) / 86400000;
+        // Symmetric, rounded bump — rises and falls at the same rate on
+        // both sides (an upside-down, smoothed parabola), instead of a
+        // sharp spike with a one-sided tail.
+        val += Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
       }
-      // Never let the stylised bump rise higher than the real cumulative
-      // total at that moment — early on, when the total is still small,
-      // an unclamped bump could visually overshoot it.
-      val = Math.min(val, totalValueAt(t));
+      // Never let the stylised bump rise higher than the relevant real
+      // line at that moment (the reviewer is capped by "review", the
+      // manager by "DM", everyone else by the overall total) — otherwise,
+      // early on, an unclamped bump could visually cross above it.
+      val = Math.min(val, capFn(t));
       points.push({ x: new Date(t), y: val });
     }
     return points;
   }
+  // Same step-style lookup, but against the already-smoothed dense render
+  // points — used for capping so the cap boundary itself is smooth, instead
+  // of a sparse step function creating angular kinks where a bump gets
+  // clamped against it.
+  function valueAtFromDensePoints(densePoints, t) {
+    let count = 0;
+    for (const p of densePoints) { if (p.x.getTime() <= t) count = p.y; else break; }
+    return count;
+  }
   const perCreatorPoints = {};
-  for (const name of creators) perCreatorPoints[name] = buildDecayCurve(activityDaysByCreator[name]);
+  for (const name of creators) {
+    const capFn = name === reviewerName && reviewRenderPoints.length ? (t => valueAtFromDensePoints(reviewRenderPoints, t))
+      : name === managerName && internalRenderPoints.length ? (t => valueAtFromDensePoints(internalRenderPoints, t))
+      : (t => valueAtFromDensePoints(totalRenderPoints, t));
+    perCreatorPoints[name] = buildDecayCurve(activityTimesByCreator[name], capFn);
+  }
+
+  // Same bump technique, but for contractor COMMENT activity rather than
+  // issue creation — one line per contractor who has written at least one
+  // comment on this project.
+  const contractorNames = Object.keys(contractorCommentsByName || {});
+  const perContractorCommentPoints = {};
+  for (const name of contractorNames) {
+    perContractorCommentPoints[name] = buildDecayCurve(contractorCommentsByName[name], () => Infinity);
+  }
 
   // First name only (e.g. "ანა გოგოლაძე" -> "ანა") for the legend label.
   function firstName(fullName) { return (fullName||'').trim().split(/\s+/)[0] || fullName; }
 
   const palette = ['#f2a8a8','#7dd3fc','#86efac','#fcd34d','#c4b5fd','#67e8f9','#f9a8d4'];
+  const contractorCommentPalette = ['#4ade80','#f472b6','#fb923c','#a78bfa','#facc15','#2dd4bf'];
   let paletteIdx = 0;
   function colorForCreator(name) {
     if (reviewerName && name === reviewerName) return '#b91c1c'; // dark red — review family, distinct from the "რევიზია" line's #ef4444
     if (managerName && name === managerName) return '#2563eb'; // medium blue — DM family, distinct from the "DM საკითხები" line's #22d3ee
     return palette[(paletteIdx++) % palette.length];
   }
+  function fillForCreator(name) {
+    if (reviewerName && name === reviewerName) return 'rgba(185,28,28,.15)';
+    if (managerName && name === managerName) return 'rgba(37,99,235,.15)';
+    return 'transparent';
+  }
 
   const datasets = [
     {
       label: 'სულ საკითხები',
-      data: totalPoints,
+      data: totalRenderPoints,
       borderColor: '#ffffff',
       backgroundColor: 'rgba(255,255,255,.08)',
       borderWidth: 2.5,
-      cubicInterpolationMode: 'monotone',
+      tension: 0.3,
       fill: true,
       pointRadius: 0,
+      hidden: true,
     },
-    ...(reviewPoints.length ? [{
+    ...(reviewRenderPoints.length ? [{
       label: 'რევიზია',
-      data: reviewPoints,
+      data: reviewRenderPoints,
       borderColor: '#ef4444',
       backgroundColor: 'transparent',
       borderWidth: 1.75,
-      cubicInterpolationMode: 'monotone',
+      tension: 0.3,
       fill: false,
       pointRadius: 0,
+      hidden: true,
     }] : []),
-    ...(internalPoints.length ? [{
+    ...(internalRenderPoints.length ? [{
       label: 'DM საკითხები',
-      data: internalPoints,
+      data: internalRenderPoints,
       borderColor: '#22d3ee',
       backgroundColor: 'transparent',
       borderWidth: 1.75,
-      cubicInterpolationMode: 'monotone',
+      tension: 0.3,
       fill: false,
       pointRadius: 0,
+      hidden: true,
     }] : []),
     ...creators.map((name) => ({
       label: firstName(name),
       fullCreatorName: name,
       data: perCreatorPoints[name],
       borderColor: colorForCreator(name),
+      backgroundColor: fillForCreator(name),
+      borderWidth: 1.5,
+      tension: 0.35,
+      fill: fillForCreator(name) !== 'transparent',
+      pointRadius: 0,
+    })),
+    ...contractorNames.map((name, i) => ({
+      label: `${firstName(name)} (კომენტარები)`,
+      data: perContractorCommentPoints[name],
+      borderColor: contractorCommentPalette[i % contractorCommentPalette.length],
       backgroundColor: 'transparent',
       borderWidth: 1.5,
+      borderDash: [5,3],
       tension: 0.35,
       fill: false,
       pointRadius: 0,
@@ -1300,20 +1408,27 @@ function renderActivityChart(issuesMap, reviewerName, managerName) {
           title: { display: false },
           ticks: {
             color: 'rgba(255,255,255,.75)',
-            // Only the very first tick (start of data) and the 1st of each
-            // following month get a label — a daily tick for a multi-month
-            // range is unreadably dense otherwise.
+            maxRotation: 0,
+            minRotation: 0,
+            // Only the project's start day and each month's 1st get a tick.
             callback: function(value, index, ticks) {
               const d = new Date(value);
               if (index === 0 || d.getDate() === 1) {
-                return d.toLocaleDateString('ka-GE', { year:'numeric', month:'short', day:'numeric' });
+                return formatGeorgianDate(d);
               }
               return '';
             },
           },
           grid: { color: 'rgba(255,255,255,.08)' },
           afterBuildTicks: axis => {
-            axis.ticks = axis.ticks.filter((tick, i) => i === 0 || new Date(tick.value).getDate() === 1);
+            const ticks = [{ value: startTime }];
+            const monthCursor = new Date(startTime);
+            monthCursor.setDate(1); monthCursor.setMonth(monthCursor.getMonth()+1); monthCursor.setHours(0,0,0,0);
+            while (monthCursor.getTime() <= endTime) {
+              ticks.push({ value: monthCursor.getTime() });
+              monthCursor.setMonth(monthCursor.getMonth()+1);
+            }
+            axis.ticks = ticks;
           },
         },
         y: {
@@ -1324,10 +1439,34 @@ function renderActivityChart(issuesMap, reviewerName, managerName) {
         },
       },
       plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, color: 'rgba(255,255,255,.85)' } },
+        legend: { display: false },
         tooltip: { enabled: false },
       },
     },
+  });
+
+  buildActivityChartLegend(activityChartInstance);
+}
+
+// Custom legend: a filled swatch means the line is showing, an outline-only
+// swatch means it's hidden — clicking toggles it, same as Chart.js's
+// built-in legend, but without the strikethrough-text styling.
+function buildActivityChartLegend(chart) {
+  const container = document.getElementById('activityChartLegend');
+  container.innerHTML = chart.data.datasets.map((ds, i) => {
+    const visible = chart.isDatasetVisible(i);
+    return `<span class="activity-legend-item${visible?'':' is-hidden'}" data-index="${i}">
+      <span class="activity-legend-swatch" style="border-color:${ds.borderColor};background:${visible?ds.borderColor:'transparent'}"></span>
+      ${esc(ds.label)}
+    </span>`;
+  }).join('');
+  container.querySelectorAll('.activity-legend-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = Number(el.dataset.index);
+      chart.setDatasetVisibility(idx, !chart.isDatasetVisible(idx));
+      chart.update();
+      buildActivityChartLegend(chart);
+    });
   });
 }
 
