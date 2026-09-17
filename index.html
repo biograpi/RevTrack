@@ -1136,16 +1136,19 @@ function setupActivityChart(pid, reviewerName, managerName) {
         } catch(e) { return []; }
       });
       const results = (await Promise.all(commentFetches)).flat();
+      console.log('[activity-chart-debug] total comments fetched:', results.length);
+      console.log('[activity-chart-debug] section breakdown:', results.reduce((acc,c) => { acc[c.section] = (acc[c.section]||0)+1; return acc; }, {}));
       for (const c of results) {
         if (!c.createdAt?.toDate) continue;
         const user = allUsers[c.authorId];
         if (user?.role !== 'contractor') continue;
         const name = c.authorName || 'უცნობი';
         const bucket = contractorCommentsByName[c.section];
-        if (!bucket) continue;
+        if (!bucket) { console.log('[activity-chart-debug] DROPPED — unknown section:', c.section, 'author:', name); continue; }
         if (!bucket[name]) bucket[name] = [];
         bucket[name].push(c.createdAt.toDate().getTime());
       }
+      console.log('[activity-chart-debug] contractorCommentsByName:', JSON.parse(JSON.stringify(contractorCommentsByName)));
     } catch(e) { console.warn('activity chart: comment fetch failed', e); }
     try {
       renderActivityChart(chartIssues, reviewerName, managerName, contractorCommentsByName);
