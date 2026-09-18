@@ -774,7 +774,8 @@ let currentProjectId = null;
 let currentProjectData = null;
 let currentSection = null; // 'review' | 'internal'
 let sectionsViewProjectId = null; // set while viewing a project's 2 section-cards (before picking one)
-let mainListView = 'chart'; // 'grid' | 'chart' — which view shows on the main projects list; defaults to the chart
+let mainListView = 'chart'; // 'grid' | 'chart' — which view shows on the main projects list; defaults to the chart (grid for contractors)
+let mainListViewDefaulted = false; // set once the role-based initial default has been applied
 let unsubActivityChart = null; // listeners for the project-level activity chart (see showProjectSections)
 let activityChartInstance = null;
 const SECTION_LABEL = { review: 'რევიზია', internal: 'DM საკითხები' };
@@ -1273,6 +1274,10 @@ async function showProjects() {
   grid.innerHTML = html;
   renderReviewerManagerChart(projects);
   document.getElementById('mainViewToggle').style.display = 'flex';
+  if (!mainListViewDefaulted) {
+    mainListViewDefaulted = true;
+    mainListView = currentGlobalRole === 'contractor' ? 'grid' : 'chart';
+  }
   setMainListView(mainListView);
 }
 
