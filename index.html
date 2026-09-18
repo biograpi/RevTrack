@@ -1305,21 +1305,29 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     perCreatorPoints[name] = buildSignedDecayCurve(activityEventsByCreator[name]);
   }
 
-  // Same idea for contractor COMMENT activity: one merged line per
-  // contractor, positive for comments on review-section issues, negative
-  // for comments on DM-section issues — not capped, since comment volume
-  // isn't meant to be bounded by issue count.
-  const commentEventsByContractor = {};
-  for (const section of ['review','internal']) {
-    for (const [name, times] of Object.entries(contractorCommentsByName?.[section] || {})) {
-      if (!commentEventsByContractor[name]) commentEventsByContractor[name] = [];
-      for (const time of times) commentEventsByContractor[name].push({ time, section });
+  // Same idea for contractor COMMENT activity, but as two INDEPENDENT
+  // curves per contractor (review positive, DM negative) rather than one
+  // summed line — summing let a busier side numerically mask a quieter one
+  // whenever both happened close together in time.
+  function buildPlainBumpCurve(times) {
+    const sorted = [...times].sort((a,b) => a-b);
+    const points = [];
+    for (let t = startTime; t <= endTime; t += SAMPLE_STEP_MS) {
+      points.push({ x: new Date(t), y: bumpValueAt(sorted, t) });
     }
+    return points;
   }
-  const contractorNames = Object.keys(commentEventsByContractor);
-  const perContractorCommentPoints = {};
+  const contractorNames = [...new Set([
+    ...Object.keys(contractorCommentsByName?.review || {}),
+    ...Object.keys(contractorCommentsByName?.internal || {}),
+  ])];
+  const perContractorReviewCommentPoints = {};
+  const perContractorInternalCommentPoints = {};
   for (const name of contractorNames) {
-    perContractorCommentPoints[name] = buildSignedDecayCurve(commentEventsByContractor[name]);
+    const reviewTimes = contractorCommentsByName?.review?.[name] || [];
+    const internalTimes = contractorCommentsByName?.internal?.[name] || [];
+    if (reviewTimes.length) perContractorReviewCommentPoints[name] = buildPlainBumpCurve(reviewTimes);
+    if (internalTimes.length) perContractorInternalCommentPoints[name] = negate(buildPlainBumpCurve(internalTimes));
   }
 
   // First name only (e.g. "ანა გოგოლაძე" -> "ანა") for the legend label.
@@ -1373,17 +1381,28 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       fill: fillForCreator(name) !== 'transparent',
       pointRadius: 0,
     })),
-    ...contractorNames.map((name, i) => ({
-      label: `${firstName(name)} (კომენტარები)`,
-      data: perContractorCommentPoints[name],
-      borderColor: contractorCommentPalette[i % contractorCommentPalette.length],
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      borderDash: [5,3],
-      tension: 0.35,
-      fill: false,
-      pointRadius: 0,
-    })),
+    ...contractorNames.flatMap((name, i) => {
+      const color = contractorCommentPalette[i % contractorCommentPalette.length];
+      const groupKey = `comment-${name}`;
+      const base = {
+        borderColor: color,
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderDash: [5,3],
+        tension: 0.35,
+        fill: false,
+        pointRadius: 0,
+        legendGroup: groupKey,
+      };
+      const sets = [];
+      if (perContractorReviewCommentPoints[name]) {
+        sets.push({ ...base, label: `${firstName(name)} (კომენტარები)`, data: perContractorReviewCommentPoints[name] });
+      }
+      if (perContractorInternalCommentPoints[name]) {
+        sets.push({ ...base, label: `${firstName(name)} (კომენტარები, DM)`, data: perContractorInternalCommentPoints[name] });
+      }
+      return sets;
+    }),
   ];
 
   const ctx = document.getElementById('activityChartCanvas').getContext('2d');
@@ -1450,17 +1469,30 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
 // built-in legend, but without the strikethrough-text styling.
 function buildActivityChartLegend(chart) {
   const container = document.getElementById('activityChartLegend');
-  container.innerHTML = chart.data.datasets.map((ds, i) => {
-    const visible = chart.isDatasetVisible(i);
-    return `<span class="activity-legend-item${visible?'':' is-hidden'}" data-index="${i}">
-      <span class="activity-legend-swatch" style="border-color:${ds.borderColor};background:${visible?ds.borderColor:'transparent'}"></span>
-      ${esc(ds.label)}
+  const groups = [];
+  const groupByKey = new Map();
+  chart.data.datasets.forEach((ds, i) => {
+    const key = ds.legendGroup || `__solo_${i}`;
+    if (!groupByKey.has(key)) {
+      const group = { label: ds.label, color: ds.borderColor, indices: [] };
+      groupByKey.set(key, group);
+      groups.push(group);
+    }
+    groupByKey.get(key).indices.push(i);
+  });
+  container.innerHTML = groups.map((g, gi) => {
+    const visible = chart.isDatasetVisible(g.indices[0]);
+    return `<span class="activity-legend-item${visible?'':' is-hidden'}" data-group="${gi}">
+      <span class="activity-legend-swatch" style="border-color:${g.color};background:${visible?g.color:'transparent'}"></span>
+      ${esc(g.label)}
     </span>`;
   }).join('');
   container.querySelectorAll('.activity-legend-item').forEach(el => {
     el.addEventListener('click', () => {
-      const idx = Number(el.dataset.index);
-      chart.setDatasetVisibility(idx, !chart.isDatasetVisible(idx));
+      const gi = Number(el.dataset.group);
+      const group = groups[gi];
+      const newVisible = !chart.isDatasetVisible(group.indices[0]);
+      for (const idx of group.indices) chart.setDatasetVisibility(idx, newVisible);
       chart.update();
       buildActivityChartLegend(chart);
     });
