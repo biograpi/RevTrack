@@ -1147,14 +1147,11 @@ function renderReviewerManagerChart(projects) {
       this.addEventListener('click', () => showProjectSections(d.id.slice(2)));
       return;
     }
-    console.log('[sankey-debug] attaching hover listener for', d.id);
     this.addEventListener('mouseenter', () => {
-      console.log('[sankey-debug] mouseenter fired for', d.id);
       const related = relatedLinksFor(d.id);
-      linkSel.attr('opacity', l => related.has(l) ? 0.45 : 0.225);
+      linkSel.attr('opacity', l => related.has(l) ? 0.75 : 0.06);
     });
     this.addEventListener('mouseleave', () => {
-      console.log('[sankey-debug] mouseleave fired for', d.id);
       linkSel.attr('opacity', 0.45);
     });
   });
