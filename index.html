@@ -1271,7 +1271,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   for (const iss of issues) {
     activityEventsByCreator[iss.createdByName].push({ time: iss.createdAt.toDate().getTime(), section: iss.section });
   }
-  const BUMP_SIGMA_DAYS = 1.1, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
+  const BUMP_SIGMA_DAYS = 0.3, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
   function negate(points) { return points.map(p => ({ x: p.x, y: -p.y })); }
   function bumpValueAt(times, t) {
     let val = 0;
@@ -1320,11 +1320,6 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   const perContractorCommentPoints = {};
   for (const name of contractorNames) {
     perContractorCommentPoints[name] = buildSignedDecayCurve(commentEventsByContractor[name]);
-  }
-  console.log('[activity-chart-debug] commentEventsByContractor: ' + JSON.stringify(commentEventsByContractor));
-  for (const name of contractorNames) {
-    const ys = perContractorCommentPoints[name].map(p => p.y);
-    console.log(`[activity-chart-debug] curve for "${name}": min=${Math.min(...ys).toFixed(2)} max=${Math.max(...ys).toFixed(2)}`);
   }
 
   // First name only (e.g. "ანა გოგოლაძე" -> "ანა") for the legend label.
