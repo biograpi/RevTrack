@@ -51,6 +51,11 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
 .activity-chart-legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:12px}
+#reviewerManagerChartSvg{width:100%;height:480px;display:block}
+#reviewerManagerChartSvg text{fill:rgba(255,255,255,.85);font-size:11px;font-family:inherit}
+#reviewerManagerChartSvg .sankey-link{opacity:.45;transition:opacity .15s}
+#reviewerManagerChartSvg .sankey-link:hover{opacity:.8}
+#reviewerManagerChartSvg .sankey-node-rect{stroke:rgba(255,255,255,.25);stroke-width:1}
 .activity-legend-item{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.85);user-select:none}
 .activity-legend-swatch{width:11px;height:11px;border-radius:2px;flex-shrink:0;border-width:1.75px;border-style:solid;box-sizing:border-box}
 .activity-legend-item.is-hidden{opacity:.45}
@@ -351,6 +356,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     </div>
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
+  <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none">
+    <svg id="reviewerManagerChartSvg"></svg>
+  </div>
   <div class="activity-chart-wrap" id="activityChartWrap" style="display:none">
     <div class="activity-chart-head">
       <h3>აქტივობა დროში</h3>
@@ -640,6 +648,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 </div>
 
 <!-- ══ FIREBASE ══ -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 // Minimal built-in date adapter for Chart.js's "time" scale — avoids relying
@@ -985,6 +995,113 @@ function issueCountToActivityPct(count) {
   return 60;
 }
 
+// ── REVIEWER → PROJECT → DESIGN MANAGER SANKEY (main projects list) ──
+function firstNameOnly(fullName) { return (fullName||'').trim().split(/\s+/)[0] || fullName; }
+const SANKEY_REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
+const SANKEY_MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
+
+function renderReviewerManagerChart(projects) {
+  const wrap = document.getElementById('reviewerManagerChartWrap');
+  if (!projects.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const svgEl = document.getElementById('reviewerManagerChartSvg');
+  svgEl.innerHTML = ''; // clear any previous render
+  const width = svgEl.parentElement.clientWidth || 800;
+  const height = 480;
+
+  // Build unique node ids per column so a project can't collide in name
+  // with a reviewer or manager (each gets its own id prefix; the label
+  // shown is always the clean name, without the prefix).
+  const nodesById = new Map(); // id -> {id, name, color}
+  function addNode(id, name, color) {
+    if (!nodesById.has(id)) nodesById.set(id, { id, name, color });
+    return id;
+  }
+  const reviewerColorByName = new Map();
+  const managerColorByName = new Map();
+  function colorFor(map, name, palette) {
+    if (!map.has(name)) map.set(name, palette[map.size % palette.length]);
+    return map.get(name);
+  }
+  const links = [];
+  projects.forEach(p => {
+    const reviewerFullName = p.createdByName || 'ადმინი';
+    const managerFullName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ';
+    const projectColor = p.color || DEFAULT_CARD_COLOR;
+    const reviewerColor = colorFor(reviewerColorByName, reviewerFullName, SANKEY_REVIEWER_PALETTE);
+    const managerColor = colorFor(managerColorByName, managerFullName, SANKEY_MANAGER_PALETTE);
+    const value = Math.max(p.issueCount || 0, 1); // keep a visible minimum width even for a brand-new, empty project
+    const reviewerId = addNode(`r:${reviewerFullName}`, firstNameOnly(reviewerFullName), reviewerColor);
+    const projectId = addNode(`p:${p.id}`, p.name, projectColor);
+    const managerId = addNode(`m:${managerFullName}`, firstNameOnly(managerFullName), managerColor);
+    links.push({ source: reviewerId, target: projectId, value, fromColor: reviewerColor, toColor: projectColor });
+    links.push({ source: projectId, target: managerId, value, fromColor: projectColor, toColor: managerColor });
+  });
+
+  const svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
+  const { sankey, sankeyLinkHorizontal } = d3;
+  const sankeyGen = sankey()
+    .nodeId(d => d.id)
+    .nodeWidth(14)
+    .nodePadding(14)
+    .extent([[1, 5], [width - 1, height - 5]]);
+
+  const graph = sankeyGen({
+    nodes: [...nodesById.values()].map(d => ({ ...d })),
+    links: links.map(d => ({ ...d })),
+  });
+
+  // Each link gets its own gradient (reviewer-color -> project-color, or
+  // project-color -> manager-color) so the project's own brand color always
+  // sits in the middle of the flow, blending into red on one end and blue
+  // on the other.
+  const defs = svg.append('defs');
+  graph.links.forEach((d, i) => {
+    const grad = defs.append('linearGradient')
+      .attr('id', `sankey-grad-${i}`)
+      .attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', d.source.x1).attr('x2', d.target.x0);
+    grad.append('stop').attr('offset', '0%').attr('stop-color', d.fromColor);
+    grad.append('stop').attr('offset', '100%').attr('stop-color', d.toColor);
+    d.gradientId = `sankey-grad-${i}`;
+  });
+
+  svg.append('g')
+    .selectAll('path')
+    .data(graph.links)
+    .join('path')
+    .attr('class', 'sankey-link')
+    .attr('d', sankeyLinkHorizontal())
+    .attr('fill', 'none')
+    .attr('stroke', d => `url(#${d.gradientId})`)
+    .attr('stroke-width', d => Math.max(1, d.width))
+    .append('title')
+    .text(d => `${d.source.name} → ${d.target.name}`);
+
+  const node = svg.append('g')
+    .selectAll('g')
+    .data(graph.nodes)
+    .join('g');
+
+  node.append('rect')
+    .attr('class', 'sankey-node-rect')
+    .attr('x', d => d.x0)
+    .attr('y', d => d.y0)
+    .attr('height', d => Math.max(1, d.y1 - d.y0))
+    .attr('width', d => d.x1 - d.x0)
+    .attr('fill', d => d.color)
+    .append('title')
+    .text(d => d.name);
+
+  node.append('text')
+    .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+    .attr('y', d => (d.y0 + d.y1) / 2)
+    .attr('dy', '0.35em')
+    .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+    .text(d => d.name);
+}
+
 async function showProjects() {
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
   if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
@@ -1039,11 +1156,13 @@ async function showProjects() {
     });
   }
   grid.innerHTML = html;
+  renderReviewerManagerChart(projects);
 }
 
 // ── SHOW A PROJECT'S TWO SECTIONS ──
 window.showProjectSections = async function(pid) {
   sectionsViewProjectId = pid;
+  document.getElementById('reviewerManagerChartWrap').style.display = 'none';
   const pd = await getDoc(doc(db,'projects',pid));
   if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   const p = {id:pid,...pd.data()};
