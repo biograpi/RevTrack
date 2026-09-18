@@ -46,7 +46,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-header{height:52px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px;position:sticky;top:0;z-index:100}
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
-.projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
+.projects-grid{padding:32px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:900px;margin:0 auto}
 .activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 32px;background:transparent}
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
@@ -55,7 +55,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 #reviewerManagerChartSvg text{fill:rgba(255,255,255,.85);font-size:11px;font-family:inherit}
 #reviewerManagerChartSvg .sankey-link{opacity:.45;transition:opacity .15s}
 #reviewerManagerChartSvg .sankey-link:hover{opacity:.8}
-#reviewerManagerChartSvg .sankey-node-rect{stroke:rgba(255,255,255,.25);stroke-width:1}
+#reviewerManagerChartSvg .sankey-node-rect{stroke:none}
 .activity-legend-item{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.85);user-select:none}
 .activity-legend-swatch{width:11px;height:11px;border-radius:2px;flex-shrink:0;border-width:1.75px;border-style:solid;box-sizing:border-box}
 .activity-legend-item.is-hidden{opacity:.45}
@@ -79,6 +79,8 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:auto;align-self:flex-start;width:fit-content}
 .project-card-bare{min-height:70px;justify-content:center;align-items:center}
 .project-card-pill{border-radius:999px;aspect-ratio:984/323;min-height:0;padding:16px 32px;border-color:var(--primary);background:color-mix(in srgb, var(--primary) var(--activity-pct, 0%), transparent)}
+.project-card-compact{aspect-ratio:984/260}
+.project-card-bare.project-card-compact .project-card-name{font-size:21px}
 .project-card-pill:hover{border-color:var(--card-color)}
 .project-card-pill .project-card-body{align-items:center;justify-content:center}
 .project-card-logo{width:100%;display:flex;align-items:center;justify-content:center}
@@ -1148,7 +1150,7 @@ async function showProjects() {
       // Logos temporarily disabled — sizes didn't match design standards yet.
       // Re-enable by restoring the PROJECT_LOGOS lookup once exact SVGs are ready.
       const nameHtml = `<div class="project-card-name">${esc(p.name)}</div>`;
-      html += `<div class="project-card project-card-bare project-card-pill" ${cardStyle} onclick="showProjectSections('${p.id}')">
+      html += `<div class="project-card project-card-bare project-card-pill project-card-compact" ${cardStyle} onclick="showProjectSections('${p.id}')">
         <div class="project-card-body">
           ${nameHtml}
         </div>
