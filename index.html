@@ -1097,12 +1097,13 @@ function renderReviewerManagerChart(projects) {
     .attr('opacity', 0.45);
   linkSel.append('title').text(d => `${d.source.name} → ${d.target.name}`);
 
-  // Given a reviewer or manager node, finds every link belonging to the
-  // SAME project row(s) that node touches — both the reviewer->project and
-  // project->manager legs — so hovering highlights the whole flow through
-  // that project, not just the one segment directly touching the node.
+  // Given a reviewer, manager, or project node, finds every link belonging
+  // to that project row: for a reviewer/manager, this means both legs of
+  // every project they touch; for a project itself, its own two direct
+  // links (reviewer->project and project->manager).
   function relatedLinksFor(nodeId) {
     const direct = graph.links.filter(l => l.source.id === nodeId || l.target.id === nodeId);
+    if (nodeId.startsWith('p:')) return new Set(direct);
     const projectIds = new Set();
     direct.forEach(l => {
       const other = l.source.id === nodeId ? l.target : l.source;
@@ -1144,7 +1145,6 @@ function renderReviewerManagerChart(projects) {
   node.each(function(d) {
     if (d.id.startsWith('p:')) {
       this.addEventListener('click', () => showProjectSections(d.id.slice(2)));
-      return;
     }
     this.addEventListener('mouseenter', () => {
       const related = relatedLinksFor(d.id);
