@@ -1321,6 +1321,11 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   for (const name of contractorNames) {
     perContractorCommentPoints[name] = buildSignedDecayCurve(commentEventsByContractor[name]);
   }
+  console.log('[activity-chart-debug] commentEventsByContractor: ' + JSON.stringify(commentEventsByContractor));
+  for (const name of contractorNames) {
+    const ys = perContractorCommentPoints[name].map(p => p.y);
+    console.log(`[activity-chart-debug] curve for "${name}": min=${Math.min(...ys).toFixed(2)} max=${Math.max(...ys).toFixed(2)}`);
+  }
 
   // First name only (e.g. "ანა გოგოლაძე" -> "ანა") for the legend label.
   function firstName(fullName) { return (fullName||'').trim().split(/\s+/)[0] || fullName; }
