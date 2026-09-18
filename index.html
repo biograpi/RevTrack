@@ -359,6 +359,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="view-toggle-btn" id="mainViewToggleChart" onclick="setMainListView('chart')">გრაფიკი</button>
     </div>
     <div class="projects-user">
+      <button class="btn-hdr" id="btnDownloadSankeyJpg" style="display:none" onclick="downloadSankeyAsJpg()">⬇ JPG ჩამოწერა</button>
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
       <button class="btn-hdr" id="btnAdminTools" style="display:none">🛠 ხელსაწყოები</button>
@@ -367,7 +368,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     </div>
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
-  <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none">
+  <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
     <svg id="reviewerManagerChartSvg"></svg>
   </div>
   <div class="activity-chart-wrap" id="activityChartWrap" style="display:none">
@@ -1009,6 +1010,12 @@ function issueCountToActivityPct(count) {
 
 // ── REVIEWER → PROJECT → DESIGN MANAGER SANKEY (main projects list) ──
 function firstNameOnly(fullName) { return (fullName||'').trim().split(/\s+/)[0] || fullName; }
+// "ნინო ორმოცაძე" -> "ნინო ო." — distinguishes two people sharing a first name.
+function nameWithLastInitial(fullName) {
+  const parts = (fullName||'').trim().split(/\s+/);
+  if (parts.length < 2) return parts[0] || fullName;
+  return `${parts[0]} ${parts[1][0]}.`;
+}
 const SANKEY_REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
 const SANKEY_MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
 
@@ -1016,7 +1023,6 @@ function renderReviewerManagerChart(projects) {
   const wrap = document.getElementById('reviewerManagerChartWrap');
   if (!projects.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'block';
-
   const svgEl = document.getElementById('reviewerManagerChartSvg');
   svgEl.innerHTML = ''; // clear any previous render
   const width = svgEl.parentElement.clientWidth || 800;
@@ -1046,18 +1052,19 @@ function renderReviewerManagerChart(projects) {
     const value = Math.max(p.issueCount || 0, 1); // keep a visible minimum width even for a brand-new, empty project
     const reviewerId = addNode(`r:${reviewerFullName}`, firstNameOnly(reviewerFullName), reviewerColor);
     const projectId = addNode(`p:${p.id}`, p.name, projectColor);
-    const managerId = addNode(`m:${managerFullName}`, firstNameOnly(managerFullName), managerColor);
+    const managerId = addNode(`m:${managerFullName}`, nameWithLastInitial(managerFullName), managerColor);
     links.push({ source: reviewerId, target: projectId, value, fromColor: reviewerColor, toColor: projectColor });
     links.push({ source: projectId, target: managerId, value, fromColor: projectColor, toColor: managerColor });
   });
 
   const svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
+  svg.append('rect').attr('x', 0).attr('y', 0).attr('width', width).attr('height', height).attr('fill', '#1a1120');
   const { sankey, sankeyLinkHorizontal } = d3;
   const sankeyGen = sankey()
     .nodeId(d => d.id)
     .nodeWidth(14)
     .nodePadding(14)
-    .extent([[1, 5], [width - 1, height - 5]]);
+    .extent([[1, 34], [width - 1, height - 5]]);
 
   const graph = sankeyGen({
     nodes: [...nodesById.values()].map(d => ({ ...d })),
@@ -1079,7 +1086,7 @@ function renderReviewerManagerChart(projects) {
     d.gradientId = `sankey-grad-${i}`;
   });
 
-  svg.append('g')
+  const linkSel = svg.append('g')
     .selectAll('path')
     .data(graph.links)
     .join('path')
@@ -1088,19 +1095,28 @@ function renderReviewerManagerChart(projects) {
     .attr('fill', 'none')
     .attr('stroke', d => `url(#${d.gradientId})`)
     .attr('stroke-width', d => Math.max(1, d.width))
-    .append('title')
-    .text(d => `${d.source.name} → ${d.target.name}`);
+    .attr('opacity', 0.45);
+  linkSel.append('title').text(d => `${d.source.name} → ${d.target.name}`);
+
+  // Given a reviewer or manager node, finds every link belonging to the
+  // SAME project row(s) that node touches — both the reviewer->project and
+  // project->manager legs — so hovering highlights the whole flow through
+  // that project, not just the one segment directly touching the node.
+  function relatedLinksFor(nodeId) {
+    const direct = graph.links.filter(l => l.source.id === nodeId || l.target.id === nodeId);
+    const projectIds = new Set();
+    direct.forEach(l => {
+      const other = l.source.id === nodeId ? l.target : l.source;
+      if (other.id.startsWith('p:')) projectIds.add(other.id);
+    });
+    return new Set(graph.links.filter(l => projectIds.has(l.source.id) || projectIds.has(l.target.id)));
+  }
 
   const node = svg.append('g')
     .selectAll('g')
     .data(graph.nodes)
     .join('g')
-    .style('cursor', d => d.id.startsWith('p:') ? 'pointer' : 'default')
-    .on('click', (event, d) => {
-      if (!d.id.startsWith('p:')) return;
-      const projectId = d.id.slice(2);
-      showProjectSections(projectId);
-    });
+    .style('cursor', d => d.id.startsWith('p:') ? 'pointer' : 'default');
 
   node.append('rect')
     .attr('class', 'sankey-node-rect')
@@ -1117,8 +1133,80 @@ function renderReviewerManagerChart(projects) {
     .attr('y', d => (d.y0 + d.y1) / 2)
     .attr('dy', '0.35em')
     .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+    .attr('fill', 'rgba(255,255,255,.85)')
+    .attr('font-size', '11px')
+    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif")
     .text(d => d.name);
+
+  // Bound with plain addEventListener (rather than D3's .on chained earlier
+  // in the selection's lifecycle) directly on each node's own DOM element,
+  // after its rect/text children already exist — the most robust way to
+  // guarantee the listener actually receives hover/click events.
+  node.each(function(d) {
+    if (d.id.startsWith('p:')) {
+      this.addEventListener('click', () => showProjectSections(d.id.slice(2)));
+      return;
+    }
+    this.addEventListener('mouseenter', () => {
+      const related = relatedLinksFor(d.id);
+      linkSel.attr('opacity', l => related.has(l) ? 0.45 : 0.225);
+    });
+    this.addEventListener('mouseleave', () => {
+      linkSel.attr('opacity', 0.45);
+    });
+  });
+
+  const headerStyle = t => t
+    .attr('y', 20)
+    .attr('fill', 'rgba(255,255,255,.5)')
+    .attr('font-size', '11px')
+    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif");
+  headerStyle(svg.append('text').attr('x', 1).attr('text-anchor', 'start')).text('რევიზორი');
+  headerStyle(svg.append('text').attr('x', width / 2).attr('text-anchor', 'middle')).text('პროექტი');
+  headerStyle(svg.append('text').attr('x', width - 1).attr('text-anchor', 'end')).text('დიზაინ მენეჯერი');
 }
+
+window.downloadSankeyAsJpg = function() {
+  const svgEl = document.getElementById('reviewerManagerChartSvg');
+  const bbox = svgEl.getBoundingClientRect();
+  const width = Math.round(bbox.width) || 800;
+  const height = Math.round(bbox.height) || 480;
+  const SCALE = 2.5; // render at higher resolution so the export looks sharp, not blurry
+  const PADDING = 40; // css px of breathing room around the chart on all sides
+
+  // Clone so we can set explicit pixel dimensions and namespace without
+  // touching the live, on-screen SVG.
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('width', width);
+  clone.setAttribute('height', height);
+  const svgString = new XMLSerializer().serializeToString(clone);
+  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.onload = () => {
+    const canvasWidth = Math.round((width + PADDING * 2) * SCALE);
+    const canvasHeight = Math.round((height + PADDING * 2) * SCALE);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d');
+    // JPG has no transparency — fill the same dark background this chart
+    // normally sits on, so the export doesn't come out with a white/black
+    // default background instead.
+    ctx.fillStyle = '#1a1120';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    ctx.drawImage(img, PADDING * SCALE, PADDING * SCALE, width * SCALE, height * SCALE);
+    URL.revokeObjectURL(url);
+    const link = document.createElement('a');
+    link.download = `revtrack-reviewer-manager-${new Date().toISOString().slice(0,10)}.jpg`;
+    link.href = canvas.toDataURL('image/jpeg', 0.95);
+    link.click();
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); showToast('ჩამოწერა ვერ მოხერხდა'); };
+  img.src = url;
+};
 
 window.setMainListView = function(view) {
   mainListView = view;
@@ -1126,6 +1214,7 @@ window.setMainListView = function(view) {
   document.getElementById('reviewerManagerChartWrap').style.display = view === 'chart' ? 'block' : 'none';
   document.getElementById('mainViewToggleGrid').classList.toggle('active', view === 'grid');
   document.getElementById('mainViewToggleChart').classList.toggle('active', view === 'chart');
+  document.getElementById('btnDownloadSankeyJpg').style.display = (view === 'chart' && isAdminLike()) ? 'flex' : 'none';
 };
 
 async function showProjects() {
@@ -1193,6 +1282,7 @@ window.showProjectSections = async function(pid) {
   sectionsViewProjectId = pid;
   document.getElementById('reviewerManagerChartWrap').style.display = 'none';
   document.getElementById('mainViewToggle').style.display = 'none';
+  document.getElementById('btnDownloadSankeyJpg').style.display = 'none';
   const pd = await getDoc(doc(db,'projects',pid));
   if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   const p = {id:pid,...pd.data()};
@@ -1438,25 +1528,14 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     }
     return val;
   }
-  // events: array of {time, section: 'review'|'internal'}. Builds ONE
-  // combined line: positive contributions from "review" events, negative
-  // contributions from "internal" events, summed together at each sampled
-  // moment. Not capped against the section lines — capping kept
-  // reintroducing angular kinks wherever a bump got clamped.
-  function buildSignedDecayCurve(events) {
-    const reviewTimes = events.filter(e => e.section === 'review').map(e => e.time).sort((a,b)=>a-b);
-    const internalTimes = events.filter(e => e.section === 'internal').map(e => e.time).sort((a,b)=>a-b);
-    const points = [];
-    for (let t = startTime; t <= endTime; t += SAMPLE_STEP_MS) {
-      const pos = bumpValueAt(reviewTimes, t);
-      const neg = bumpValueAt(internalTimes, t);
-      points.push({ x: new Date(t), y: pos - neg });
-    }
-    return points;
-  }
-  const perCreatorPoints = {};
+  const perCreatorReviewPoints = {};
+  const perCreatorInternalPoints = {};
   for (const name of creators) {
-    perCreatorPoints[name] = buildSignedDecayCurve(activityEventsByCreator[name]);
+    const events = activityEventsByCreator[name];
+    const reviewTimes = events.filter(e => e.section === 'review').map(e => e.time);
+    const internalTimes = events.filter(e => e.section === 'internal').map(e => e.time);
+    if (reviewTimes.length) perCreatorReviewPoints[name] = buildPlainBumpCurve(reviewTimes);
+    if (internalTimes.length) perCreatorInternalPoints[name] = negate(buildPlainBumpCurve(internalTimes));
   }
 
   // Same idea for contractor COMMENT activity, but as two INDEPENDENT
@@ -1524,17 +1603,25 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       pointRadius: 0,
       hidden: true,
     }] : []),
-    ...creators.map((name) => ({
-      label: firstName(name),
-      fullCreatorName: name,
-      data: perCreatorPoints[name],
-      borderColor: colorForCreator(name),
-      backgroundColor: fillForCreator(name),
-      borderWidth: 1.5,
-      tension: 0.35,
-      fill: fillForCreator(name) !== 'transparent',
-      pointRadius: 0,
-    })),
+    ...creators.flatMap((name) => {
+      const color = colorForCreator(name);
+      const fill = fillForCreator(name);
+      const groupKey = `creator-${name}`;
+      const base = {
+        fullCreatorName: name,
+        legendGroup: groupKey,
+        borderColor: color,
+        backgroundColor: fill,
+        borderWidth: 1.5,
+        tension: 0.35,
+        fill: fill !== 'transparent',
+        pointRadius: 0,
+      };
+      const sets = [];
+      if (perCreatorReviewPoints[name]) sets.push({ ...base, label: firstName(name), data: perCreatorReviewPoints[name] });
+      if (perCreatorInternalPoints[name]) sets.push({ ...base, label: `${firstName(name)} (DM)`, data: perCreatorInternalPoints[name] });
+      return sets;
+    }),
     ...contractorNames.flatMap((name, i) => {
       const color = contractorCommentPalette[i % contractorCommentPalette.length];
       const groupKey = `comment-${name}`;
