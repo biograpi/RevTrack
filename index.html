@@ -46,7 +46,12 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-header{height:52px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px;position:sticky;top:0;z-index:100}
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
-.projects-grid{padding:32px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:900px;margin:0 auto}
+.view-toggle{display:flex;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px}
+.view-toggle-btn{border:none;background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-family:inherit;padding:6px 16px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s}
+.view-toggle-btn:hover{color:#fff}
+.view-toggle-btn.active{background:rgba(255,255,255,.18);color:#fff;font-weight:600}
+.projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
+.projects-grid-4col{grid-template-columns:repeat(4,1fr)}
 .activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 32px;background:transparent}
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
@@ -349,6 +354,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <div class="projects-screen" id="projectsScreen">
   <div class="projects-header">
     <div class="projects-logo">RevTrack <span style="opacity:.6;font-weight:400">1.0</span></div>
+    <div class="view-toggle" id="mainViewToggle" style="display:none">
+      <button class="view-toggle-btn" id="mainViewToggleGrid" onclick="setMainListView('grid')">ბადე</button>
+      <button class="view-toggle-btn" id="mainViewToggleChart" onclick="setMainListView('chart')">გრაფიკი</button>
+    </div>
     <div class="projects-user">
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
@@ -765,6 +774,7 @@ let currentProjectId = null;
 let currentProjectData = null;
 let currentSection = null; // 'review' | 'internal'
 let sectionsViewProjectId = null; // set while viewing a project's 2 section-cards (before picking one)
+let mainListView = 'chart'; // 'grid' | 'chart' — which view shows on the main projects list; defaults to the chart
 let unsubActivityChart = null; // listeners for the project-level activity chart (see showProjectSections)
 let activityChartInstance = null;
 const SECTION_LABEL = { review: 'რევიზია', internal: 'DM საკითხები' };
@@ -1084,7 +1094,13 @@ function renderReviewerManagerChart(projects) {
   const node = svg.append('g')
     .selectAll('g')
     .data(graph.nodes)
-    .join('g');
+    .join('g')
+    .style('cursor', d => d.id.startsWith('p:') ? 'pointer' : 'default')
+    .on('click', (event, d) => {
+      if (!d.id.startsWith('p:')) return;
+      const projectId = d.id.slice(2);
+      showProjectSections(projectId);
+    });
 
   node.append('rect')
     .attr('class', 'sankey-node-rect')
@@ -1104,6 +1120,14 @@ function renderReviewerManagerChart(projects) {
     .text(d => d.name);
 }
 
+window.setMainListView = function(view) {
+  mainListView = view;
+  document.getElementById('projectsGrid').style.display = view === 'grid' ? 'grid' : 'none';
+  document.getElementById('reviewerManagerChartWrap').style.display = view === 'chart' ? 'block' : 'none';
+  document.getElementById('mainViewToggleGrid').classList.toggle('active', view === 'grid');
+  document.getElementById('mainViewToggleChart').classList.toggle('active', view === 'chart');
+};
+
 async function showProjects() {
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
   if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
@@ -1118,6 +1142,7 @@ async function showProjects() {
   document.getElementById('btnNewProjectHdr').style.display = (currentGlobalRole==='admin'||currentGlobalRole==='reviewer') ? 'flex' : 'none';
 
   const grid = document.getElementById('projectsGrid');
+  grid.classList.add('projects-grid-4col');
   grid.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px">იტვირთება...</div>';
 
   await loadAllUsers();
@@ -1159,12 +1184,15 @@ async function showProjects() {
   }
   grid.innerHTML = html;
   renderReviewerManagerChart(projects);
+  document.getElementById('mainViewToggle').style.display = 'flex';
+  setMainListView(mainListView);
 }
 
 // ── SHOW A PROJECT'S TWO SECTIONS ──
 window.showProjectSections = async function(pid) {
   sectionsViewProjectId = pid;
   document.getElementById('reviewerManagerChartWrap').style.display = 'none';
+  document.getElementById('mainViewToggle').style.display = 'none';
   const pd = await getDoc(doc(db,'projects',pid));
   if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   const p = {id:pid,...pd.data()};
@@ -1189,6 +1217,7 @@ window.showProjectSections = async function(pid) {
     : '';
 
   const grid = document.getElementById('projectsGrid');
+  grid.classList.remove('projects-grid-4col');
   grid.innerHTML = `
     <div class="section-back" onclick="showProjects()">← პროექტები</div>
     ${canManage?`<div class="section-back" style="margin-left:auto" onclick="openProjectModal('${pid}')">⚙ პროექტის მართვა</div>`:''}
@@ -1221,6 +1250,7 @@ window.showProjectSections = async function(pid) {
       </div>
     </div>
   `;
+  grid.style.display = 'grid';
 
   ['review','internal'].forEach(async sec => {
     const el = document.getElementById(`pcount-${sec}`);
