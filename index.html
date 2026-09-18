@@ -744,6 +744,8 @@ function isAdminLike() {
 let currentUser = null;
 let currentUserName = ''; // real name from Firestore users/{uid}.name — Auth displayName is never set, so don't rely on it
 let currentUserLabel = ''; // optional status label (DM/PM/TT...), only meaningful for User-role accounts
+let currentUserCanOpenDmIssues = false; // User-role accounts can be individually granted DM issue-creation
+function canOpenDmAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenDmIssues === true; }
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
 let currentRole = 'viewer';
 let currentGlobalRole = 'contractor';
@@ -943,6 +945,7 @@ onAuthStateChanged(auth, async user => {
     role = d.role || 'contractor';
     name = d.name || name;
     label = d.statusLabel || '';
+    currentUserCanOpenDmIssues = d.canOpenDmIssues === true;
   } else {
     showToast('მომხმარებელი ვერ მოიძებნა — გაიარეთ რეგისტრაცია'); await signOut(auth); return;
   }
@@ -1526,7 +1529,7 @@ async function openProject(pid, section) {
   currentRole = myRole;
 
   // Review section: only reviewer/admin may open issues. Internal section: reviewer/manager/admin.
-  const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&currentSection==='internal');
+  const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&currentSection==='internal')||(currentSection==='internal'&&canOpenDmAsUser());
   const canComment = true; // any real (registered, approved) role can comment
   const isMyOwnProject = currentProjectData.createdBy === currentUser.uid;
   const canManageProject = myRole==='admin'||(myRole==='reviewer'&&isMyOwnProject);
@@ -1740,10 +1743,10 @@ function render() {
     tbody.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div>`;
     return;
   }
-  const canCreateHere = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
+  const canCreateHere = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||(currentSection==='internal'&&canOpenDmAsUser());
   const canEditIssue = issue => isAdminLike() || issue.createdBy===currentUser?.uid;
-  const canDeleteIssue = issue => isAdminLike() || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'));
-  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
+  const canDeleteIssue = issue => isAdminLike() || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'||canOpenDmAsUser()));
+  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||(currentSection==='internal'&&canOpenDmAsUser());
   const showUnread = UNREAD_ROLES.includes(currentRole);
   const ph = icon => `<button class="icon-btn" style="visibility:hidden;pointer-events:none" tabindex="-1">${icon}</button>`;
   const todayStr = new Date().toISOString().slice(0,10);
@@ -2235,7 +2238,7 @@ async function openDetail(id) {
   document.getElementById('detailNextBtn').disabled = navIndex === -1 || navIndex >= navList.length-1;
   const canEdit = isAdminLike() || issue.createdBy===currentUser?.uid;
   const canComment = true;
-  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal');
+  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||(currentSection==='internal'&&canOpenDmAsUser());
   document.getElementById('detailDupBtn').style.display = canDuplicate?'flex':'none';
   const canDuplicateToReview = currentRole==='admin'||currentRole==='reviewer';
   document.getElementById('detailDupToReviewBtn').style.display = (canDuplicateToReview && currentSection==='internal')?'flex':'none';
@@ -2532,6 +2535,12 @@ function renderUsersPanel() {
       ${canManageUsers && u.role==='viewer'?`<div class="user-label-row">
         <span>ლეიბლი:</span>
         <input type="text" value="${esc(u.statusLabel||'')}" placeholder="მაგ. DM, PM, TT..." onchange="updateUserLabel('${u.id}',this.value)">
+      </div>
+      <div class="user-label-row">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+          <input type="checkbox" ${u.canOpenDmIssues?'checked':''} onchange="toggleUserDmPermission('${u.id}',this.checked)">
+          DM საკითხების გახსნის უფლება
+        </label>
       </div>`:''}
     </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">მომხმარებელი არ არის</div>';
 }
@@ -2545,6 +2554,12 @@ document.getElementById('btnAdminTools').addEventListener('click', () => om('adm
 window.updateUserLabel = async (uid, label) => {
   try { await updateDoc(doc(db,'users',uid), {statusLabel: label.trim()}); }
   catch(e) { alert('შეცდომა: '+e.message); }
+};
+window.toggleUserDmPermission = async (uid, checked) => {
+  try {
+    await updateDoc(doc(db,'users',uid), {canOpenDmIssues: checked});
+    if (allUsers[uid]) allUsers[uid].canOpenDmIssues = checked;
+  } catch(e) { alert('შეცდომა: '+e.message); renderUsersPanel(); }
 };
 window.approveUser = async uid => {
   await updateDoc(doc(db,'users',uid), {approved:true});
