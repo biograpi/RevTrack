@@ -1147,7 +1147,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('d', sankeyLinkHorizontal())
     .attr('fill', 'none')
     .attr('stroke', d => `url(#${d.gradientId})`)
-    .attr('stroke-width', d => Math.max(1, d.width))
+    .attr('stroke-width', d => Math.max(4, d.width))
     .attr('opacity', 0.45);
   linkSel.append('title').text(d => `${d.source.name} → ${d.target.name}`);
 
@@ -1193,7 +1193,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('x', d => d.source.x0)
     .attr('y', d => d.y0 - d.width / 2)
     .attr('width', d => d.source.x1 - d.source.x0)
-    .attr('height', d => Math.max(1, d.width))
+    .attr('height', d => Math.max(4, d.width))
     .attr('fill', d => d.source.color);
   const segmentSel2 = svg.append('g')
     .selectAll('rect')
@@ -1203,7 +1203,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('x', d => d.target.x0)
     .attr('y', d => d.y1 - d.width / 2)
     .attr('width', d => d.target.x1 - d.target.x0)
-    .attr('height', d => Math.max(1, d.width))
+    .attr('height', d => Math.max(4, d.width))
     .attr('fill', d => d.target.color);
 
   node.append('text')
@@ -1245,10 +1245,16 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('fill', headerTextColor)
     .attr('font-size', '11px')
     .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif");
-  const colW = width / 4;
+  // Center each header over its column's actual node position, rather than
+  // assuming an even 1/4-width split — d3-sankey doesn't necessarily space
+  // 4 columns at exactly 25/50/75%.
+  function colCenterX(prefix) {
+    const n = graph.nodes.find(nd => nd.id.startsWith(prefix));
+    return n ? (n.x0 + n.x1) / 2 : 0;
+  }
   headerStyle(svg.append('text').attr('x', 1).attr('text-anchor', 'start')).text('დიზაინ მენეჯერი');
-  headerStyle(svg.append('text').attr('x', colW).attr('text-anchor', 'middle')).text('პროექტი');
-  headerStyle(svg.append('text').attr('x', colW * 2).attr('text-anchor', 'middle')).text('რევიზორი');
+  headerStyle(svg.append('text').attr('x', colCenterX('p:')).attr('text-anchor', 'middle')).text('პროექტი');
+  headerStyle(svg.append('text').attr('x', colCenterX('r:')).attr('text-anchor', 'middle')).text('რევიზორი');
   headerStyle(svg.append('text').attr('x', width - 1).attr('text-anchor', 'end')).text('პროექტის მენეჯერი');
 }
 
@@ -1407,7 +1413,7 @@ window.showProjectSections = async function(pid) {
   const brandColor = p.color || DEFAULT_CARD_COLOR;
   const cardStyle = brandColor ? `style="--card-color:${brandColor};border-color:${brandColor}"` : '';
 
-  const canManage = currentGlobalRole==='admin' || (currentGlobalRole==='reviewer' && p.createdBy===currentUser.uid);
+  const canManage = isAdminLike() || (currentGlobalRole==='reviewer' && p.createdBy===currentUser.uid);
 
   const ifcFiles = p.ifcFiles || [];
   const hasIfc = ifcFiles.length > 0;
@@ -2988,7 +2994,7 @@ async function openProjectModal(pid) {
   }
 
   const delBtn = document.getElementById('btnDeleteProject');
-  const canDeleteThisProject = pid && (currentGlobalRole === 'admin' || (currentGlobalRole === 'reviewer' && pd.createdBy === currentUser.uid));
+  const canDeleteThisProject = pid && (isAdminLike() || (currentGlobalRole === 'reviewer' && pd.createdBy === currentUser.uid));
   if (canDeleteThisProject) {
     delBtn.style.display = 'block';
     delBtn.disabled = false;
