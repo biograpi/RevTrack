@@ -57,7 +57,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
 .activity-chart-legend{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:12px}
-#reviewerManagerChartSvg{width:100%;height:480px;display:block}
+#reviewerManagerChartSvg{width:100%;display:block}
 #reviewerManagerChartSvg text{fill:rgba(255,255,255,.85);font-size:11px;font-family:inherit}
 #reviewerManagerChartSvg .sankey-link{transition:opacity .15s}
 #reviewerManagerChartSvg .sankey-node-rect{stroke:none}
@@ -378,6 +378,17 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
         <input type="checkbox" id="chkSankeyContractors" onchange="toggleSankeyContractors()"> კონტრაქტორები
       </label>
+      <div id="sankeyDisciplineChecks" style="display:none;align-items:center;gap:12px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+          <input type="checkbox" id="chkSankeyArch" checked onchange="toggleSankeyDiscipline()"> არქიტექტორი
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+          <input type="checkbox" id="chkSankeyStruct" checked onchange="toggleSankeyDiscipline()"> კონსტრუქტორი
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+          <input type="checkbox" id="chkSankeyMep" checked onchange="toggleSankeyDiscipline()"> MEP
+        </label>
+      </div>
     </div>
     <svg id="reviewerManagerChartSvg"></svg>
   </div>
@@ -1034,6 +1045,23 @@ function issueCountToActivityPct(count) {
 
 // ── DM → PROJECT → REVIEWER → PM SANKEY (main projects list) ──
 function firstNameOnly(fullName) { return (fullName||'').trim().split(/\s+/)[0] || fullName; }
+// How many distinct nodes will the busiest column need? Used to size the
+// diagram's height so nothing gets cramped, regardless of how many
+// reviewers/managers/contractors/PMs actually exist in the data.
+function computeMaxColumnNodeCount(projects) {
+  const managers = new Set(), reviewers = new Set(), pms = new Set(), contractors = new Set();
+  projects.forEach(p => {
+    reviewers.add(p.createdByName || 'ადმინი');
+    managers.add(p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ');
+    pms.add(p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'));
+    if (sankeyShowContractors) {
+      if (sankeyDisciplines.arch) contractors.add((p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის');
+      if (sankeyDisciplines.struct) contractors.add((p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის');
+      if (sankeyDisciplines.mep) contractors.add((p.contractors?.mep||'').trim() || '— MEP არ არის');
+    }
+  });
+  return Math.max(projects.length, managers.size, reviewers.size, pms.size, contractors.size);
+}
 // "ნინო ორმოცაძე" -> "ნინო ო." — distinguishes two people sharing a first name.
 function nameWithLastInitial(fullName) {
   const parts = (fullName||'').trim().split(/\s+/);
@@ -1043,9 +1071,12 @@ function nameWithLastInitial(fullName) {
 const SANKEY_REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
 const SANKEY_MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
 const SANKEY_PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#a3e635'];
-const SANKEY_CONTRACTOR_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
+const SANKEY_ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
+const SANKEY_STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
+const SANKEY_MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
 let sankeySizeMode = 'issues'; // 'issues' | 'gba' — what determines node/link size
 let sankeyShowContractors = false; // whether the contractor column (between project and reviewer) is shown
+let sankeyDisciplines = { arch: true, struct: true, mep: true }; // which contractor disciplines are included
 let lastChartProjects = null; // cached for re-render when the size toggle changes, without refetching
 
 window.setSankeySizeMode = function(mode) {
@@ -1057,6 +1088,14 @@ window.setSankeySizeMode = function(mode) {
 
 window.toggleSankeyContractors = function() {
   sankeyShowContractors = document.getElementById('chkSankeyContractors').checked;
+  document.getElementById('sankeyDisciplineChecks').style.display = sankeyShowContractors ? 'flex' : 'none';
+  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
+};
+
+window.toggleSankeyDiscipline = function() {
+  sankeyDisciplines.arch = document.getElementById('chkSankeyArch').checked;
+  sankeyDisciplines.struct = document.getElementById('chkSankeyStruct').checked;
+  sankeyDisciplines.mep = document.getElementById('chkSankeyMep').checked;
   if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
 };
 
@@ -1078,11 +1117,15 @@ function renderReviewerManagerChart(projects, opts) {
     document.getElementById('sankeySizeToggleIssues').classList.toggle('active', sankeySizeMode === 'issues');
     document.getElementById('sankeySizeToggleGba').classList.toggle('active', sankeySizeMode === 'gba');
     document.getElementById('chkSankeyContractors').checked = sankeyShowContractors;
+    document.getElementById('sankeyDisciplineChecks').style.display = sankeyShowContractors ? 'flex' : 'none';
+    document.getElementById('chkSankeyArch').checked = sankeyDisciplines.arch;
+    document.getElementById('chkSankeyStruct').checked = sankeyDisciplines.struct;
+    document.getElementById('chkSankeyMep').checked = sankeyDisciplines.mep;
   }
   const svgEl = opts.svgEl || document.getElementById('reviewerManagerChartSvg');
   svgEl.innerHTML = ''; // clear any previous render
   const width = opts.width || (svgEl.parentElement && svgEl.parentElement.clientWidth) || 800;
-  const height = opts.height || 480;
+  const height = opts.height || Math.max(200, computeMaxColumnNodeCount(projects) * 50);
 
   // Build unique node ids per column so a project can't collide in name
   // with a reviewer, manager, or PM (each gets its own id prefix; the
@@ -1100,7 +1143,9 @@ function renderReviewerManagerChart(projects, opts) {
     return map.get(name);
   }
   const links = [];
-  const contractorColorByName = new Map();
+  const archColorByName = new Map();
+  const structColorByName = new Map();
+  const mepColorByName = new Map();
   projects.forEach(p => {
     const reviewerFullName = p.createdByName || 'ადმინი';
     const managerFullName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ';
@@ -1120,22 +1165,34 @@ function renderReviewerManagerChart(projects, opts) {
     // separate two nodes: "related" just means "same projectId", not
     // "directly connected" or "reachable via graph topology".
     links.push({ source: projectId, target: managerId, value, projectId: p.id, fromColor: projectColor, toColor: managerColor });
-    if (sankeyShowContractors) {
-      // Each contractor leg carries the SAME full project value, not a
-      // third of it — the point here is a consistent visual thickness for
-      // "this project" all the way through, not strict flow conservation
-      // through the branching point.
-      const contractorNames = [
-        (p.contractors?.arch || '').trim() || '— არქიტექტორი არ არის',
-        (p.contractors?.mep || '').trim() || '— MEP არ არის',
-        (p.contractors?.struct || '').trim() || '— კონსტრუქტორი არ არის',
-      ];
-      contractorNames.forEach(cName => {
-        const cColor = colorFor(contractorColorByName, cName, SANKEY_CONTRACTOR_PALETTE);
-        const cId = addNode(`c:${cName}`, cName, cColor);
-        links.push({ source: managerId, target: cId, value, projectId: p.id, fromColor: managerColor, toColor: cColor });
-        links.push({ source: cId, target: reviewerId, value, projectId: p.id, fromColor: cColor, toColor: reviewerColor });
-      });
+    if (sankeyShowContractors && (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mep)) {
+      // One combined column, up to three parallel nodes — architect,
+      // structural, and MEP all work on the SAME project in parallel, not
+      // in sequence, so they share one column rather than three chained
+      // ones. Each leg carries the SAME full project value (visual
+      // consistency, not strict flow conservation through the branching
+      // point). Only the disciplines currently checked are included.
+      if (sankeyDisciplines.arch) {
+        const archName = (p.contractors?.arch || '').trim() || '— არქიტექტორი არ არის';
+        const archColor = colorFor(archColorByName, archName, SANKEY_ARCH_PALETTE);
+        const archId = addNode(`c:${archName}`, archName, archColor);
+        links.push({ source: managerId, target: archId, value, projectId: p.id, fromColor: managerColor, toColor: archColor });
+        links.push({ source: archId, target: reviewerId, value, projectId: p.id, fromColor: archColor, toColor: reviewerColor });
+      }
+      if (sankeyDisciplines.struct) {
+        const structName = (p.contractors?.struct || '').trim() || '— კონსტრუქტორი არ არის';
+        const structColor = colorFor(structColorByName, structName, SANKEY_STRUCT_PALETTE);
+        const structId = addNode(`c:${structName}`, structName, structColor);
+        links.push({ source: managerId, target: structId, value, projectId: p.id, fromColor: managerColor, toColor: structColor });
+        links.push({ source: structId, target: reviewerId, value, projectId: p.id, fromColor: structColor, toColor: reviewerColor });
+      }
+      if (sankeyDisciplines.mep) {
+        const mepName = (p.contractors?.mep || '').trim() || '— MEP არ არის';
+        const mepColor = colorFor(mepColorByName, mepName, SANKEY_MEP_PALETTE);
+        const mepId = addNode(`c:${mepName}`, mepName, mepColor);
+        links.push({ source: managerId, target: mepId, value, projectId: p.id, fromColor: managerColor, toColor: mepColor });
+        links.push({ source: mepId, target: reviewerId, value, projectId: p.id, fromColor: mepColor, toColor: reviewerColor });
+      }
     } else {
       links.push({ source: managerId, target: reviewerId, value, projectId: p.id, fromColor: managerColor, toColor: reviewerColor });
     }
@@ -1238,7 +1295,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('height', d => d.width)
     .attr('fill', d => d.target.color);
 
-  node.append('text')
+  const nodeTextSel = node.append('text')
     .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
     .attr('y', d => (d.y0 + d.y1) / 2)
     .attr('dy', '0.35em')
@@ -1299,25 +1356,62 @@ window.downloadSankeyAsPdf = function() {
 
   // Render a dedicated, one-off copy of the chart into a detached SVG, at
   // the LIVE chart's own current width/height — this keeps every
-  // proportion (text-to-diagram size, column spacing, etc.) identical to
+  // proportion (text-to-diagram size, column spacing, etc.) IDENTICAL to
   // what's shown on screen; only the later rasterization step scales up
   // for print resolution. Forced to GBA-based sizing regardless of what's
   // shown on screen right now, and in a light (white bg, dark text) theme.
   const liveSvg = document.getElementById('reviewerManagerChartSvg');
   const liveBBox = liveSvg.getBoundingClientRect();
-  const EXPORT_WIDTH = Math.round(liveBBox.width) || 900;
-  const EXPORT_HEIGHT = Math.round(liveBBox.height) || 480;
+  const liveViewBox = (liveSvg.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+  const EXPORT_WIDTH = Math.round(liveViewBox[2]) || Math.round(liveBBox.width) || 900;
+  const DIAGRAM_HEIGHT = Math.round(liveViewBox[3]) || Math.round(liveBBox.height) || 480;
+  const TITLE_AREA_HEIGHT = 60; // room for the title + date, above the diagram
+  const EXPORT_HEIGHT = DIAGRAM_HEIGHT + TITLE_AREA_HEIGHT;
   const exportSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   renderReviewerManagerChart(lastChartProjects, {
     svgEl: exportSvg,
     forceSizeMode: 'gba',
     theme: 'light',
     width: EXPORT_WIDTH,
-    height: EXPORT_HEIGHT,
+    height: DIAGRAM_HEIGHT,
   });
+  // The diagram was drawn filling exportSvg's current children — shift them
+  // all down into their own group to make room for the title area above.
+  const diagramGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  diagramGroup.setAttribute('transform', `translate(0, ${TITLE_AREA_HEIGHT})`);
+  while (exportSvg.firstChild) diagramGroup.appendChild(exportSvg.firstChild);
+  exportSvg.appendChild(diagramGroup);
+  // A fresh white background covering the FULL height (the diagram's own
+  // background rect, now shifted down, only covers its own portion).
+  const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bgRect.setAttribute('x', 0); bgRect.setAttribute('y', 0);
+  bgRect.setAttribute('width', EXPORT_WIDTH); bgRect.setAttribute('height', EXPORT_HEIGHT);
+  bgRect.setAttribute('fill', '#ffffff');
+  exportSvg.insertBefore(bgRect, exportSvg.firstChild);
+  const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  titleText.setAttribute('x', EXPORT_WIDTH / 2);
+  titleText.setAttribute('y', 24);
+  titleText.setAttribute('text-anchor', 'middle');
+  titleText.setAttribute('fill', 'rgba(0,0,0,.9)');
+  titleText.setAttribute('font-size', '18px');
+  titleText.setAttribute('font-weight', '700');
+  titleText.setAttribute('font-family', "'Noto Sans Georgian','Inter',sans-serif");
+  titleText.textContent = 'პროექტების განაწილების სქემა — GBA-ს მიხედვით';
+  exportSvg.appendChild(titleText);
+  const dateText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  dateText.setAttribute('x', EXPORT_WIDTH / 2);
+  dateText.setAttribute('y', 44);
+  dateText.setAttribute('text-anchor', 'middle');
+  dateText.setAttribute('fill', 'rgba(0,0,0,.55)');
+  dateText.setAttribute('font-size', '12px');
+  dateText.setAttribute('font-family', "'Noto Sans Georgian','Inter',sans-serif");
+  dateText.textContent = '2026.09.21';
+  exportSvg.appendChild(dateText);
+
   exportSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   exportSvg.setAttribute('width', EXPORT_WIDTH);
   exportSvg.setAttribute('height', EXPORT_HEIGHT);
+  exportSvg.setAttribute('viewBox', `0 0 ${EXPORT_WIDTH} ${EXPORT_HEIGHT}`);
 
   const svgString = new XMLSerializer().serializeToString(exportSvg);
   const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
