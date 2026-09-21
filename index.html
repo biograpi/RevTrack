@@ -1116,7 +1116,7 @@ function renderReviewerManagerChart(projects, opts) {
   const sankeyGen = sankey()
     .nodeId(d => d.id)
     .nodeWidth(14)
-    .nodePadding(14)
+    .nodePadding(20)
     .extent([[1, 34], [width - 1, height - 5]]);
 
   const graph = sankeyGen({
@@ -1147,7 +1147,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('d', sankeyLinkHorizontal())
     .attr('fill', 'none')
     .attr('stroke', d => `url(#${d.gradientId})`)
-    .attr('stroke-width', d => Math.max(4, d.width))
+    .attr('stroke-width', d => Math.max(2, d.width))
     .attr('opacity', 0.45);
   linkSel.append('title').text(d => `${d.source.name} → ${d.target.name}`);
 
@@ -1193,7 +1193,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('x', d => d.source.x0)
     .attr('y', d => d.y0 - d.width / 2)
     .attr('width', d => d.source.x1 - d.source.x0)
-    .attr('height', d => Math.max(4, d.width))
+    .attr('height', d => Math.max(2, d.width))
     .attr('fill', d => d.source.color);
   const segmentSel2 = svg.append('g')
     .selectAll('rect')
@@ -1203,7 +1203,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('x', d => d.target.x0)
     .attr('y', d => d.y1 - d.width / 2)
     .attr('width', d => d.target.x1 - d.target.x0)
-    .attr('height', d => Math.max(4, d.width))
+    .attr('height', d => Math.max(2, d.width))
     .attr('fill', d => d.target.color);
 
   node.append('text')
@@ -1262,12 +1262,16 @@ window.downloadSankeyAsPdf = function() {
   if (!lastChartProjects) { showToast('ჩამოწერა ვერ მოხერხდა — გრაფიკი ჯერ არ ჩატვირთულა'); return; }
   showToast('PDF მზადდება...');
 
-  // Render a dedicated, one-off copy of the chart into a detached SVG:
-  // wide enough for comfortable print resolution, forced to GBA-based
-  // sizing regardless of what's shown on screen right now, and in a light
-  // (white background, dark text) theme suited to printing.
-  const EXPORT_WIDTH = 2200;
-  const EXPORT_HEIGHT = 900;
+  // Render a dedicated, one-off copy of the chart into a detached SVG, at
+  // the LIVE chart's own current width/height — this keeps every
+  // proportion (text-to-diagram size, column spacing, etc.) identical to
+  // what's shown on screen; only the later rasterization step scales up
+  // for print resolution. Forced to GBA-based sizing regardless of what's
+  // shown on screen right now, and in a light (white bg, dark text) theme.
+  const liveSvg = document.getElementById('reviewerManagerChartSvg');
+  const liveBBox = liveSvg.getBoundingClientRect();
+  const EXPORT_WIDTH = Math.round(liveBBox.width) || 900;
+  const EXPORT_HEIGHT = Math.round(liveBBox.height) || 480;
   const exportSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   renderReviewerManagerChart(lastChartProjects, {
     svgEl: exportSvg,
@@ -1286,7 +1290,7 @@ window.downloadSankeyAsPdf = function() {
 
   const img = new Image();
   img.onload = () => {
-    const RENDER_SCALE = 2; // extra resolution for crisp print output
+    const RENDER_SCALE = 4; // pure rasterization scale-up for print sharpness — doesn't change any proportion
     const fullW = EXPORT_WIDTH * RENDER_SCALE;
     const fullH = EXPORT_HEIGHT * RENDER_SCALE;
     const fullCanvas = document.createElement('canvas');
