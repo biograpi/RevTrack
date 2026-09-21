@@ -370,9 +370,14 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
-    <div class="sankey-size-toggle" id="sankeySizeToggle" style="display:none">
-      <button class="view-toggle-btn active" id="sankeySizeToggleIssues" onclick="setSankeySizeMode('issues')">საკითხების რაოდენობა</button>
-      <button class="view-toggle-btn" id="sankeySizeToggleGba" onclick="setSankeySizeMode('gba')">GBA</button>
+    <div style="display:none;align-items:center;justify-content:center;gap:14px;margin-bottom:10px" id="sankeyControlsRow">
+      <div class="sankey-size-toggle" id="sankeySizeToggle" style="margin:0">
+        <button class="view-toggle-btn active" id="sankeySizeToggleIssues" onclick="setSankeySizeMode('issues')">საკითხების რაოდენობა</button>
+        <button class="view-toggle-btn" id="sankeySizeToggleGba" onclick="setSankeySizeMode('gba')">GBA</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+        <input type="checkbox" id="chkSankeyContractors" onchange="toggleSankeyContractors()"> კონტრაქტორები
+      </label>
     </div>
     <svg id="reviewerManagerChartSvg"></svg>
   </div>
@@ -1038,13 +1043,20 @@ function nameWithLastInitial(fullName) {
 const SANKEY_REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
 const SANKEY_MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
 const SANKEY_PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#a3e635'];
+const SANKEY_CONTRACTOR_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
 let sankeySizeMode = 'issues'; // 'issues' | 'gba' — what determines node/link size
+let sankeyShowContractors = false; // whether the contractor column (between project and reviewer) is shown
 let lastChartProjects = null; // cached for re-render when the size toggle changes, without refetching
 
 window.setSankeySizeMode = function(mode) {
   sankeySizeMode = mode;
   document.getElementById('sankeySizeToggleIssues').classList.toggle('active', mode === 'issues');
   document.getElementById('sankeySizeToggleGba').classList.toggle('active', mode === 'gba');
+  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
+};
+
+window.toggleSankeyContractors = function() {
+  sankeyShowContractors = document.getElementById('chkSankeyContractors').checked;
   if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
 };
 
@@ -1062,9 +1074,10 @@ function renderReviewerManagerChart(projects, opts) {
     const wrap = document.getElementById('reviewerManagerChartWrap');
     if (!projects.length) { wrap.style.display = 'none'; return; }
     wrap.style.display = 'block';
-    document.getElementById('sankeySizeToggle').style.display = 'flex';
+    document.getElementById('sankeyControlsRow').style.display = 'flex';
     document.getElementById('sankeySizeToggleIssues').classList.toggle('active', sankeySizeMode === 'issues');
     document.getElementById('sankeySizeToggleGba').classList.toggle('active', sankeySizeMode === 'gba');
+    document.getElementById('chkSankeyContractors').checked = sankeyShowContractors;
   }
   const svgEl = opts.svgEl || document.getElementById('reviewerManagerChartSvg');
   svgEl.innerHTML = ''; // clear any previous render
@@ -1087,6 +1100,7 @@ function renderReviewerManagerChart(projects, opts) {
     return map.get(name);
   }
   const links = [];
+  const contractorColorByName = new Map();
   projects.forEach(p => {
     const reviewerFullName = p.createdByName || 'ადმინი';
     const managerFullName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ';
@@ -1106,7 +1120,25 @@ function renderReviewerManagerChart(projects, opts) {
     // separate two nodes: "related" just means "same projectId", not
     // "directly connected" or "reachable via graph topology".
     links.push({ source: managerId, target: projectId, value, projectId: p.id, fromColor: managerColor, toColor: projectColor });
-    links.push({ source: projectId, target: reviewerId, value, projectId: p.id, fromColor: projectColor, toColor: reviewerColor });
+    if (sankeyShowContractors) {
+      // Split evenly across the project's three contractor slots — the
+      // project side still carries the FULL value in, but each contractor
+      // leg (and its continuation on to the reviewer) carries a third.
+      const contractorNames = [
+        (p.contractors?.arch || '').trim() || '— არქიტექტორი არ არის',
+        (p.contractors?.mep || '').trim() || '— MEP არ არის',
+        (p.contractors?.struct || '').trim() || '— კონსტრუქტორი არ არის',
+      ];
+      const share = value / 3;
+      contractorNames.forEach(cName => {
+        const cColor = colorFor(contractorColorByName, cName, SANKEY_CONTRACTOR_PALETTE);
+        const cId = addNode(`c:${cName}`, cName, cColor);
+        links.push({ source: projectId, target: cId, value: share, projectId: p.id, fromColor: projectColor, toColor: cColor });
+        links.push({ source: cId, target: reviewerId, value: share, projectId: p.id, fromColor: cColor, toColor: reviewerColor });
+      });
+    } else {
+      links.push({ source: projectId, target: reviewerId, value, projectId: p.id, fromColor: projectColor, toColor: reviewerColor });
+    }
     links.push({ source: reviewerId, target: pmId, value, projectId: p.id, fromColor: reviewerColor, toColor: pmColor });
   });
 
@@ -1254,6 +1286,9 @@ function renderReviewerManagerChart(projects, opts) {
   }
   headerStyle(svg.append('text').attr('x', 1).attr('text-anchor', 'start')).text('დიზაინ მენეჯერი');
   headerStyle(svg.append('text').attr('x', colCenterX('p:')).attr('text-anchor', 'middle')).text('პროექტი');
+  if (sankeyShowContractors) {
+    headerStyle(svg.append('text').attr('x', colCenterX('c:')).attr('text-anchor', 'middle')).text('კონტრაქტორი');
+  }
   headerStyle(svg.append('text').attr('x', colCenterX('r:')).attr('text-anchor', 'middle')).text('რევიზორი');
   headerStyle(svg.append('text').attr('x', width - 1).attr('text-anchor', 'end')).text('პროექტის მენეჯერი');
 }
