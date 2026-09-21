@@ -376,6 +376,17 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <button class="view-toggle-btn" id="sankeySizeToggleGba" onclick="setSankeySizeMode('gba')">GBA</button>
       </div>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+        <input type="checkbox" id="chkSankeyManagers" checked onchange="toggleSankeyManagers()"> მენეჯერები
+      </label>
+      <div id="sankeyManagerTypeChecks" style="display:flex;align-items:center;gap:12px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+          <input type="checkbox" id="chkSankeyDm" checked onchange="toggleSankeyManagerType()"> დიზაინ მენეჯერები
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+          <input type="checkbox" id="chkSankeyPm" checked onchange="toggleSankeyManagerType()"> პროექტ მენეჯერები
+        </label>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
         <input type="checkbox" id="chkSankeyContractors" onchange="toggleSankeyContractors()"> კონტრაქტორები
       </label>
       <div id="sankeyDisciplineChecks" style="display:none;align-items:center;gap:12px">
@@ -1052,8 +1063,12 @@ function computeMaxColumnNodeCount(projects) {
   const managers = new Set(), reviewers = new Set(), pms = new Set(), contractors = new Set();
   projects.forEach(p => {
     reviewers.add(p.createdByName || 'ადმინი');
-    managers.add(p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ');
-    pms.add(p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'));
+    if (sankeyShowManagers && sankeyManagerTypes.dm) {
+      managers.add(p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ');
+    }
+    if (sankeyShowManagers && sankeyManagerTypes.pm) {
+      pms.add(p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'));
+    }
     if (sankeyShowContractors) {
       if (sankeyDisciplines.arch) contractors.add((p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის');
       if (sankeyDisciplines.struct) contractors.add((p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის');
@@ -1076,6 +1091,8 @@ const SANKEY_STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6'
 const SANKEY_MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
 let sankeySizeMode = 'issues'; // 'issues' | 'gba' — what determines node/link size
 let sankeyShowContractors = false; // whether the contractor column (between project and reviewer) is shown
+let sankeyShowManagers = true; // whether the design-manager and project-manager columns are shown
+let sankeyManagerTypes = { dm: true, pm: true }; // which manager column(s) are included when managers are shown
 let sankeyDisciplines = { arch: true, struct: true, mep: true }; // which contractor disciplines are included
 let lastChartProjects = null; // cached for re-render when the size toggle changes, without refetching
 
@@ -1083,6 +1100,18 @@ window.setSankeySizeMode = function(mode) {
   sankeySizeMode = mode;
   document.getElementById('sankeySizeToggleIssues').classList.toggle('active', mode === 'issues');
   document.getElementById('sankeySizeToggleGba').classList.toggle('active', mode === 'gba');
+  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
+};
+
+window.toggleSankeyManagers = function() {
+  sankeyShowManagers = document.getElementById('chkSankeyManagers').checked;
+  document.getElementById('sankeyManagerTypeChecks').style.display = sankeyShowManagers ? 'flex' : 'none';
+  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
+};
+
+window.toggleSankeyManagerType = function() {
+  sankeyManagerTypes.dm = document.getElementById('chkSankeyDm').checked;
+  sankeyManagerTypes.pm = document.getElementById('chkSankeyPm').checked;
   if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
 };
 
@@ -1116,6 +1145,10 @@ function renderReviewerManagerChart(projects, opts) {
     document.getElementById('sankeyControlsRow').style.display = 'flex';
     document.getElementById('sankeySizeToggleIssues').classList.toggle('active', sankeySizeMode === 'issues');
     document.getElementById('sankeySizeToggleGba').classList.toggle('active', sankeySizeMode === 'gba');
+    document.getElementById('chkSankeyManagers').checked = sankeyShowManagers;
+    document.getElementById('sankeyManagerTypeChecks').style.display = sankeyShowManagers ? 'flex' : 'none';
+    document.getElementById('chkSankeyDm').checked = sankeyManagerTypes.dm;
+    document.getElementById('chkSankeyPm').checked = sankeyManagerTypes.pm;
     document.getElementById('chkSankeyContractors').checked = sankeyShowContractors;
     document.getElementById('sankeyDisciplineChecks').style.display = sankeyShowContractors ? 'flex' : 'none';
     document.getElementById('chkSankeyArch').checked = sankeyDisciplines.arch;
@@ -1148,23 +1181,29 @@ function renderReviewerManagerChart(projects, opts) {
   const mepColorByName = new Map();
   projects.forEach(p => {
     const reviewerFullName = p.createdByName || 'ადმინი';
-    const managerFullName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ';
-    const pmFullName = p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ');
     const projectColor = p.color || DEFAULT_CARD_COLOR;
     const reviewerColor = colorFor(reviewerColorByName, reviewerFullName, SANKEY_REVIEWER_PALETTE);
-    const managerColor = colorFor(managerColorByName, managerFullName, SANKEY_MANAGER_PALETTE);
-    const pmColor = colorFor(pmColorByName, pmFullName, SANKEY_PM_PALETTE);
     // Keep a visible minimum width even for a brand-new/empty project.
     const value = sizeMode === 'gba' ? Math.max(p.gba || 1000, 1) : Math.max(p.issueCount || 0, 1);
-    const managerId = addNode(`m:${managerFullName}`, nameWithLastInitial(managerFullName), managerColor);
     const projectId = addNode(`p:${p.id}`, p.name, projectColor);
     const reviewerId = addNode(`r:${reviewerFullName}`, firstNameOnly(reviewerFullName), reviewerColor);
-    const pmId = addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor);
     // Every link carries the project's id explicitly — this is what makes
     // hover-highlighting correct and simple regardless of how many hops
     // separate two nodes: "related" just means "same projectId", not
     // "directly connected" or "reachable via graph topology".
-    links.push({ source: projectId, target: managerId, value, projectId: p.id, fromColor: projectColor, toColor: managerColor });
+
+    // When managers are hidden, contractors (or the reviewer directly)
+    // connect straight out of the project instead of the design manager.
+    let preContractorId = projectId, preContractorColor = projectColor;
+    if (sankeyShowManagers && sankeyManagerTypes.dm) {
+      const managerFullName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ';
+      const managerColor = colorFor(managerColorByName, managerFullName, SANKEY_MANAGER_PALETTE);
+      const managerId = addNode(`m:${managerFullName}`, nameWithLastInitial(managerFullName), managerColor);
+      links.push({ source: projectId, target: managerId, value, projectId: p.id, fromColor: projectColor, toColor: managerColor });
+      preContractorId = managerId;
+      preContractorColor = managerColor;
+    }
+
     if (sankeyShowContractors && (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mep)) {
       // One combined column, up to three parallel nodes — architect,
       // structural, and MEP all work on the SAME project in parallel, not
@@ -1176,27 +1215,33 @@ function renderReviewerManagerChart(projects, opts) {
         const archName = (p.contractors?.arch || '').trim() || '— არქიტექტორი არ არის';
         const archColor = colorFor(archColorByName, archName, SANKEY_ARCH_PALETTE);
         const archId = addNode(`c:${archName}`, archName, archColor);
-        links.push({ source: managerId, target: archId, value, projectId: p.id, fromColor: managerColor, toColor: archColor });
+        links.push({ source: preContractorId, target: archId, value, projectId: p.id, fromColor: preContractorColor, toColor: archColor });
         links.push({ source: archId, target: reviewerId, value, projectId: p.id, fromColor: archColor, toColor: reviewerColor });
       }
       if (sankeyDisciplines.struct) {
         const structName = (p.contractors?.struct || '').trim() || '— კონსტრუქტორი არ არის';
         const structColor = colorFor(structColorByName, structName, SANKEY_STRUCT_PALETTE);
         const structId = addNode(`c:${structName}`, structName, structColor);
-        links.push({ source: managerId, target: structId, value, projectId: p.id, fromColor: managerColor, toColor: structColor });
+        links.push({ source: preContractorId, target: structId, value, projectId: p.id, fromColor: preContractorColor, toColor: structColor });
         links.push({ source: structId, target: reviewerId, value, projectId: p.id, fromColor: structColor, toColor: reviewerColor });
       }
       if (sankeyDisciplines.mep) {
         const mepName = (p.contractors?.mep || '').trim() || '— MEP არ არის';
         const mepColor = colorFor(mepColorByName, mepName, SANKEY_MEP_PALETTE);
         const mepId = addNode(`c:${mepName}`, mepName, mepColor);
-        links.push({ source: managerId, target: mepId, value, projectId: p.id, fromColor: managerColor, toColor: mepColor });
+        links.push({ source: preContractorId, target: mepId, value, projectId: p.id, fromColor: preContractorColor, toColor: mepColor });
         links.push({ source: mepId, target: reviewerId, value, projectId: p.id, fromColor: mepColor, toColor: reviewerColor });
       }
     } else {
-      links.push({ source: managerId, target: reviewerId, value, projectId: p.id, fromColor: managerColor, toColor: reviewerColor });
+      links.push({ source: preContractorId, target: reviewerId, value, projectId: p.id, fromColor: preContractorColor, toColor: reviewerColor });
     }
-    links.push({ source: reviewerId, target: pmId, value, projectId: p.id, fromColor: reviewerColor, toColor: pmColor });
+
+    if (sankeyShowManagers && sankeyManagerTypes.pm) {
+      const pmFullName = p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ');
+      const pmColor = colorFor(pmColorByName, pmFullName, SANKEY_PM_PALETTE);
+      const pmId = addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor);
+      links.push({ source: reviewerId, target: pmId, value, projectId: p.id, fromColor: reviewerColor, toColor: pmColor });
+    }
   });
 
   const svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
@@ -1342,12 +1387,18 @@ function renderReviewerManagerChart(projects, opts) {
     return n ? (n.x0 + n.x1) / 2 : 0;
   }
   headerStyle(svg.append('text').attr('x', 1).attr('text-anchor', 'start')).text('პროექტი');
-  headerStyle(svg.append('text').attr('x', colCenterX('m:')).attr('text-anchor', 'middle')).text('დიზაინ მენეჯერი');
+  const showDm = sankeyShowManagers && sankeyManagerTypes.dm;
+  const showPm = sankeyShowManagers && sankeyManagerTypes.pm;
+  if (showDm) {
+    headerStyle(svg.append('text').attr('x', colCenterX('m:')).attr('text-anchor', 'middle')).text('დიზაინ მენეჯერი');
+  }
   if (sankeyShowContractors) {
     headerStyle(svg.append('text').attr('x', colCenterX('c:')).attr('text-anchor', 'middle')).text('კონტრაქტორი');
   }
-  headerStyle(svg.append('text').attr('x', colCenterX('r:')).attr('text-anchor', 'middle')).text('რევიზორი');
-  headerStyle(svg.append('text').attr('x', width - 1).attr('text-anchor', 'end')).text('პროექტის მენეჯერი');
+  headerStyle(svg.append('text').attr('x', showPm ? colCenterX('r:') : width - 1).attr('text-anchor', showPm ? 'middle' : 'end')).text('რევიზორი');
+  if (showPm) {
+    headerStyle(svg.append('text').attr('x', width - 1).attr('text-anchor', 'end')).text('პროექტის მენეჯერი');
+  }
 }
 
 window.downloadSankeyAsPdf = function() {
