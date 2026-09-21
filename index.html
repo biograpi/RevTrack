@@ -1179,7 +1179,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('d', sankeyLinkHorizontal())
     .attr('fill', 'none')
     .attr('stroke', d => `url(#${d.gradientId})`)
-    .attr('stroke-width', d => Math.max(2, d.width))
+    .attr('stroke-width', d => d.width)
     .attr('opacity', 0.45);
   linkSel.append('title').text(d => `${d.source.name} → ${d.target.name}`);
 
@@ -1225,7 +1225,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('x', d => d.source.x0)
     .attr('y', d => d.y0 - d.width / 2)
     .attr('width', d => d.source.x1 - d.source.x0)
-    .attr('height', d => Math.max(2, d.width))
+    .attr('height', d => d.width)
     .attr('fill', d => d.source.color);
   const segmentSel2 = svg.append('g')
     .selectAll('rect')
@@ -1235,7 +1235,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('x', d => d.target.x0)
     .attr('y', d => d.y1 - d.width / 2)
     .attr('width', d => d.target.x1 - d.target.x0)
-    .attr('height', d => Math.max(2, d.width))
+    .attr('height', d => d.width)
     .attr('fill', d => d.target.color);
 
   node.append('text')
