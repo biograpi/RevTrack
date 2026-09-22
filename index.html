@@ -360,7 +360,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="view-toggle-btn" id="mainViewToggleChart" onclick="setMainListView('chart')">გრაფიკი</button>
     </div>
     <div class="projects-user">
-      <button class="btn-hdr" id="btnDownloadSankeyJpg" style="display:none" onclick="downloadSankeyAsPdf()">⬇ PDF ჩამოწერა</button>
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
       <button class="btn-hdr" id="btnAdminTools" style="display:none">🛠 ხელსაწყოები</button>
@@ -372,34 +371,24 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
     <div style="display:none;align-items:center;justify-content:center;gap:14px;margin-bottom:10px" id="sankeyControlsRow">
       <div class="sankey-size-toggle" id="sankeySizeToggle" style="margin:0">
-        <button class="view-toggle-btn active" id="sankeySizeToggleIssues" onclick="setSankeySizeMode('issues')">საკითხების რაოდენობა</button>
+        <button class="view-toggle-btn active" id="sankeySizeToggleIssues" onclick="setSankeySizeMode('issues')">საკითხები</button>
         <button class="view-toggle-btn" id="sankeySizeToggleGba" onclick="setSankeySizeMode('gba')">GBA</button>
       </div>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
-        <input type="checkbox" id="chkSankeyManagers" checked onchange="toggleSankeyManagers()"> მენეჯერები
+        <input type="checkbox" id="chkSankeyDm" checked onchange="toggleSankeyManagerType()"> დიზაინ მენეჯერები
       </label>
-      <div id="sankeyManagerTypeChecks" style="display:flex;align-items:center;gap:12px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
-          <input type="checkbox" id="chkSankeyDm" checked onchange="toggleSankeyManagerType()"> დიზაინ მენეჯერები
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
-          <input type="checkbox" id="chkSankeyPm" checked onchange="toggleSankeyManagerType()"> პროექტ მენეჯერები
-        </label>
-      </div>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
-        <input type="checkbox" id="chkSankeyContractors" onchange="toggleSankeyContractors()"> კონტრაქტორები
+        <input type="checkbox" id="chkSankeyPm" checked onchange="toggleSankeyManagerType()"> პროექტ მენეჯერები
       </label>
-      <div id="sankeyDisciplineChecks" style="display:none;align-items:center;gap:12px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
-          <input type="checkbox" id="chkSankeyArch" checked onchange="toggleSankeyDiscipline()"> არქიტექტორი
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
-          <input type="checkbox" id="chkSankeyStruct" checked onchange="toggleSankeyDiscipline()"> კონსტრუქტორი
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
-          <input type="checkbox" id="chkSankeyMep" checked onchange="toggleSankeyDiscipline()"> MEP
-        </label>
-      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+        <input type="checkbox" id="chkSankeyArch" onchange="toggleSankeyDiscipline()"> არქიტექტორი
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+        <input type="checkbox" id="chkSankeyStruct" onchange="toggleSankeyDiscipline()"> კონსტრუქტორი
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.75);cursor:pointer">
+        <input type="checkbox" id="chkSankeyMep" onchange="toggleSankeyDiscipline()"> MEP
+      </label>
     </div>
     <svg id="reviewerManagerChartSvg"></svg>
   </div>
@@ -594,6 +583,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-secondary" id="btnFixNames" style="width:100%;justify-content:flex-start" title="ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე">🔄 სახელების გასწორება</button>
       <button class="btn-secondary" id="btnFixVisibility" style="width:100%;justify-content:flex-start" title="ძველ საკითხებს ანიჭებს ხილვადობის მნიშვნელობას (მანამდე ეს ველი არ არსებობდა)">🔄 ხილვადობის გასწორება</button>
       <button class="btn-secondary" id="btnRecalcIssueCounts" style="width:100%;justify-content:flex-start" title="გადაითვლის თითოეული პროექტის საკითხების რაოდენობას ბარათის ფერის გრადაციისთვის (მანამდე ეს ველი არ არსებობდა)">🔄 საკითხების რაოდენობის გადათვლა</button>
+      <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsPdf()">⬇ გრაფიკის ჩამოწერა (PDF)</button>
+      <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsHtml()">⬇ ინტერაქტიული HTML ჩამოწერა</button>
     </div>
     <div class="modal-footer"><button class="btn-secondary" onclick="cm('adminToolsModal')">დახურვა</button></div>
   </div>
@@ -1063,17 +1054,15 @@ function computeMaxColumnNodeCount(projects) {
   const managers = new Set(), reviewers = new Set(), pms = new Set(), contractors = new Set();
   projects.forEach(p => {
     reviewers.add(p.createdByName || 'ადმინი');
-    if (sankeyShowManagers && sankeyManagerTypes.dm) {
+    if (sankeyManagerTypes.dm) {
       managers.add(p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ');
     }
-    if (sankeyShowManagers && sankeyManagerTypes.pm) {
+    if (sankeyManagerTypes.pm) {
       pms.add(p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'));
     }
-    if (sankeyShowContractors) {
-      if (sankeyDisciplines.arch) contractors.add((p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის');
-      if (sankeyDisciplines.struct) contractors.add((p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის');
-      if (sankeyDisciplines.mep) contractors.add((p.contractors?.mep||'').trim() || '— MEP არ არის');
-    }
+    if (sankeyDisciplines.arch) contractors.add((p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის');
+    if (sankeyDisciplines.struct) contractors.add((p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის');
+    if (sankeyDisciplines.mep) contractors.add((p.contractors?.mep||'').trim() || '— MEP არ არის');
   });
   return Math.max(projects.length, managers.size, reviewers.size, pms.size, contractors.size);
 }
@@ -1090,10 +1079,8 @@ const SANKEY_ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','
 const SANKEY_STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
 const SANKEY_MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
 let sankeySizeMode = 'issues'; // 'issues' | 'gba' — what determines node/link size
-let sankeyShowContractors = false; // whether the contractor column (between project and reviewer) is shown
-let sankeyShowManagers = true; // whether the design-manager and project-manager columns are shown
-let sankeyManagerTypes = { dm: true, pm: true }; // which manager column(s) are included when managers are shown
-let sankeyDisciplines = { arch: true, struct: true, mep: true }; // which contractor disciplines are included
+let sankeyManagerTypes = { dm: true, pm: true }; // which manager column(s) are included
+let sankeyDisciplines = { arch: false, struct: false, mep: false }; // which contractor disciplines are included
 let lastChartProjects = null; // cached for re-render when the size toggle changes, without refetching
 
 window.setSankeySizeMode = function(mode) {
@@ -1103,21 +1090,9 @@ window.setSankeySizeMode = function(mode) {
   if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
 };
 
-window.toggleSankeyManagers = function() {
-  sankeyShowManagers = document.getElementById('chkSankeyManagers').checked;
-  document.getElementById('sankeyManagerTypeChecks').style.display = sankeyShowManagers ? 'flex' : 'none';
-  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
-};
-
 window.toggleSankeyManagerType = function() {
   sankeyManagerTypes.dm = document.getElementById('chkSankeyDm').checked;
   sankeyManagerTypes.pm = document.getElementById('chkSankeyPm').checked;
-  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
-};
-
-window.toggleSankeyContractors = function() {
-  sankeyShowContractors = document.getElementById('chkSankeyContractors').checked;
-  document.getElementById('sankeyDisciplineChecks').style.display = sankeyShowContractors ? 'flex' : 'none';
   if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
 };
 
@@ -1145,12 +1120,8 @@ function renderReviewerManagerChart(projects, opts) {
     document.getElementById('sankeyControlsRow').style.display = 'flex';
     document.getElementById('sankeySizeToggleIssues').classList.toggle('active', sankeySizeMode === 'issues');
     document.getElementById('sankeySizeToggleGba').classList.toggle('active', sankeySizeMode === 'gba');
-    document.getElementById('chkSankeyManagers').checked = sankeyShowManagers;
-    document.getElementById('sankeyManagerTypeChecks').style.display = sankeyShowManagers ? 'flex' : 'none';
     document.getElementById('chkSankeyDm').checked = sankeyManagerTypes.dm;
     document.getElementById('chkSankeyPm').checked = sankeyManagerTypes.pm;
-    document.getElementById('chkSankeyContractors').checked = sankeyShowContractors;
-    document.getElementById('sankeyDisciplineChecks').style.display = sankeyShowContractors ? 'flex' : 'none';
     document.getElementById('chkSankeyArch').checked = sankeyDisciplines.arch;
     document.getElementById('chkSankeyStruct').checked = sankeyDisciplines.struct;
     document.getElementById('chkSankeyMep').checked = sankeyDisciplines.mep;
@@ -1195,7 +1166,7 @@ function renderReviewerManagerChart(projects, opts) {
     // When managers are hidden, contractors (or the reviewer directly)
     // connect straight out of the project instead of the design manager.
     let preContractorId = projectId, preContractorColor = projectColor;
-    if (sankeyShowManagers && sankeyManagerTypes.dm) {
+    if (sankeyManagerTypes.dm) {
       const managerFullName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ';
       const managerColor = colorFor(managerColorByName, managerFullName, SANKEY_MANAGER_PALETTE);
       const managerId = addNode(`m:${managerFullName}`, nameWithLastInitial(managerFullName), managerColor);
@@ -1204,7 +1175,7 @@ function renderReviewerManagerChart(projects, opts) {
       preContractorColor = managerColor;
     }
 
-    if (sankeyShowContractors && (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mep)) {
+    if (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mep) {
       // One combined column, up to three parallel nodes — architect,
       // structural, and MEP all work on the SAME project in parallel, not
       // in sequence, so they share one column rather than three chained
@@ -1236,7 +1207,7 @@ function renderReviewerManagerChart(projects, opts) {
       links.push({ source: preContractorId, target: reviewerId, value, projectId: p.id, fromColor: preContractorColor, toColor: reviewerColor });
     }
 
-    if (sankeyShowManagers && sankeyManagerTypes.pm) {
+    if (sankeyManagerTypes.pm) {
       const pmFullName = p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ');
       const pmColor = colorFor(pmColorByName, pmFullName, SANKEY_PM_PALETTE);
       const pmId = addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor);
@@ -1278,6 +1249,7 @@ function renderReviewerManagerChart(projects, opts) {
     .data(graph.links)
     .join('path')
     .attr('class', 'sankey-link')
+    .attr('data-project-id', d => d.projectId)
     .attr('d', sankeyLinkHorizontal())
     .attr('fill', 'none')
     .attr('stroke', d => `url(#${d.gradientId})`)
@@ -1300,6 +1272,9 @@ function renderReviewerManagerChart(projects, opts) {
     .selectAll('g')
     .data(graph.nodes)
     .join('g')
+    .attr('class', 'sankey-node')
+    .attr('data-node-id', d => d.id)
+    .attr('data-project-ids', d => [...new Set(relatedLinksFor(d.id).size ? [...relatedLinksFor(d.id)].map(l => l.projectId) : [])].join(','))
     .style('cursor', d => d.id.startsWith('p:') ? 'pointer' : 'default');
 
   node.append('rect')
@@ -1324,6 +1299,7 @@ function renderReviewerManagerChart(projects, opts) {
     .data(graph.links)
     .join('rect')
     .attr('class', 'sankey-segment')
+    .attr('data-project-id', d => d.projectId)
     .attr('x', d => d.source.x0)
     .attr('y', d => d.y0 - d.width / 2)
     .attr('width', d => d.source.x1 - d.source.x0)
@@ -1334,6 +1310,7 @@ function renderReviewerManagerChart(projects, opts) {
     .data(graph.links)
     .join('rect')
     .attr('class', 'sankey-segment')
+    .attr('data-project-id', d => d.projectId)
     .attr('x', d => d.target.x0)
     .attr('y', d => d.y1 - d.width / 2)
     .attr('width', d => d.target.x1 - d.target.x0)
@@ -1387,12 +1364,12 @@ function renderReviewerManagerChart(projects, opts) {
     return n ? (n.x0 + n.x1) / 2 : 0;
   }
   headerStyle(svg.append('text').attr('x', 1).attr('text-anchor', 'start')).text('პროექტი');
-  const showDm = sankeyShowManagers && sankeyManagerTypes.dm;
-  const showPm = sankeyShowManagers && sankeyManagerTypes.pm;
+  const showDm = sankeyManagerTypes.dm;
+  const showPm = sankeyManagerTypes.pm;
   if (showDm) {
     headerStyle(svg.append('text').attr('x', colCenterX('m:')).attr('text-anchor', 'middle')).text('დიზაინ მენეჯერი');
   }
-  if (sankeyShowContractors) {
+  if (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mep) {
     headerStyle(svg.append('text').attr('x', colCenterX('c:')).attr('text-anchor', 'middle')).text('კონტრაქტორი');
   }
   headerStyle(svg.append('text').attr('x', showPm ? colCenterX('r:') : width - 1).attr('text-anchor', showPm ? 'middle' : 'end')).text('რევიზორი');
@@ -1400,6 +1377,67 @@ function renderReviewerManagerChart(projects, opts) {
     headerStyle(svg.append('text').attr('x', width - 1).attr('text-anchor', 'end')).text('პროექტის მენეჯერი');
   }
 }
+
+window.downloadSankeyAsHtml = function() {
+  const liveSvg = document.getElementById('reviewerManagerChartSvg');
+  const clone = liveSvg.cloneNode(true);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  // Drop the interactive-only bits that don't mean anything outside the
+  // app (cursor style hinting at click-to-navigate, which won't work once
+  // downloaded and opened standalone).
+  clone.querySelectorAll('[data-node-id]').forEach(el => { el.style.cursor = 'default'; });
+  const svgMarkup = clone.outerHTML;
+
+  const html = `<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<title>რევიზორი / პროექტი / მენეჯერი — გრაფიკი</title>
+<style>
+  body { margin: 0; background: #1a1120; font-family: 'Noto Sans Georgian', 'Inter', sans-serif; padding: 24px; box-sizing: border-box; }
+  svg { width: 100%; height: auto; display: block; }
+  .sankey-link, .sankey-segment { transition: opacity .15s; }
+</style>
+</head>
+<body>
+${svgMarkup}
+<script>
+(function() {
+  var svg = document.querySelector('svg');
+  var links = Array.prototype.slice.call(svg.querySelectorAll('.sankey-link'));
+  var segments = Array.prototype.slice.call(svg.querySelectorAll('.sankey-segment'));
+  var nodes = Array.prototype.slice.call(svg.querySelectorAll('[data-node-id]'));
+  nodes.forEach(function(nodeEl) {
+    var idSet = {};
+    (nodeEl.getAttribute('data-project-ids') || '').split(',').forEach(function(id) {
+      if (id) idSet[id] = true;
+    });
+    nodeEl.addEventListener('mouseenter', function() {
+      links.forEach(function(l) {
+        l.style.opacity = idSet[l.getAttribute('data-project-id')] ? '0.75' : '0.06';
+      });
+      segments.forEach(function(s) {
+        s.style.opacity = idSet[s.getAttribute('data-project-id')] ? '1' : '0.15';
+      });
+    });
+    nodeEl.addEventListener('mouseleave', function() {
+      links.forEach(function(l) { l.style.opacity = '0.45'; });
+      segments.forEach(function(s) { s.style.opacity = '1'; });
+    });
+  });
+})();
+<\/script>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = `revtrack-reviewer-manager-${new Date().toISOString().slice(0,10)}.html`;
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
 window.downloadSankeyAsPdf = function() {
   if (!lastChartProjects) { showToast('ჩამოწერა ვერ მოხერხდა — გრაფიკი ჯერ არ ჩატვირთულა'); return; }
@@ -1513,7 +1551,6 @@ window.setMainListView = function(view) {
   document.getElementById('reviewerManagerChartWrap').style.display = view === 'chart' ? 'block' : 'none';
   document.getElementById('mainViewToggleGrid').classList.toggle('active', view === 'grid');
   document.getElementById('mainViewToggleChart').classList.toggle('active', view === 'chart');
-  document.getElementById('btnDownloadSankeyJpg').style.display = (view === 'chart' && isAdminLike()) ? 'flex' : 'none';
 };
 
 async function showProjects() {
@@ -1585,7 +1622,6 @@ window.showProjectSections = async function(pid) {
   sectionsViewProjectId = pid;
   document.getElementById('reviewerManagerChartWrap').style.display = 'none';
   document.getElementById('mainViewToggle').style.display = 'none';
-  document.getElementById('btnDownloadSankeyJpg').style.display = 'none';
   const pd = await getDoc(doc(db,'projects',pid));
   if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   const p = {id:pid,...pd.data()};
