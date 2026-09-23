@@ -1147,6 +1147,9 @@ function renderReviewerManagerChart(projects, opts) {
     return map.get(name);
   }
   const links = [];
+  function pushLink(source, target, value, projectId, fromColor, toColor) {
+    links.push({ source, target, value, projectId, fromColor, toColor });
+  }
   const archColorByName = new Map();
   const structColorByName = new Map();
   const mepColorByName = new Map();
@@ -1170,7 +1173,7 @@ function renderReviewerManagerChart(projects, opts) {
       const managerFullName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ';
       const managerColor = colorFor(managerColorByName, managerFullName, SANKEY_MANAGER_PALETTE);
       const managerId = addNode(`m:${managerFullName}`, nameWithLastInitial(managerFullName), managerColor);
-      links.push({ source: projectId, target: managerId, value, projectId: p.id, fromColor: projectColor, toColor: managerColor });
+      pushLink(projectId, managerId, value, p.id, projectColor, managerColor, projectColor);
       preContractorId = managerId;
       preContractorColor = managerColor;
     }
@@ -1186,32 +1189,32 @@ function renderReviewerManagerChart(projects, opts) {
         const archName = (p.contractors?.arch || '').trim() || '— არქიტექტორი არ არის';
         const archColor = colorFor(archColorByName, archName, SANKEY_ARCH_PALETTE);
         const archId = addNode(`c:${archName}`, archName, archColor);
-        links.push({ source: preContractorId, target: archId, value, projectId: p.id, fromColor: preContractorColor, toColor: archColor });
-        links.push({ source: archId, target: reviewerId, value, projectId: p.id, fromColor: archColor, toColor: reviewerColor });
+        pushLink(preContractorId, archId, value, p.id, preContractorColor, archColor, projectColor);
+        pushLink(archId, reviewerId, value, p.id, archColor, reviewerColor, projectColor);
       }
       if (sankeyDisciplines.struct) {
         const structName = (p.contractors?.struct || '').trim() || '— კონსტრუქტორი არ არის';
         const structColor = colorFor(structColorByName, structName, SANKEY_STRUCT_PALETTE);
         const structId = addNode(`c:${structName}`, structName, structColor);
-        links.push({ source: preContractorId, target: structId, value, projectId: p.id, fromColor: preContractorColor, toColor: structColor });
-        links.push({ source: structId, target: reviewerId, value, projectId: p.id, fromColor: structColor, toColor: reviewerColor });
+        pushLink(preContractorId, structId, value, p.id, preContractorColor, structColor, projectColor);
+        pushLink(structId, reviewerId, value, p.id, structColor, reviewerColor, projectColor);
       }
       if (sankeyDisciplines.mep) {
         const mepName = (p.contractors?.mep || '').trim() || '— MEP არ არის';
         const mepColor = colorFor(mepColorByName, mepName, SANKEY_MEP_PALETTE);
         const mepId = addNode(`c:${mepName}`, mepName, mepColor);
-        links.push({ source: preContractorId, target: mepId, value, projectId: p.id, fromColor: preContractorColor, toColor: mepColor });
-        links.push({ source: mepId, target: reviewerId, value, projectId: p.id, fromColor: mepColor, toColor: reviewerColor });
+        pushLink(preContractorId, mepId, value, p.id, preContractorColor, mepColor, projectColor);
+        pushLink(mepId, reviewerId, value, p.id, mepColor, reviewerColor, projectColor);
       }
     } else {
-      links.push({ source: preContractorId, target: reviewerId, value, projectId: p.id, fromColor: preContractorColor, toColor: reviewerColor });
+      pushLink(preContractorId, reviewerId, value, p.id, preContractorColor, reviewerColor, projectColor);
     }
 
     if (sankeyManagerTypes.pm) {
       const pmFullName = p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ');
       const pmColor = colorFor(pmColorByName, pmFullName, SANKEY_PM_PALETTE);
       const pmId = addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor);
-      links.push({ source: reviewerId, target: pmId, value, projectId: p.id, fromColor: reviewerColor, toColor: pmColor });
+      pushLink(reviewerId, pmId, value, p.id, reviewerColor, pmColor, projectColor);
     }
   });
 
@@ -1379,53 +1382,240 @@ function renderReviewerManagerChart(projects, opts) {
 }
 
 window.downloadSankeyAsHtml = function() {
-  const liveSvg = document.getElementById('reviewerManagerChartSvg');
-  const clone = liveSvg.cloneNode(true);
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  // Drop the interactive-only bits that don't mean anything outside the
-  // app (cursor style hinting at click-to-navigate, which won't work once
-  // downloaded and opened standalone).
-  clone.querySelectorAll('[data-node-id]').forEach(el => { el.style.cursor = 'default'; });
-  const svgMarkup = clone.outerHTML;
+  if (!lastChartProjects) { showToast('ჩამოწერა ვერ მოხერხდა — გრაფიკი ჯერ არ ჩატვირთულა'); return; }
+
+  // A lightweight data snapshot — just what the standalone chart needs to
+  // rebuild itself with different DM/PM/contractor toggles, independent of
+  // the live app's own state or Firestore access.
+  const dataSnapshot = lastChartProjects.map(p => ({
+    id: p.id,
+    name: p.name,
+    color: p.color || DEFAULT_CARD_COLOR,
+    gba: p.gba || 1000,
+    reviewer: p.createdByName || 'ადმინი',
+    manager: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
+    pm: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
+    arch: (p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის',
+    struct: (p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის',
+    mep: (p.contractors?.mep||'').trim() || '— MEP არ არის',
+  }));
+  const dataJson = JSON.stringify(dataSnapshot);
+  const todayStr = new Date().toISOString().slice(0,10).replace(/-/g, '.');
 
   const html = `<!DOCTYPE html>
 <html lang="ka">
 <head>
 <meta charset="UTF-8">
-<title>რევიზორი / პროექტი / მენეჯერი — გრაფიკი</title>
+<title>პროექტების განაწილების სქემა</title>
+<script src="https://d3js.org/d3.v7.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"><\/script>
 <style>
   body { margin: 0; background: #1a1120; font-family: 'Noto Sans Georgian', 'Inter', sans-serif; padding: 24px; box-sizing: border-box; }
+  h1 { text-align: center; color: rgba(255,255,255,.9); font-size: 20px; margin: 0 0 2px; }
+  .subtitle { text-align: center; color: rgba(255,255,255,.55); font-size: 13px; margin: 0 0 16px; }
+  .controls { display: flex; justify-content: center; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .controls label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,.75); cursor: pointer; }
+  .chart-wrap { max-width: 1100px; margin: 0 auto; }
   svg { width: 100%; height: auto; display: block; }
   .sankey-link, .sankey-segment { transition: opacity .15s; }
+  .sankey-segment { pointer-events: none; }
 </style>
 </head>
 <body>
-${svgMarkup}
+<h1>პროექტების განაწილების სქემა — GBA-ს მიხედვით</h1>
+<div class="subtitle">${todayStr}</div>
+<div class="controls">
+  <label><input type="checkbox" id="chkDm" checked> დიზაინ მენეჯერები</label>
+  <label><input type="checkbox" id="chkPm" checked> პროექტ მენეჯერები</label>
+  <label><input type="checkbox" id="chkArch"> არქიტექტორი</label>
+  <label><input type="checkbox" id="chkStruct"> კონსტრუქტორი</label>
+  <label><input type="checkbox" id="chkMep"> MEP</label>
+</div>
+<div class="chart-wrap"><svg id="chartSvg"></svg></div>
 <script>
-(function() {
-  var svg = document.querySelector('svg');
-  var links = Array.prototype.slice.call(svg.querySelectorAll('.sankey-link'));
-  var segments = Array.prototype.slice.call(svg.querySelectorAll('.sankey-segment'));
-  var nodes = Array.prototype.slice.call(svg.querySelectorAll('[data-node-id]'));
-  nodes.forEach(function(nodeEl) {
-    var idSet = {};
-    (nodeEl.getAttribute('data-project-ids') || '').split(',').forEach(function(id) {
-      if (id) idSet[id] = true;
+var PROJECTS = ${dataJson};
+var REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
+var MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
+var PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#a3e635'];
+var ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
+var STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
+var MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
+
+function firstName(n) { return (n||'').trim().split(/\\s+/)[0] || n; }
+function withInitial(n) {
+  var parts = (n||'').trim().split(/\\s+/);
+  if (parts.length < 2) return parts[0] || n;
+  return parts[0] + ' ' + parts[1][0] + '.';
+}
+function colorFor(map, name, palette) {
+  if (!map[name]) map[name] = palette[Object.keys(map).length % palette.length];
+  return map[name];
+}
+
+function render() {
+  var showDm = document.getElementById('chkDm').checked;
+  var showPm = document.getElementById('chkPm').checked;
+  var showArch = document.getElementById('chkArch').checked;
+  var showStruct = document.getElementById('chkStruct').checked;
+  var showMep = document.getElementById('chkMep').checked;
+  var showContractors = showArch || showStruct || showMep;
+
+  var svgEl = document.getElementById('chartSvg');
+  svgEl.innerHTML = '';
+  var width = svgEl.parentElement.clientWidth || 900;
+
+  var reviewerColors = {}, managerColors = {}, pmColors = {}, archColors = {}, structColors = {}, mepColors = {};
+  var nodesById = {};
+  function addNode(id, name, color) {
+    if (!nodesById[id]) nodesById[id] = { id: id, name: name, color: color };
+    return id;
+  }
+  var links = [];
+
+  PROJECTS.forEach(function(p) {
+    var reviewerColor = colorFor(reviewerColors, p.reviewer, REVIEWER_PALETTE);
+    var projectColor = p.color;
+    var value = Math.max(p.gba || 1000, 1);
+    var projectId = addNode('p:' + p.id, p.name, projectColor);
+    var reviewerId = addNode('r:' + p.reviewer, firstName(p.reviewer), reviewerColor);
+    var preId = projectId, preColor = projectColor;
+
+    if (showDm) {
+      var managerColor = colorFor(managerColors, p.manager, MANAGER_PALETTE);
+      var managerId = addNode('m:' + p.manager, withInitial(p.manager), managerColor);
+      links.push({ source: projectId, target: managerId, value: value, pid: p.id, c1: projectColor, c2: managerColor });
+      preId = managerId; preColor = managerColor;
+    }
+
+    if (showContractors) {
+      if (showArch) {
+        var archColor = colorFor(archColors, p.arch, ARCH_PALETTE);
+        var archId = addNode('c:' + p.arch, p.arch, archColor);
+        links.push({ source: preId, target: archId, value: value, pid: p.id, c1: preColor, c2: archColor });
+        links.push({ source: archId, target: reviewerId, value: value, pid: p.id, c1: archColor, c2: reviewerColor });
+      }
+      if (showStruct) {
+        var structColor = colorFor(structColors, p.struct, STRUCT_PALETTE);
+        var structId = addNode('c:' + p.struct, p.struct, structColor);
+        links.push({ source: preId, target: structId, value: value, pid: p.id, c1: preColor, c2: structColor });
+        links.push({ source: structId, target: reviewerId, value: value, pid: p.id, c1: structColor, c2: reviewerColor });
+      }
+      if (showMep) {
+        var mepColor = colorFor(mepColors, p.mep, MEP_PALETTE);
+        var mepId = addNode('c:' + p.mep, p.mep, mepColor);
+        links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
+        links.push({ source: mepId, target: reviewerId, value: value, pid: p.id, c1: mepColor, c2: reviewerColor });
+      }
+    } else {
+      links.push({ source: preId, target: reviewerId, value: value, pid: p.id, c1: preColor, c2: reviewerColor });
+    }
+
+    if (showPm) {
+      var pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
+      var pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor);
+      links.push({ source: reviewerId, target: pmId, value: value, pid: p.id, c1: reviewerColor, c2: pmColor });
+    }
+  });
+
+  // Height sized to the busiest column, same spirit as the live app.
+  var counts = {};
+  Object.keys(nodesById).forEach(function(id) {
+    var prefix = id.split(':')[0];
+    counts[prefix] = (counts[prefix] || 0) + 1;
+  });
+  var maxCount = Math.max(PROJECTS.length, 1);
+  Object.keys(counts).forEach(function(k) { if (counts[k] > maxCount) maxCount = counts[k]; });
+  var height = Math.max(200, maxCount * 50);
+
+  var svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
+  svg.append('rect').attr('x', 0).attr('y', 0).attr('width', width).attr('height', height).attr('fill', '#1a1120');
+
+  var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).nodePadding(20)
+    .extent([[1, 34], [width - 1, height - 5]]);
+  var graph = sankeyGen({
+    nodes: Object.keys(nodesById).map(function(k) { return Object.assign({}, nodesById[k]); }),
+    links: links.map(function(l) { return Object.assign({}, l); }),
+  });
+
+  var defs = svg.append('defs');
+  graph.links.forEach(function(d, i) {
+    var grad = defs.append('linearGradient').attr('id', 'grad' + i).attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', d.source.x1).attr('x2', d.target.x0);
+    grad.append('stop').attr('offset', '0%').attr('stop-color', d.c1);
+    grad.append('stop').attr('offset', '100%').attr('stop-color', d.c2);
+    d.gradId = 'grad' + i;
+  });
+
+  var linkSel = svg.append('g').selectAll('path').data(graph.links).join('path')
+    .attr('class', 'sankey-link').attr('d', d3.sankeyLinkHorizontal())
+    .attr('fill', 'none').attr('stroke', function(d) { return 'url(#' + d.gradId + ')'; })
+    .attr('stroke-width', function(d) { return d.width; }).attr('opacity', 0.45);
+  linkSel.append('title').text(function(d) { return d.source.name + ' → ' + d.target.name; });
+
+  function relatedFor(nodeId) {
+    var direct = graph.links.filter(function(l) { return l.source.id === nodeId || l.target.id === nodeId; });
+    var pids = {};
+    direct.forEach(function(l) { pids[l.pid] = true; });
+    return graph.links.filter(function(l) { return pids[l.pid]; });
+  }
+
+  var node = svg.append('g').selectAll('g').data(graph.nodes).join('g');
+  node.append('rect').attr('x', function(d) { return d.x0; }).attr('y', function(d) { return d.y0; })
+    .attr('height', function(d) { return Math.max(1, d.y1 - d.y0); }).attr('width', function(d) { return d.x1 - d.x0; })
+    .attr('fill', function(d) { return d.color; }).append('title').text(function(d) { return d.name; });
+
+  var segA = svg.append('g').selectAll('rect').data(graph.links).join('rect').attr('class', 'sankey-segment')
+    .attr('x', function(d) { return d.source.x0; }).attr('y', function(d) { return d.y0 - d.width / 2; })
+    .attr('width', function(d) { return d.source.x1 - d.source.x0; }).attr('height', function(d) { return d.width; })
+    .attr('fill', function(d) { return d.source.color; });
+  var segB = svg.append('g').selectAll('rect').data(graph.links).join('rect').attr('class', 'sankey-segment')
+    .attr('x', function(d) { return d.target.x0; }).attr('y', function(d) { return d.y1 - d.width / 2; })
+    .attr('width', function(d) { return d.target.x1 - d.target.x0; }).attr('height', function(d) { return d.width; })
+    .attr('fill', function(d) { return d.target.color; });
+
+  node.append('text').attr('x', function(d) { return d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6; })
+    .attr('y', function(d) { return (d.y0 + d.y1) / 2; }).attr('dy', '0.35em')
+    .attr('text-anchor', function(d) { return d.x0 < width / 2 ? 'start' : 'end'; })
+    .attr('fill', 'rgba(255,255,255,.85)').attr('font-size', '11px')
+    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(function(d) { return d.name; });
+
+  node.each(function(d) {
+    var el = this;
+    el.addEventListener('mouseenter', function() {
+      var related = relatedFor(d.id);
+      var relatedSet = new Set(related);
+      linkSel.attr('opacity', function(l) { return relatedSet.has(l) ? 0.75 : 0.06; });
+      segA.attr('opacity', function(l) { return relatedSet.has(l) ? 1 : 0.15; });
+      segB.attr('opacity', function(l) { return relatedSet.has(l) ? 1 : 0.15; });
     });
-    nodeEl.addEventListener('mouseenter', function() {
-      links.forEach(function(l) {
-        l.style.opacity = idSet[l.getAttribute('data-project-id')] ? '0.75' : '0.06';
-      });
-      segments.forEach(function(s) {
-        s.style.opacity = idSet[s.getAttribute('data-project-id')] ? '1' : '0.15';
-      });
-    });
-    nodeEl.addEventListener('mouseleave', function() {
-      links.forEach(function(l) { l.style.opacity = '0.45'; });
-      segments.forEach(function(s) { s.style.opacity = '1'; });
+    el.addEventListener('mouseleave', function() {
+      linkSel.attr('opacity', 0.45);
+      segA.attr('opacity', 1);
+      segB.attr('opacity', 1);
     });
   });
-})();
+
+  function colCenterX(prefix) {
+    var n = graph.nodes.filter(function(nd) { return nd.id.indexOf(prefix) === 0; })[0];
+    return n ? (n.x0 + n.x1) / 2 : 0;
+  }
+  function header(x, anchor, text) {
+    svg.append('text').attr('x', x).attr('y', 20).attr('text-anchor', anchor)
+      .attr('fill', 'rgba(255,255,255,.5)').attr('font-size', '11px')
+      .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(text);
+  }
+  header(1, 'start', 'პროექტი');
+  if (showDm) header(colCenterX('m:'), 'middle', 'დიზაინ მენეჯერი');
+  if (showContractors) header(colCenterX('c:'), 'middle', 'კონტრაქტორი');
+  header(showPm ? colCenterX('r:') : width - 1, showPm ? 'middle' : 'end', 'რევიზორი');
+  if (showPm) header(width - 1, 'end', 'პროექტის მენეჯერი');
+}
+
+['chkDm','chkPm','chkArch','chkStruct','chkMep'].forEach(function(id) {
+  document.getElementById(id).addEventListener('change', render);
+});
+window.addEventListener('resize', render);
+render();
 <\/script>
 </body>
 </html>`;
