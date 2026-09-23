@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<title>პროექტების განაწილების სქემა</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<style>
+  body { margin: 0; background: #1a1120; font-family: 'Noto Sans Georgian', 'Inter', sans-serif; padding: 24px; box-sizing: border-box; }
+  h1 { text-align: center; color: rgba(255,255,255,.9); font-size: 20px; margin: 0 0 2px; }
+  .subtitle { text-align: center; color: rgba(255,255,255,.55); font-size: 13px; margin: 0 0 16px; }
+  .controls { display: flex; justify-content: center; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .controls label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(255,255,255,.75); cursor: pointer; }
+  .chart-wrap { max-width: 1100px; margin: 0 auto; }
+  svg { width: 100%; height: auto; display: block; }
+  .sankey-link, .sankey-segment { transition: opacity .15s; }
+  .sankey-segment { pointer-events: none; }
+</style>
+</head>
+<body>
+<h1>პროექტების განაწილების სქემა — GBA-ს მიხედვით</h1>
+<div class="subtitle">2026.09.23</div>
+<div class="controls">
+  <label><input type="checkbox" id="chkDm" checked> დიზაინ მენეჯერები</label>
+  <label><input type="checkbox" id="chkPm" checked> პროექტ მენეჯერები</label>
+  <label><input type="checkbox" id="chkArch"> არქიტექტორი</label>
+  <label><input type="checkbox" id="chkStruct"> კონსტრუქტორი</label>
+  <label><input type="checkbox" id="chkMep"> MEP</label>
+  <label><input type="checkbox" id="chkReviewer" checked> რევიზორები</label>
+</div>
+<div class="chart-wrap"><svg id="chartSvg"></svg></div>
+<script>
+var PROJECTS = [{"id":"37zr9WzhDhQoDFcax41n","name":"მოზაიკა","color":"#058a9c","gba":24297,"reviewer":"დავით ავალიშვილი","manager":"თეო გეგეშიძე","pm":"დიტო ქობალია","arch":"მეტრიკი","struct":"პროგრესი","mep":"BBD"},{"id":"3SncOEfzRmMRbr06q1d6","name":"ბარე","color":"#8c2945","gba":6421,"reviewer":"დავით ავალიშვილი","manager":"ანა გოგოლაძე","pm":"გიორგი ჩხაიძე","arch":"Dmark","struct":"Q Engineering","mep":"HELPME"},{"id":"4GjuoGlGskBjrPRm1GX1","name":"გარდანი","color":"#f3b13f","gba":58744,"reviewer":"დავით ავალიშვილი","manager":"დათო თითმერია","pm":"ნიკა თორთლაძე","arch":"მეტრიკი","struct":"Q Engineering","mep":"BBD"},{"id":"CLxEA0ffj699ZCSWFrcr","name":"ლიბრეტო","color":"#2a9390","gba":12896,"reviewer":"დავით ავალიშვილი","manager":"ნინო ოქრუაშვილი","pm":"გიორგი ჩხაიძე","arch":"მეტრიკი","struct":"კაპიტელი","mep":"CASA CALDA"},{"id":"M3Cu5GSrG9a5xE7l4mTh","name":"ბოჰემა","color":"#90c3ea","gba":133762,"reviewer":"დავით ავალიშვილი","manager":"თეო გეგეშიძე","pm":"ლუკა შავდათუაშვილი","arch":"მეტრიკი","struct":"პროგრესი","mep":"HELPME"},{"id":"QMaQdRLG70i3yXNDT17w","name":"შანტანი","color":"#39ac93","gba":26465,"reviewer":"დავით ავალიშვილი","manager":"ნინო ოქრუაშვილი","pm":"ნიკა თორთლაძე","arch":"მეტრიკი","struct":"კაპიტელი","mep":"BBD"},{"id":"Wsok0b1ZllDed625UqC8","name":"ჰისნი","color":"#069d38","gba":341574,"reviewer":"ერეკლე დიდებაშვილი","manager":"ანა გოგოლაძე","pm":"მალხაზ ბოლქვაძე","arch":"მეტრიკი","struct":"კაპიტელი","mep":"BBD"},{"id":"XljuxI1sB9hdvrSb687t","name":"საკენი","color":"#fdd296","gba":80908,"reviewer":"ერეკლე დიდებაშვილი","manager":"ჩიტო ჩელებაძე","pm":"ირაკლი გაგუა","arch":"მეტრიკი","struct":"კაპიტელი","mep":"BBD"},{"id":"eryUBrYBmQL0CUR67e7w","name":"კამარა","color":"#54c060","gba":80396,"reviewer":"დავით ავალიშვილი","manager":"ნინი შაქარიშვილი","pm":"დიტო ქობალია","arch":"Dmark","struct":"Q Engineering","mep":"BBD"},{"id":"wIhrW9O4OuySbv6Ki6Fl","name":"მატიანი","color":"#7fbdcc","gba":62906,"reviewer":"ერეკლე დიდებაშვილი","manager":"ჩიტო ჩელებაძე","pm":"ნიკა თორთლაძე","arch":"მეტრიკი","struct":"კაპიტელი","mep":"BBD"},{"id":"zDgcVMGEUYz2xMNbrOhO","name":"დაირა","color":"#7977f3","gba":37357,"reviewer":"ერეკლე დიდებაშვილი","manager":"ნინი შაქარიშვილი","pm":"გიორგი ჩხაიძე","arch":"Dmark","struct":"პროგრესი","mep":"HELPME"}];
+var REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
+var MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
+var PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#a3e635'];
+var ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
+var STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
+var MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
+
+function firstName(n) { return (n||'').trim().split(/\s+/)[0] || n; }
+function withInitial(n) {
+  var parts = (n||'').trim().split(/\s+/);
+  if (parts.length < 2) return parts[0] || n;
+  return parts[0] + ' ' + parts[1][0] + '.';
+}
+function colorFor(map, name, palette) {
+  if (!map[name]) map[name] = palette[Object.keys(map).length % palette.length];
+  return map[name];
+}
+
+function render() {
+  var showDm = document.getElementById('chkDm').checked;
+  var showPm = document.getElementById('chkPm').checked;
+  var showArch = document.getElementById('chkArch').checked;
+  var showStruct = document.getElementById('chkStruct').checked;
+  var showMep = document.getElementById('chkMep').checked;
+  var showReviewer = document.getElementById('chkReviewer').checked;
+  var showContractors = showArch || showStruct || showMep;
+
+  var svgEl = document.getElementById('chartSvg');
+  svgEl.innerHTML = '';
+  var width = svgEl.parentElement.clientWidth || 900;
+
+  var reviewerColors = {}, managerColors = {}, pmColors = {}, archColors = {}, structColors = {}, mepColors = {};
+  var nodesById = {};
+  function addNode(id, name, color) {
+    if (!nodesById[id]) nodesById[id] = { id: id, name: name, color: color };
+    return id;
+  }
+  var links = [];
+
+  PROJECTS.forEach(function(p) {
+    var reviewerColor = colorFor(reviewerColors, p.reviewer, REVIEWER_PALETTE);
+    var projectColor = p.color;
+    var value = Math.max(p.gba || 1000, 1);
+    var projectId = addNode('p:' + p.id, p.name, projectColor);
+    var reviewerId = showReviewer ? addNode('r:' + p.reviewer, firstName(p.reviewer), reviewerColor) : null;
+    var preId = projectId, preColor = projectColor;
+
+    if (showDm) {
+      var managerColor = colorFor(managerColors, p.manager, MANAGER_PALETTE);
+      var managerId = addNode('m:' + p.manager, withInitial(p.manager), managerColor);
+      links.push({ source: projectId, target: managerId, value: value, pid: p.id, c1: projectColor, c2: managerColor });
+      preId = managerId; preColor = managerColor;
+    }
+
+    // PM built up front (if shown) so it's available as a fallback target
+    // when reviewer is hidden.
+    var pmId = null, pmColor = null;
+    if (showPm) {
+      pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
+      pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor);
+    }
+    var afterId = showReviewer ? reviewerId : pmId;
+    var afterColor = showReviewer ? reviewerColor : pmColor;
+
+    if (showContractors) {
+      if (showArch) {
+        var archColor = colorFor(archColors, p.arch, ARCH_PALETTE);
+        var archId = addNode('c:' + p.arch, p.arch, archColor);
+        links.push({ source: preId, target: archId, value: value, pid: p.id, c1: preColor, c2: archColor });
+        if (afterId) links.push({ source: archId, target: afterId, value: value, pid: p.id, c1: archColor, c2: afterColor });
+      }
+      if (showStruct) {
+        var structColor = colorFor(structColors, p.struct, STRUCT_PALETTE);
+        var structId = addNode('c:' + p.struct, p.struct, structColor);
+        links.push({ source: preId, target: structId, value: value, pid: p.id, c1: preColor, c2: structColor });
+        if (afterId) links.push({ source: structId, target: afterId, value: value, pid: p.id, c1: structColor, c2: afterColor });
+      }
+      if (showMep) {
+        var mepColor = colorFor(mepColors, p.mep, MEP_PALETTE);
+        var mepId = addNode('c:' + p.mep, p.mep, mepColor);
+        links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
+        if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
+      }
+    } else if (afterId) {
+      links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
+    }
+
+    if (showReviewer && pmId) {
+      links.push({ source: reviewerId, target: pmId, value: value, pid: p.id, c1: reviewerColor, c2: pmColor });
+    }
+  });
+
+  // Height sized to the busiest column, same spirit as the live app.
+  var counts = {};
+  Object.keys(nodesById).forEach(function(id) {
+    var prefix = id.split(':')[0];
+    counts[prefix] = (counts[prefix] || 0) + 1;
+  });
+  var maxCount = Math.max(PROJECTS.length, 1);
+  Object.keys(counts).forEach(function(k) { if (counts[k] > maxCount) maxCount = counts[k]; });
+  var height = Math.max(200, maxCount * 50);
+
+  var svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
+  svg.append('rect').attr('x', 0).attr('y', 0).attr('width', width).attr('height', height).attr('fill', '#1a1120');
+
+  var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).nodePadding(20)
+    .extent([[1, 34], [width - 1, height - 5]]);
+  var graph = sankeyGen({
+    nodes: Object.keys(nodesById).map(function(k) { return Object.assign({}, nodesById[k]); }),
+    links: links.map(function(l) { return Object.assign({}, l); }),
+  });
+
+  var defs = svg.append('defs');
+  graph.links.forEach(function(d, i) {
+    var grad = defs.append('linearGradient').attr('id', 'grad' + i).attr('gradientUnits', 'userSpaceOnUse')
+      .attr('x1', d.source.x1).attr('x2', d.target.x0);
+    grad.append('stop').attr('offset', '0%').attr('stop-color', d.c1);
+    grad.append('stop').attr('offset', '100%').attr('stop-color', d.c2);
+    d.gradId = 'grad' + i;
+  });
+
+  var linkSel = svg.append('g').selectAll('path').data(graph.links).join('path')
+    .attr('class', 'sankey-link').attr('d', d3.sankeyLinkHorizontal())
+    .attr('fill', 'none').attr('stroke', function(d) { return 'url(#' + d.gradId + ')'; })
+    .attr('stroke-width', function(d) { return d.width; }).attr('opacity', 0.45);
+  linkSel.append('title').text(function(d) { return d.source.name + ' → ' + d.target.name; });
+
+  function relatedFor(nodeId) {
+    var direct = graph.links.filter(function(l) { return l.source.id === nodeId || l.target.id === nodeId; });
+    var pids = {};
+    direct.forEach(function(l) { pids[l.pid] = true; });
+    return graph.links.filter(function(l) { return pids[l.pid]; });
+  }
+
+  var node = svg.append('g').selectAll('g').data(graph.nodes).join('g');
+  node.append('rect').attr('x', function(d) { return d.x0; }).attr('y', function(d) { return d.y0; })
+    .attr('height', function(d) { return Math.max(1, d.y1 - d.y0); }).attr('width', function(d) { return d.x1 - d.x0; })
+    .attr('fill', function(d) { return d.color; }).append('title').text(function(d) { return d.name; });
+
+  var segA = svg.append('g').selectAll('rect').data(graph.links).join('rect').attr('class', 'sankey-segment')
+    .attr('x', function(d) { return d.source.x0; }).attr('y', function(d) { return d.y0 - d.width / 2; })
+    .attr('width', function(d) { return d.source.x1 - d.source.x0; }).attr('height', function(d) { return d.width; })
+    .attr('fill', function(d) { return d.source.color; });
+  var segB = svg.append('g').selectAll('rect').data(graph.links).join('rect').attr('class', 'sankey-segment')
+    .attr('x', function(d) { return d.target.x0; }).attr('y', function(d) { return d.y1 - d.width / 2; })
+    .attr('width', function(d) { return d.target.x1 - d.target.x0; }).attr('height', function(d) { return d.width; })
+    .attr('fill', function(d) { return d.target.color; });
+
+  node.append('text').attr('x', function(d) { return d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6; })
+    .attr('y', function(d) { return (d.y0 + d.y1) / 2; }).attr('dy', '0.35em')
+    .attr('text-anchor', function(d) { return d.x0 < width / 2 ? 'start' : 'end'; })
+    .attr('fill', 'rgba(255,255,255,.85)').attr('font-size', '11px')
+    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(function(d) { return d.name; });
+
+  node.each(function(d) {
+    var el = this;
+    el.addEventListener('mouseenter', function() {
+      var related = relatedFor(d.id);
+      var relatedSet = new Set(related);
+      linkSel.attr('opacity', function(l) { return relatedSet.has(l) ? 0.75 : 0.06; });
+      segA.attr('opacity', function(l) { return relatedSet.has(l) ? 1 : 0.15; });
+      segB.attr('opacity', function(l) { return relatedSet.has(l) ? 1 : 0.15; });
+    });
+    el.addEventListener('mouseleave', function() {
+      linkSel.attr('opacity', 0.45);
+      segA.attr('opacity', 1);
+      segB.attr('opacity', 1);
+    });
+  });
+
+  function colCenterX(prefix) {
+    var n = graph.nodes.filter(function(nd) { return nd.id.indexOf(prefix) === 0; })[0];
+    return n ? (n.x0 + n.x1) / 2 : 0;
+  }
+  function header(x, anchor, text) {
+    svg.append('text').attr('x', x).attr('y', 20).attr('text-anchor', anchor)
+      .attr('fill', 'rgba(255,255,255,.5)').attr('font-size', '11px')
+      .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(text);
+  }
+  header(1, 'start', 'პროექტი');
+  var dmIsLast = showDm && !showContractors && !showReviewer && !showPm;
+  if (showDm) header(dmIsLast ? width - 1 : colCenterX('m:'), dmIsLast ? 'end' : 'middle', 'დიზაინ მენეჯერი');
+  if (showContractors) {
+    var activeDisciplines = [showArch && 'არქიტექტორი', showStruct && 'კონსტრუქტორი', showMep && 'MEP'].filter(Boolean);
+    var contractorIsLast = !showReviewer && !showPm;
+    var label = activeDisciplines.length === 1 ? activeDisciplines[0] : 'კონტრაქტორი';
+    header(contractorIsLast ? width - 1 : colCenterX('c:'), contractorIsLast ? 'end' : 'middle', label);
+  }
+  if (showReviewer) header(showPm ? colCenterX('r:') : width - 1, showPm ? 'middle' : 'end', 'რევიზორი');
+  if (showPm) header(width - 1, 'end', 'პროექტის მენეჯერი');
+}
+
+['chkDm','chkPm','chkArch','chkStruct','chkMep','chkReviewer'].forEach(function(id) {
+  document.getElementById(id).addEventListener('change', render);
+});
+window.addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>

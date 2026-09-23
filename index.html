@@ -1665,13 +1665,16 @@ render();
 </body>
 </html>`;
 
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.download = `revtrack-reviewer-manager-${new Date().toISOString().slice(0,10)}.html`;
-  link.href = url;
-  link.click();
-  URL.revokeObjectURL(url);
+  const zip = new JSZip();
+  zip.file('projects.html', html);
+  zip.generateAsync({ type: 'blob' }).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = 'projects.zip';
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
 };
 
 window.downloadSankeyAsPdf = function() {
@@ -2942,7 +2945,7 @@ document.getElementById('saveIssue').addEventListener('click', async () => {
       await setDoc(doc(db,'projects',currentProjectId,'issues',currentIssueStorageId), data);
     }
     if (countDelta !== 0) {
-      try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(countDelta) }); } catch(e) {}
+      try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(countDelta) }); syncPublicProject(currentProjectId); } catch(e) {}
     }
     for (const url of photosToDeleteOnSave) { try { await deleteObject(storageRef(storage, url)); } catch(e) {} }
     photosToDeleteOnSave = [];
@@ -2960,7 +2963,7 @@ async function confirmDelete(id) {
     try { await deleteObject(storageRef(storage, url)); } catch(e) { /* already gone, ignore */ }
   }
   if (issue && issue.visibility !== 'draft') {
-    try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(-1) }); } catch(e) {}
+    try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(-1) }); syncPublicProject(currentProjectId); } catch(e) {}
   }
   showToast('წაიშალა');
 }
@@ -3013,7 +3016,7 @@ async function copyIssueTo(id, targetSection, msg) {
       duplicatedFrom: id
     };
     await setDoc(newRef, newData);
-    try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(1) }); } catch(e) {}
+    try { await updateDoc(doc(db,'projects',currentProjectId), { issueCount: increment(1) }); syncPublicProject(currentProjectId); } catch(e) {}
     showToast(targetSection===currentSection ? 'დუბლირებულია!' : `დუბლირებულია "${SECTION_LABEL[targetSection]}"-ში!`);
   } catch(e) { alert('შეცდომა: '+e.message); }
 }
@@ -3547,6 +3550,32 @@ function renderMemberList(currentMembers, search='') {
   }).join('') : '<div style="padding:12px;font-size:13px;color:var(--ink-light)">კონტრაქტორი ვერ მოიძებნა</div>';
 }
 window.updateMemberRole = (uid, role) => { pendingMemberChanges[uid] = role; };
+// Keeps a minimal, publicly-readable mirror of each project's chart-relevant
+// fields in sync — powers the /projects.html public chart page, which has
+// no login and can only read this collection, never the main `projects`
+// one (which holds internal fields like descriptions and team lists).
+async function syncPublicProject(pid) {
+  try {
+    const snap = await getDoc(doc(db,'projects',pid));
+    if (!snap.exists()) { await deleteDoc(doc(db,'publicProjects',pid)).catch(()=>{}); return; }
+    const p = snap.data();
+    await setDoc(doc(db,'publicProjects',pid), {
+      name: p.name || '',
+      color: p.color || null,
+      gba: p.gba != null ? p.gba : 1000,
+      createdByName: p.createdByName || 'ადმინი',
+      managerName: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
+      pmName: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
+      contractors: {
+        arch: p.contractors?.arch || '',
+        struct: p.contractors?.struct || '',
+        mep: p.contractors?.mep || '',
+      },
+      updatedAt: serverTimestamp(),
+    });
+  } catch (e) { console.error('publicProjects sync failed', e); }
+}
+
 async function saveProjectData(pid) {
   const name = document.getElementById('pName').value.trim();
   const code = document.getElementById('pCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -3586,6 +3615,7 @@ async function saveProjectData(pid) {
         await showProjectSections(pid); // refresh the sections view (e.g. newly-set color/manager) with fresh data
       }
     }
+    await syncPublicProject(pid);
     cm('projectModal'); showToast('შენახულია!');
   } catch(e) { alert('შეცდომა: '+e.message); }
 }
@@ -3609,6 +3639,7 @@ async function deleteProjectFully(pid, name) {
     }
     await deleteDoc(doc(db,'projects',pid));
     try { await deleteDoc(doc(db,'projects',pid,'meta','counter')); } catch(e) { /* already gone, ignore */ }
+    try { await deleteDoc(doc(db,'publicProjects',pid)); } catch(e) { /* already gone, ignore */ }
     cm('projectModal');
     showToast('პროექტი წაიშალა');
     if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
@@ -3686,7 +3717,7 @@ document.getElementById('btnRecalcIssueCounts').addEventListener('click', async 
         const countSnap = await getCountFromServer(query(collection(db,'projects',pDoc.id,'issues'), where('section','==',sec), where('visibility','in',visStates)));
         total += countSnap.data().count;
       }
-      await updateDoc(doc(db,'projects',pDoc.id), { issueCount: total });
+      await updateDoc(doc(db,'projects',pDoc.id), { issueCount: total }); await syncPublicProject(pDoc.id);
       fixed++;
     }
     showToast(`გადაითვალა ${fixed} პროექტი`);
@@ -3710,6 +3741,7 @@ document.getElementById('saveNewProj').addEventListener('click', async () => {
       createdByName: currentUserName
     });
     await setDoc(doc(db,'projects',ref.id,'meta','counter'), { nextSeq: 1 });
+    await syncPublicProject(ref.id);
     cm('newProjModal'); showToast('პროექტი შეიქმნა!');
     await showProjects();
   } catch(e) { alert('შეცდომა: '+e.message); }
