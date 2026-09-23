@@ -1374,6 +1374,30 @@ function renderReviewerManagerChart(projects, opts) {
         segmentSel2.attr('opacity', 1);
       });
     });
+
+    // Vertical drag-to-reorder within a node's own column. A node's
+    // horizontal position is fixed by its column, so only y0/y1 move; every
+    // link touching it is repositioned to follow (both its own end and,
+    // since a link's other end lives on a different node, only that one
+    // end moves here — the other node's own drag handles its side).
+    function repositionLinksAt(n) {
+      let y0 = n.y0;
+      (n.sourceLinks || []).forEach(l => { l.y0 = y0 + l.width / 2; y0 += l.width; });
+      let y1 = n.y0;
+      (n.targetLinks || []).forEach(l => { l.y1 = y1 + l.width / 2; y1 += l.width; });
+    }
+    node.style('cursor', function(d) { return d.id.startsWith('p:') ? 'pointer' : 'ns-resize'; });
+    node.filter(d => !d.id.startsWith('p:')).call(d3.drag().on('drag', function(event, d) {
+      const h = d.y1 - d.y0;
+      d.y0 = Math.max(0, Math.min(height - h, d.y0 + event.dy));
+      d.y1 = d.y0 + h;
+      d3.select(this).select('rect').attr('y', d.y0);
+      d3.select(this).select('text').attr('y', (d.y0 + d.y1) / 2);
+      repositionLinksAt(d);
+      linkSel.attr('d', sankeyLinkHorizontal());
+      segmentSel.attr('y', l => l.y0 - l.width / 2);
+      segmentSel2.attr('y', l => l.y1 - l.width / 2);
+    }));
   }
 
   const headerStyle = t => t
@@ -1633,6 +1657,26 @@ function render() {
       segB.attr('opacity', 1);
     });
   });
+
+  // Vertical drag-to-reorder within a node's own column.
+  function repositionLinksAt(n) {
+    var y0 = n.y0;
+    (n.sourceLinks || []).forEach(function(l) { l.y0 = y0 + l.width / 2; y0 += l.width; });
+    var y1 = n.y0;
+    (n.targetLinks || []).forEach(function(l) { l.y1 = y1 + l.width / 2; y1 += l.width; });
+  }
+  node.style('cursor', 'ns-resize');
+  node.call(d3.drag().on('drag', function(event, d) {
+    var h = d.y1 - d.y0;
+    d.y0 = Math.max(0, Math.min(height - h, d.y0 + event.dy));
+    d.y1 = d.y0 + h;
+    d3.select(this).select('rect').attr('y', d.y0);
+    d3.select(this).select('text').attr('y', (d.y0 + d.y1) / 2);
+    repositionLinksAt(d);
+    linkSel.attr('d', d3.sankeyLinkHorizontal());
+    segA.attr('y', function(l) { return l.y0 - l.width / 2; });
+    segB.attr('y', function(l) { return l.y1 - l.width / 2; });
+  }));
 
   function colCenterX(prefix) {
     var n = graph.nodes.filter(function(nd) { return nd.id.indexOf(prefix) === 0; })[0];
