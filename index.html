@@ -2101,37 +2101,25 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   const internalPoints = buildSectionLine('internal');
 
   // Turns a sparse, step-like cumulative series (jumps instantly at each
-  // real event) into a densely-sampled curve that eases smoothly through
-  // each jump instead of relying on Chart.js's "monotone" interpolation —
-  // monotone avoids overshoot but can look sharp/angular right at a
-  // plateau-then-rise-then-plateau shape, which is common in bursty data.
-  // This version is only for RENDERING; totalValueAt/valueAtFromPoints
-  // below still read the original sparse points for accurate lookups.
-  function smoothstep(x) { x = Math.max(0, Math.min(1, x)); return x*x*(3-2*x); }
-  function buildSmoothedRenderLine(sparsePoints) {
-    if (!sparsePoints.length) return [];
-    const EASE_HALF_MS = 1.5 * 86400000; // eases over ~3 days total per jump — needs to be visible on a multi-week chart
-    const jumps = [];
+  // real event) into an explicit staircase: flat, then a vertical jump
+  // exactly at each event, with no easing — matches the true underlying
+  // data exactly, including reaching the full count right at the first
+  // event of the day it happened, rather than "arriving late" the way an
+  // eased curve would.
+  function buildStepRenderLine(sparsePoints) {
+    const dense = [{ x: new Date(startTime), y: 0 }];
     let prevY = 0;
     for (const p of sparsePoints) {
-      const size = p.y - prevY;
-      if (size > 0) jumps.push({ t: p.x.getTime(), size });
+      dense.push({ x: p.x, y: prevY });
+      dense.push({ x: p.x, y: p.y });
       prevY = p.y;
     }
-    const dense = [];
-    for (let t = startTime; t <= endTime; t += 3 * 3600 * 1000) {
-      let y = 0;
-      for (const j of jumps) {
-        const frac = (t - j.t) / (2*EASE_HALF_MS) + 0.5;
-        y += j.size * smoothstep(frac);
-      }
-      dense.push({ x: new Date(t), y });
-    }
+    dense.push({ x: new Date(endTime), y: prevY });
     return dense;
   }
-  const totalRenderPoints = buildSmoothedRenderLine(totalPoints);
-  const reviewRenderPoints = buildSmoothedRenderLine(reviewPoints);
-  const internalRenderPoints = buildSmoothedRenderLine(internalPoints);
+  const totalRenderPoints = buildStepRenderLine(totalPoints);
+  const reviewRenderPoints = buildStepRenderLine(reviewPoints);
+  const internalRenderPoints = buildStepRenderLine(internalPoints);
 
   // Step function lookup: how many issues existed in total as of time t.
   function totalValueAt(t) {
@@ -2213,8 +2201,8 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     return palette[(paletteIdx++) % palette.length];
   }
   function fillForCreator(name) {
-    if (reviewerName && name === reviewerName) return 'rgba(185,28,28,.15)';
-    if (managerName && name === managerName) return 'rgba(37,99,235,.15)';
+    if (reviewerName && name === reviewerName) return 'rgba(185,28,28,.25)';
+    if (managerName && name === managerName) return 'rgba(37,99,235,.25)';
     return 'transparent';
   }
 
@@ -2225,7 +2213,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       borderColor: '#ef4444',
       backgroundColor: 'transparent',
       borderWidth: 1.75,
-      tension: 0.3,
+      tension: 0,
       fill: false,
       pointRadius: 0,
       hidden: true,
@@ -2236,7 +2224,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       borderColor: '#22d3ee',
       backgroundColor: 'transparent',
       borderWidth: 1.75,
-      tension: 0.3,
+      tension: 0,
       fill: false,
       pointRadius: 0,
       hidden: true,
@@ -2251,7 +2239,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
         borderColor: color,
         backgroundColor: fill,
         borderWidth: 1.5,
-        tension: 0.35,
+        tension: 0,
         fill: fill !== 'transparent',
         pointRadius: 0,
       };
@@ -2268,7 +2256,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
         backgroundColor: 'transparent',
         borderWidth: 1.5,
         borderDash: [5,3],
-        tension: 0.35,
+        tension: 0,
         fill: false,
         pointRadius: 0,
         legendGroup: groupKey,
@@ -2751,6 +2739,14 @@ document.getElementById('fDisc').addEventListener('change', () => {
   const suggestion = ({arch:c.arch, mep:c.mep, struct:c.struct})[document.getElementById('fDisc').value];
   if (suggestion) {
     renderPersonSelect(suggestion);
+  }
+});
+document.getElementById('fPerson').addEventListener('change', () => {
+  if (currentSection === 'internal') return; // fPerson isn't used in this section
+  const opts = contractorOptions();
+  const selectedOpt = opts.find(o => o.value === document.getElementById('fPerson').value);
+  if (selectedOpt && selectedOpt.disc) {
+    document.getElementById('fDisc').value = selectedOpt.disc;
   }
 });
 document.getElementById('fPriority').addEventListener('change', e => {
