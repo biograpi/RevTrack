@@ -582,6 +582,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-secondary" id="btnFixNames" style="width:100%;justify-content:flex-start" title="ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე">🔄 სახელების გასწორება</button>
       <button class="btn-secondary" id="btnFixVisibility" style="width:100%;justify-content:flex-start" title="ძველ საკითხებს ანიჭებს ხილვადობის მნიშვნელობას (მანამდე ეს ველი არ არსებობდა)">🔄 ხილვადობის გასწორება</button>
       <button class="btn-secondary" id="btnRecalcIssueCounts" style="width:100%;justify-content:flex-start" title="გადაითვლის თითოეული პროექტის საკითხების რაოდენობას ბარათის ფერის გრადაციისთვის (მანამდე ეს ველი არ არსებობდა)">🔄 საკითხების რაოდენობის გადათვლა</button>
+      <button class="btn-secondary" id="btnBackfillPublicProjects" style="width:100%;justify-content:flex-start" title="ერთჯერადი ნაბიჯი — ავსებს publicProjects კოლექციას ყველა უკვე არსებული პროექტით (projects.html-ისთვის). შემდეგ ეს ავტომატურად ხდება.">🔄 საჯარო გრაფიკის მონაცემების შევსება</button>
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsPdf()">⬇ გრაფიკის ჩამოწერა (PDF)</button>
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsHtml()">⬇ ინტერაქტიული HTML ჩამოწერა</button>
     </div>
@@ -3869,6 +3870,18 @@ document.getElementById('btnRecalcIssueCounts').addEventListener('click', async 
     }
     showToast(`გადაითვალა ${fixed} პროექტი`);
     await showProjects();
+  } catch(e) { alert('შეცდომა: '+e.message); }
+  btn.disabled = false; btn.textContent = origText;
+});
+document.getElementById('btnBackfillPublicProjects').addEventListener('click', async () => {
+  if (!confirm('ერთჯერადი ნაბიჯი: ყველა არსებული პროექტი გადაიწერება საჯარო გრაფიკის (publicProjects) კოლექციაში. გავაგრძელო?')) return;
+  const btn = document.getElementById('btnBackfillPublicProjects');
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'მუშავდება...';
+  try {
+    const projSnap = await getDocs(collection(db,'projects'));
+    for (const pDoc of projSnap.docs) { await syncPublicProject(pDoc.id); }
+    showToast(`შეივსო ${projSnap.size} პროექტი`);
   } catch(e) { alert('შეცდომა: '+e.message); }
   btn.disabled = false; btn.textContent = origText;
 });
