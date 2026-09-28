@@ -625,6 +625,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
           <label>PM-ის სახელი (თუ დარეგისტრირებული არაა)</label>
           <input id="pPmName" placeholder="სახელი გვარი">
         </div>
+        <div class="field form-full">
+          <label>MEP რევიზორი</label>
+          <input id="pMepReviewer" placeholder="გია, იური">
+        </div>
       </div>
 
       <div class="detail-label" style="margin-bottom:8px">კონტრაქტორები</div>
@@ -823,6 +827,7 @@ let unsubIssues = null;
 let editingId = null;
 let pendingLinks = [];
 let pendingPhotos = [];
+let pendingCommentPhotos = []; // photos attached to the comment currently being composed
 let originalPhotos = [];
 let photosToDeleteOnSave = []; // removed during editing, but the actual Storage file is only deleted once the form is truly saved
 let currentIssueStorageId = null;
@@ -1222,6 +1227,19 @@ function renderReviewerManagerChart(projects, opts) {
       pushLink(preContractorId, afterId, value, p.id, preContractorColor, afterColor, projectColor);
     }
 
+    if (sankeyShowReviewer) {
+      // MEP reviewer is a second, parallel reviewer entry for the project
+      // (Gia/Iuri handle MEP review specifically, separate from the main
+      // reviewer) — shown alongside the regular reviewer whenever reviewers
+      // are shown, connected the same simple way (direct from whatever
+      // precedes the reviewer column).
+      const mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
+      const mepReviewerColor = colorFor(reviewerColorByName, mepReviewerName, SANKEY_REVIEWER_PALETTE);
+      const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor);
+      pushLink(preContractorId, mepReviewerId, value, p.id, preContractorColor, mepReviewerColor, projectColor);
+      if (pmId) pushLink(mepReviewerId, pmId, value, p.id, mepReviewerColor, pmColor, projectColor);
+    }
+
     if (sankeyShowReviewer && pmId) {
       pushLink(reviewerId, pmId, value, p.id, reviewerColor, pmColor, projectColor);
     }
@@ -1454,6 +1472,7 @@ window.downloadSankeyAsHtml = function() {
     arch: (p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის',
     struct: (p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის',
     mep: (p.contractors?.mep||'').trim() || '— MEP არ არის',
+    mepReviewer: (p.mepReviewer || '').trim() || 'გია, იური',
   }));
   const dataJson = JSON.stringify(dataSnapshot);
   const todayStr = new Date().toISOString().slice(0,10).replace(/-/g, '.');
@@ -1576,6 +1595,16 @@ function render() {
       }
     } else if (afterId) {
       links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
+    }
+
+    if (showReviewer) {
+      // MEP reviewer is a second, parallel reviewer entry (Gia/Iuri handle
+      // MEP review specifically) — shown alongside the regular reviewer.
+      var mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
+      var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
+      var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
+      links.push({ source: preId, target: mepReviewerId, value: value, pid: p.id, c1: preColor, c2: mepReviewerColor });
+      if (pmId) links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor });
     }
 
     if (showReviewer && pmId) {
@@ -2907,6 +2936,45 @@ async function uploadPhotoFile(file) {
 async function handlePhotoFiles(fileList) {
   for (const file of Array.from(fileList)) { await uploadPhotoFile(file); }
 }
+// ── COMMENT PHOTOS ── (contractors and any other commenter can attach images)
+function renderCommentPhotoThumbs() {
+  const c = document.getElementById('commentPhotoThumbs');
+  if (!c) return;
+  c.innerHTML = pendingCommentPhotos.map((url,i) => `
+    <div class="photo-thumb"><img src="${url}" onclick="window.open('${url}','_blank')"><button type="button" class="photo-rm" data-i="${i}">✕</button></div>
+  `).join('');
+  c.querySelectorAll('.photo-rm').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    const i = +b.dataset.i;
+    const url = pendingCommentPhotos[i];
+    pendingCommentPhotos.splice(i,1);
+    renderCommentPhotoThumbs();
+    deleteObject(storageRef(storage, url)).catch(()=>{}); // never saved to a comment yet — safe to remove now
+  }));
+}
+async function uploadCommentPhotoFile(file, issueId) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return;
+  const c = document.getElementById('commentPhotoThumbs');
+  const spinnerEl = document.createElement('div');
+  spinnerEl.className = 'photo-thumb uploading';
+  spinnerEl.innerHTML = '<div class="photo-spin"><span class="spinner-dark"></span></div>';
+  if (c) c.appendChild(spinnerEl);
+  try {
+    const blob = await compressImage(file);
+    const path = `projects/${currentProjectId}/issues/${issueId}/comments/${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
+    const ref = storageRef(storage, path);
+    await uploadBytes(ref, blob, { contentType: 'image/jpeg' });
+    const url = await getDownloadURL(ref);
+    pendingCommentPhotos.push(url);
+    renderCommentPhotoThumbs();
+  } catch(e) {
+    alert('სურათის ატვირთვის შეცდომა: '+e.message);
+    spinnerEl.remove();
+  }
+}
+async function handleCommentPhotoFiles(fileList, issueId) {
+  for (const file of Array.from(fileList)) { await uploadCommentPhotoFile(file, issueId); }
+}
 const photoDropZone = document.getElementById('photoDropZone');
 const photoFileInput = document.getElementById('photoFileInput');
 photoDropZone.addEventListener('click', () => photoFileInput.click());
@@ -2922,6 +2990,12 @@ document.addEventListener('paste', e => {
   const items = e.clipboardData?.items; if (!items) return;
   const imgFiles = Array.from(items).filter(it => it.type.startsWith('image/')).map(it => it.getAsFile());
   if (imgFiles.length) { e.preventDefault(); handlePhotoFiles(imgFiles); }
+});
+document.addEventListener('paste', e => {
+  if (!document.getElementById('detailModal').classList.contains('open') || !currentDetailId) return;
+  const items = e.clipboardData?.items; if (!items) return;
+  const imgFiles = Array.from(items).filter(it => it.type.startsWith('image/')).map(it => it.getAsFile());
+  if (imgFiles.length) { e.preventDefault(); handleCommentPhotoFiles(imgFiles, currentDetailId); }
 });
 window.cancelIssueModal = async () => {
   // Clean up any photos uploaded during this session that were never saved.
@@ -3144,8 +3218,11 @@ async function openDetail(id) {
     <div class="comments-section">
       <div class="detail-label" style="margin-bottom:10px;display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4525C3.22094 16.8088 3.28001 17.2161 3.17712 17.6006L2.58151 19.8267C2.32295 20.793 3.20701 21.677 4.17335 21.4185L6.39939 20.8229C6.78393 20.72 7.19121 20.7791 7.54753 20.9565C8.88837 21.6244 10.4003 22 12 22Z"/></svg> კომენტარები</div>
       <div id="commentsList"><div class="no-comments">იტვირთება...</div></div>
-      ${canComment ? `<div class="comment-input-row">
+      ${canComment ? `<div id="commentPhotoThumbs" class="photo-thumbs" style="margin-bottom:6px"></div>
+      <div class="comment-input-row">
         <textarea id="commentInput" placeholder="დაწერე კომენტარი... (Enter — გაგზავნა)"></textarea>
+        <button class="btn-secondary" id="btnCommentPhoto" type="button" title="სურათის დამატება" style="padding:0 10px">📷</button>
+        <input type="file" id="commentPhotoFileInput" accept="image/*" multiple style="display:none">
         <button class="btn-primary" id="btnSendComment">გაგზავნა</button>
       </div>` : `<div class="viewer-note">${ICON_COMMENT} კომენტარისთვის საჭიროა რეგისტრაცია</div>`}
     </div>`;
@@ -3153,8 +3230,15 @@ async function openDetail(id) {
   loadComments(id);
   markIssueRead(id);
   if (canComment) {
+    pendingCommentPhotos = [];
+    renderCommentPhotoThumbs();
     document.getElementById('btnSendComment').addEventListener('click', () => sendComment(id));
     document.getElementById('commentInput').addEventListener('keydown', e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendComment(id);} });
+    document.getElementById('btnCommentPhoto').addEventListener('click', () => document.getElementById('commentPhotoFileInput').click());
+    document.getElementById('commentPhotoFileInput').addEventListener('change', () => {
+      handleCommentPhotoFiles(document.getElementById('commentPhotoFileInput').files, id);
+      document.getElementById('commentPhotoFileInput').value = '';
+    });
   }
 }
 async function loadComments(issueId) {
@@ -3185,6 +3269,9 @@ async function loadComments(issueId) {
           <span class="comment-meta-right">${time}${c.editedAt?' (რედაქტ.)':''}${canEditComment?`<button class="comment-del" title="რედაქტირება" onclick="startEditComment('${issueId}','${d.id}')">${ICON_EDIT}</button>`:''}${canDeleteComment?`<button class="comment-del" title="წაშლა" onclick="deleteCommentHandler('${issueId}','${d.id}')">${ICON_DELETE}</button>`:''}</span>
         </div>
         <div class="comment-text" id="ctext-${d.id}">${esc(c.text)}</div>
+        ${(c.photos&&c.photos.length)?`<div class="photo-gallery" style="margin-top:6px">
+          ${c.photos.map((url,i)=>`<a href="#" onclick="event.preventDefault();openLightbox(${JSON.stringify(c.photos).replace(/"/g,'&quot;')},${i})" class="photo-gallery-item"><img src="${esc(url)}" loading="lazy"></a>`).join('')}
+        </div>`:''}
       </div>
     </div>`;
   }).join('');
@@ -3237,17 +3324,21 @@ const UNREAD_ROLES = ['design_manager','reviewer','contractor','admin','viewer']
 
 async function sendComment(issueId) {
   const inp = document.getElementById('commentInput');
-  const text = inp.value.trim(); if(!text) return;
+  const text = inp.value.trim();
+  if (!text && !pendingCommentPhotos.length) return;
   const btn = document.getElementById('btnSendComment'); btn.disabled = true;
   try {
     await addDoc(collection(db,'projects',currentProjectId,'issues',issueId,'comments'), {
       text, authorName: currentUserName, authorLabel: currentUserLabel || null,
-      authorId: currentUser.uid, createdAt: serverTimestamp()
+      authorId: currentUser.uid, createdAt: serverTimestamp(),
+      photos: pendingCommentPhotos.length ? [...pendingCommentPhotos] : []
     });
     try {
       await updateDoc(doc(db,'projects',currentProjectId,'issues',issueId), {commentCount: increment(1), lastCommentAt: serverTimestamp()});
     } catch(counterErr) { console.warn('comment counter update failed:', counterErr); }
     inp.value = '';
+    pendingCommentPhotos = [];
+    renderCommentPhotoThumbs();
     loadComments(issueId);
     markIssueRead(issueId); // don't show my own just-posted comment as "unread" to myself
   } catch(e) {
@@ -3491,6 +3582,7 @@ async function openProjectModal(pid) {
     document.getElementById('pPmName').disabled = !!e.target.value;
     if (e.target.value) document.getElementById('pPmName').value = '';
   };
+  document.getElementById('pMepReviewer').value = pd.mepReviewer != null ? pd.mepReviewer : 'გია, იური';
   const contractors = pd.contractors || {};
   document.getElementById('cArch').value = contractors.arch||'';
   document.getElementById('cMep').value = contractors.mep||'';
@@ -3623,6 +3715,7 @@ async function syncPublicProject(pid) {
       createdByName: p.createdByName || 'ადმინი',
       managerName: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
       pmName: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
+      mepReviewer: (p.mepReviewer || '').trim() || 'გია, იური',
       contractors: {
         arch: p.contractors?.arch || '',
         struct: p.contractors?.struct || '',
@@ -3654,11 +3747,13 @@ async function saveProjectData(pid) {
   const pmName = pmUid ? (allUsers[pmUid]?.name || allUsers[pmUid]?.email || '') : document.getElementById('pPmName').value.trim();
   const gbaRaw = document.getElementById('pGba').value.trim();
   const gba = gbaRaw === '' ? 1000 : Number(gbaRaw);
+  const mepReviewerRaw = document.getElementById('pMepReviewer').value.trim();
   const data = { name, code, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors,
     color: pendingColorCleared ? null : document.getElementById('pColor').value,
     managerUid: document.getElementById('pManager').value || null,
     gba: Number.isFinite(gba) && gba >= 0 ? gba : 1000,
     pmUid, pmName,
+    mepReviewer: mepReviewerRaw || 'გია, იური',
     updatedAt: serverTimestamp() };
   try {
     if (pid) {
@@ -3793,7 +3888,7 @@ document.getElementById('saveNewProj').addEventListener('click', async () => {
   try {
     const ref = await addDoc(collection(db,'projects'), {
       name, code, desc: document.getElementById('npDesc').value.trim(),
-      members: {}, memberIds: [], gba: 1000,
+      members: {}, memberIds: [], gba: 1000, mepReviewer: 'გია, იური',
       createdAt:serverTimestamp(), createdBy:currentUser.uid,
       createdByName: currentUserName
     });
