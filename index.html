@@ -1222,22 +1222,20 @@ function renderReviewerManagerChart(projects, opts) {
         const mepId = addNode(`c:${mepName}`, mepName, mepColor);
         pushLink(preContractorId, mepId, value, p.id, preContractorColor, mepColor, projectColor);
         if (afterId) pushLink(mepId, afterId, value, p.id, mepColor, afterColor, projectColor);
+        if (sankeyShowReviewer) {
+          // MEP reviewer (Gia/Iuri) reviews the MEP contractor's work
+          // specifically — connected FROM the MEP contractor node, not
+          // from the project/DM directly, and only when MEP is actually
+          // shown as a discipline.
+          const mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
+          const mepReviewerColor = colorFor(reviewerColorByName, mepReviewerName, SANKEY_REVIEWER_PALETTE);
+          const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor);
+          pushLink(mepId, mepReviewerId, value, p.id, mepColor, mepReviewerColor, projectColor);
+          if (pmId) pushLink(mepReviewerId, pmId, value, p.id, mepReviewerColor, pmColor, projectColor);
+        }
       }
     } else if (afterId) {
       pushLink(preContractorId, afterId, value, p.id, preContractorColor, afterColor, projectColor);
-    }
-
-    if (sankeyShowReviewer) {
-      // MEP reviewer is a second, parallel reviewer entry for the project
-      // (Gia/Iuri handle MEP review specifically, separate from the main
-      // reviewer) — shown alongside the regular reviewer whenever reviewers
-      // are shown, connected the same simple way (direct from whatever
-      // precedes the reviewer column).
-      const mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
-      const mepReviewerColor = colorFor(reviewerColorByName, mepReviewerName, SANKEY_REVIEWER_PALETTE);
-      const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor);
-      pushLink(preContractorId, mepReviewerId, value, p.id, preContractorColor, mepReviewerColor, projectColor);
-      if (pmId) pushLink(mepReviewerId, pmId, value, p.id, mepReviewerColor, pmColor, projectColor);
     }
 
     if (sankeyShowReviewer && pmId) {
@@ -1592,19 +1590,16 @@ function render() {
         var mepId = addNode('c:' + p.mep, p.mep, mepColor);
         links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
         if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
+        if (showReviewer) {
+          var mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
+          var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
+          var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
+          links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
+          if (pmId) links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor });
+        }
       }
     } else if (afterId) {
       links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
-    }
-
-    if (showReviewer) {
-      // MEP reviewer is a second, parallel reviewer entry (Gia/Iuri handle
-      // MEP review specifically) — shown alongside the regular reviewer.
-      var mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
-      var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
-      var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
-      links.push({ source: preId, target: mepReviewerId, value: value, pid: p.id, c1: preColor, c2: mepReviewerColor });
-      if (pmId) links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor });
     }
 
     if (showReviewer && pmId) {

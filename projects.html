@@ -2,7 +2,48 @@
 <html lang="ka">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>პროექტების მართვის დიაგრამა</title>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA461TKgKROBwZ1l4YKdMW5QuA0M4tgxMM",
+  authDomain: "revtrack-f8341.firebaseapp.com",
+  projectId: "revtrack-f8341",
+  storageBucket: "revtrack-f8341.firebasestorage.app",
+  messagingSenderId: "161101410039",
+  appId: "1:161101410039:web:02e0a0d745f3690e622df2"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.PROJECTS = [];
+onSnapshot(collection(db, 'publicProjects'), (snap) => {
+  window.PROJECTS = snap.docs.map(d => {
+    const p = d.data();
+    return {
+      id: d.id,
+      name: p.name || '',
+      color: p.color || '#e14c4c',
+      gba: p.gba != null ? p.gba : 1000,
+      reviewer: p.createdByName || 'ადმინი',
+      manager: p.managerName || '— არავინ',
+      pm: p.pmName || '— არავინ',
+      arch: (p.contractors && p.contractors.arch) || '— არქიტექტორი არ არის',
+      struct: (p.contractors && p.contractors.struct) || '— კონსტრუქტორი არ არის',
+      mep: (p.contractors && p.contractors.mep) || '— MEP არ არის',
+      mepReviewer: p.mepReviewer || 'გია, იური',
+    };
+  });
+  document.getElementById('loadingMsg').style.display = 'none';
+  window.renderChart();
+}, (err) => {
+  document.getElementById('loadingMsg').textContent = 'მონაცემების ჩატვირთვა ვერ მოხერხდა: ' + err.message;
+});
+</script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
 <style>
@@ -15,11 +56,12 @@
   svg { width: 100%; height: auto; display: block; }
   .sankey-link, .sankey-segment { transition: opacity .15s; }
   .sankey-segment { pointer-events: none; }
+  #loadingMsg { text-align: center; color: rgba(255,255,255,.5); font-size: 13px; padding: 40px; }
 </style>
 </head>
 <body>
 <h1>პროექტების მართვის დიაგრამა</h1>
-<div class="subtitle">2026.09.24</div>
+<div class="subtitle" id="dateLabel"></div>
 <div class="controls">
   <label><input type="checkbox" id="chkDm" checked> დიზაინ მენეჯერები</label>
   <label><input type="checkbox" id="chkPm" checked> პროექტ მენეჯერები</label>
@@ -28,9 +70,11 @@
   <label><input type="checkbox" id="chkMep"> MEP</label>
   <label><input type="checkbox" id="chkReviewer" checked> რევიზორები</label>
 </div>
+<div id="loadingMsg">იტვირთება...</div>
 <div class="chart-wrap"><svg id="chartSvg"></svg></div>
 <script>
-var PROJECTS = [{"id":"37zr9WzhDhQoDFcax41n","name":"მოზაიკა","color":"#058a9c","gba":24297,"reviewer":"დავით ავალიშვილი","manager":"თეო გეგეშიძე","pm":"დიტო ქობალია","arch":"მეტრიკი","struct":"პროგრესი","mep":"BBD"},{"id":"3SncOEfzRmMRbr06q1d6","name":"ბარე","color":"#8c2945","gba":6421,"reviewer":"დავით ავალიშვილი","manager":"ანა გოგოლაძე","pm":"გიორგი ჩხაიძე","arch":"Dmark","struct":"Q Engineering","mep":"HELPME"},{"id":"4GjuoGlGskBjrPRm1GX1","name":"გარდანი","color":"#f3b13f","gba":58744,"reviewer":"დავით ავალიშვილი","manager":"დათო თითმერია","pm":"ნიკა თორთლაძე","arch":"მეტრიკი","struct":"Q Engineering","mep":"BBD"},{"id":"CLxEA0ffj699ZCSWFrcr","name":"ლიბრეტო","color":"#2a9390","gba":12896,"reviewer":"დავით ავალიშვილი","manager":"ნინო ოქრუაშვილი","pm":"გიორგი ჩხაიძე","arch":"მეტრიკი","struct":"კაპიტელი","mep":"CASA CALDA"},{"id":"M3Cu5GSrG9a5xE7l4mTh","name":"ბოჰემა","color":"#90c3ea","gba":133762,"reviewer":"დავით ავალიშვილი","manager":"თეო გეგეშიძე","pm":"ლუკა შავდათუაშვილი","arch":"მეტრიკი","struct":"პროგრესი","mep":"HELPME"},{"id":"QMaQdRLG70i3yXNDT17w","name":"შანტანი","color":"#39ac93","gba":26465,"reviewer":"დავით ავალიშვილი","manager":"ნინო ოქრუაშვილი","pm":"ნიკა თორთლაძე","arch":"მეტრიკი","struct":"კაპიტელი","mep":"BBD"},{"id":"Wsok0b1ZllDed625UqC8","name":"ჰისნი","color":"#069d38","gba":341574,"reviewer":"ერეკლე დიდებაშვილი","manager":"ანა გოგოლაძე","pm":"მალხაზ ბოლქვაძე","arch":"მეტრიკი","struct":"კაპიტელი","mep":"BBD"},{"id":"XljuxI1sB9hdvrSb687t","name":"საკენი","color":"#fdd296","gba":80908,"reviewer":"ერეკლე დიდებაშვილი","manager":"ჩიტო ჩელებაძე","pm":"ირაკლი გაგუა","arch":"მეტრიკი","struct":"კაპიტელი","mep":"BBD"},{"id":"eryUBrYBmQL0CUR67e7w","name":"კამარა","color":"#54c060","gba":80396,"reviewer":"დავით ავალიშვილი","manager":"ნინი შაქარიშვილი","pm":"დიტო ქობალია","arch":"Dmark","struct":"Q Engineering","mep":"— MEP არ არის"},{"id":"wIhrW9O4OuySbv6Ki6Fl","name":"მატიანი","color":"#7fbdcc","gba":62906,"reviewer":"ერეკლე დიდებაშვილი","manager":"ჩიტო ჩელებაძე","pm":"ნიკა თორთლაძე","arch":"მეტრიკი","struct":"კაპიტელი","mep":"BBD"},{"id":"zDgcVMGEUYz2xMNbrOhO","name":"დაირა","color":"#7977f3","gba":37357,"reviewer":"ერეკლე დიდებაშვილი","manager":"ნინი შაქარიშვილი","pm":"გიორგი ჩხაიძე","arch":"Dmark","struct":"პროგრესი","mep":"HELPME"}];
+document.getElementById('dateLabel').textContent = new Date().toISOString().slice(0,10).replace(/-/g, '.');
+
 var REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
 var MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
 var PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#a3e635'];
@@ -49,7 +93,10 @@ function colorFor(map, name, palette) {
   return map[name];
 }
 
-function render() {
+window.renderChart = function() {
+  var PROJECTS = window.PROJECTS || [];
+  if (!PROJECTS.length) return;
+
   var showDm = document.getElementById('chkDm').checked;
   var showPm = document.getElementById('chkPm').checked;
   var showArch = document.getElementById('chkArch').checked;
@@ -85,8 +132,6 @@ function render() {
       preId = managerId; preColor = managerColor;
     }
 
-    // PM built up front (if shown) so it's available as a fallback target
-    // when reviewer is hidden.
     var pmId = null, pmColor = null;
     if (showPm) {
       pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
@@ -113,6 +158,13 @@ function render() {
         var mepId = addNode('c:' + p.mep, p.mep, mepColor);
         links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
         if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
+        if (showReviewer) {
+          var mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
+          var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
+          var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
+          links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
+          if (pmId) links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor });
+        }
       }
     } else if (afterId) {
       links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
@@ -123,7 +175,6 @@ function render() {
     }
   });
 
-  // Height sized to the busiest column, same spirit as the live app.
   var counts = {};
   Object.keys(nodesById).forEach(function(id) {
     var prefix = id.split(':')[0];
@@ -255,13 +306,12 @@ function render() {
   }
   if (showReviewer) header(showPm ? colCenterX('r:') : width - 1, showPm ? 'middle' : 'end', 'რევიზორი');
   if (showPm) header(width - 1, 'end', 'პროექტის მენეჯერი');
-}
+};
 
 ['chkDm','chkPm','chkArch','chkStruct','chkMep','chkReviewer'].forEach(function(id) {
-  document.getElementById(id).addEventListener('change', render);
+  document.getElementById(id).addEventListener('change', window.renderChart);
 });
-window.addEventListener('resize', render);
-render();
+window.addEventListener('resize', window.renderChart);
 </script>
 </body>
 </html>
