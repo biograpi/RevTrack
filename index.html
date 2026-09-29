@@ -1004,7 +1004,18 @@ onAuthStateChanged(auth, async user => {
     // pending user who verifies their email would never have that fact
     // recorded, since the block below signs them straight back out.
     if (user.emailVerified && !d.emailVerified) {
-      try { await updateDoc(doc(db,'users',user.uid), {emailVerified: true}); } catch(e) {}
+      try {
+        const patch = { emailVerified: true };
+        // Auto-approval for same-domain viewer accounts only ever fires
+        // here — once the address is actually confirmed to be under this
+        // person's control — never at registration time, when the email
+        // string alone can't be trusted.
+        if (!d.approved && d.role === 'viewer' && (d.email||'').toLowerCase().endsWith('@biograpi.ge')) {
+          patch.approved = true;
+          d.approved = true; // so the !d.approved check just below doesn't sign them straight back out
+        }
+        await updateDoc(doc(db,'users',user.uid), patch);
+      } catch(e) {}
     }
     if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ'); await signOut(auth); return; }
     role = d.role || 'contractor';
@@ -3414,9 +3425,9 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
   isRegistering = true;
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    const autoApprove = role === 'viewer' && email.toLowerCase().endsWith('@biograpi.ge');
+    const isBiograpiViewer = role === 'viewer' && email.toLowerCase().endsWith('@biograpi.ge');
     await setDoc(doc(db,'users',cred.user.uid), {
-      name, email, role, approved: autoApprove, emailVerified: false, createdAt: serverTimestamp()
+      name, email, role, approved: false, emailVerified: false, createdAt: serverTimestamp()
     });
     try { await sendEmailVerification(cred.user); } catch(vErr) { console.warn('verification email failed:', vErr); }
     await signOut(auth);
@@ -3424,8 +3435,8 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
     document.getElementById('regEmail').value = '';
     document.getElementById('regPass').value = '';
     document.getElementById('tabLogin').click();
-    showToast(autoApprove
-      ? 'რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად — ანგარიში უკვე აქტიურია.'
+    showToast(isBiograpiViewer
+      ? 'რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად — ამის შემდეგ ანგარიში ავტომატურად გააქტიურდება.'
       : 'რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად, შემდეგ დაელოდეთ ადმინისტრატორის დადასტურებას.');
   } catch(e) {
     let msg = 'შეცდომა: ' + e.message;
