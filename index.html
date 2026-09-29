@@ -3483,9 +3483,8 @@ function renderUsersPanel() {
           </select>
           <div class="user-status">${
             !u.approved
-              ? (u.emailVerified !== false
-                  ? `<button class="btn-primary" style="padding:5px 11px;font-size:12px;white-space:nowrap" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>`
-                  : `<span style="color:var(--amber);font-size:12px;white-space:nowrap" title="მომხმარებელს ჯერ არ დაუდასტურებია საკუთარი მეილი">⏳ მეილი დაუდასტურებელია</span>`)
+              ? `<button class="btn-primary" style="padding:5px 11px;font-size:12px;white-space:nowrap" onclick="approveUser('${u.id}')">✓ დამტკიცება</button>
+                 ${u.emailVerified === false ? `<span style="color:var(--amber);font-size:11px;white-space:nowrap;margin-left:6px" title="მომხმარებელს ჯერ არ დაუდასტურებია საკუთარი მეილი — მაინც შეგიძლია დაამტკიცო">⏳ მეილი დაუდასტურებელია</span>` : ''}`
               : `<span style="color:var(--ok);font-size:12px;white-space:nowrap">✓ დამტკიცებული</span> <button class="btn-secondary" style="padding:3px 8px;font-size:11px" onclick="revokeUser('${u.id}')">გაუქმება</button>`
           }</div>
           <button class="icon-btn del" title="მომხმარებლის წაშლა" onclick="deleteUser('${u.id}','${esc(u.name).replace(/'/g,"\\'")}')">${ICON_DELETE}</button>
