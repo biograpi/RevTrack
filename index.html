@@ -2364,7 +2364,72 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     },
   });
 
+  attachActivityChartDateTooltip(activityChartInstance);
   buildActivityChartLegend(activityChartInstance);
+}
+
+// Shortest distance from point (px,py) to the segment a→b, plus the x of the
+// closest point on that segment (used to read the date off the line itself).
+function segmentDistance(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx*dx + dy*dy;
+  let t = len2 ? ((px-ax)*dx + (py-ay)*dy) / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t*dx, cy = ay + t*dy;
+  return { dist: Math.hypot(px-cx, py-cy), cx };
+}
+
+// Date-only hover tooltip for the activity chart. Chart.js's own tooltip is
+// disabled (it would list every dataset's value), so this is a small custom
+// one: it appears only when the mouse is actually close to a drawn line, and
+// shows just the day and month at that point on the line.
+function attachActivityChartDateTooltip(chart) {
+  const canvas = chart.canvas;
+  let tip = document.getElementById('activityChartTip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'activityChartTip';
+    tip.style.cssText = 'position:fixed;z-index:3000;pointer-events:none;display:none;padding:3px 9px;border-radius:6px;background:rgba(0,0,0,.85);color:#fff;font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4)';
+    document.body.appendChild(tip);
+  }
+  const NEAR_PX = 10; // how close the mouse has to be to a line
+  const hide = () => { tip.style.display = 'none'; };
+
+  // Assigned as properties (not addEventListener) so re-rendering the chart
+  // replaces the handlers instead of stacking up duplicates on the same canvas.
+  canvas.onmousemove = e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const area = chart.chartArea;
+    if (!area || mx < area.left || mx > area.right || my < area.top || my > area.bottom) return hide();
+
+    const xs = chart.scales.x, ys = chart.scales.y;
+    const tMin = xs.getValueForPixel(mx - NEAR_PX), tMax = xs.getValueForPixel(mx + NEAR_PX);
+    let best = null;
+    chart.data.datasets.forEach((ds, di) => {
+      if (!chart.isDatasetVisible(di)) return; // legend-hidden lines don't count
+      const pts = ds.data;
+      for (let i = 1; i < pts.length; i++) {
+        const t0 = +pts[i-1].x, t1 = +pts[i].x;
+        if (t1 < tMin) continue; // segment entirely left of the mouse window
+        if (t0 > tMax) break;    // points are sorted by x — nothing further is near
+        const d = segmentDistance(
+          mx, my,
+          xs.getPixelForValue(t0), ys.getPixelForValue(pts[i-1].y),
+          xs.getPixelForValue(t1), ys.getPixelForValue(pts[i].y)
+        );
+        if (!best || d.dist < best.dist) best = d;
+      }
+    });
+    if (!best || !(best.dist <= NEAR_PX)) return hide();
+
+    const date = new Date(xs.getValueForPixel(best.cx));
+    tip.textContent = `${date.getDate()} ${GEORGIAN_MONTHS_ABBR[date.getMonth()]}`;
+    tip.style.left = (e.clientX + 12) + 'px';
+    tip.style.top = (e.clientY - 30) + 'px';
+    tip.style.display = 'block';
+  };
+  canvas.onmouseleave = hide;
 }
 
 // Custom legend: a filled swatch means the line is showing, an outline-only
