@@ -590,17 +590,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   </div>
 </div>
 
-<div class="modal-overlay" id="photoNoticeModal">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-header"><h2>⚠️ მნიშვნელოვანი შეტყობინება</h2><button class="modal-close" onclick="dismissPhotoNotice()">✕</button></div>
-    <div class="modal-body">
-      <p style="margin:0 0 10px;line-height:1.55">სურათებთან და IFC მოდელებთან წვდომა <b>დროებით შეზღუდულია</b>. ამ ეტაპზე მათი ნახვა და ატვირთვა შეუძლებელია.</p>
-      <p style="margin:0;line-height:1.55">საკითხები, კომენტარები და დანარჩენი ფუნქციები ჩვეულებრივ მუშაობს. ეს შეზღუდვა დროებითია.</p>
-    </div>
-    <div class="modal-footer"><button class="btn-primary" onclick="dismissPhotoNotice()">გასაგებია</button></div>
-  </div>
-</div>
-
 <!-- Project manage -->
 <div class="modal-overlay" id="projectModal">
   <div class="modal" style="max-width:520px">
@@ -852,20 +841,6 @@ const showToast = msg => { const t=document.getElementById('toast'); t.textConte
 window.cm = id => document.getElementById(id).classList.remove('open');
 const om = id => document.getElementById(id).classList.add('open');
 
-// ── TEMPORARY NOTICE: photo / IFC access restricted ──
-// Set to false (or delete this block and the #photoNoticeModal markup) once
-// access to Storage is restored.
-const SHOW_PHOTO_ACCESS_NOTICE = true;
-function maybeShowPhotoAccessNotice() {
-  if (!SHOW_PHOTO_ACCESS_NOTICE) return;
-  try { if (sessionStorage.getItem('photoNoticeDismissed') === '1') return; } catch (e) {}
-  om('photoNoticeModal');
-}
-window.dismissPhotoNotice = () => {
-  try { sessionStorage.setItem('photoNoticeDismissed', '1'); } catch (e) {}
-  cm('photoNoticeModal');
-};
-
 // ── PHOTO LIGHTBOX ──
 let lightboxPhotos = [];
 let lightboxIndex = 0;
@@ -1064,7 +1039,6 @@ onAuthStateChanged(auth, async user => {
   if (role === 'admin') await loadAllUsers();
 
   await showProjects();
-  maybeShowPhotoAccessNotice();
 });
 
 // ── SHOW AUTH ──
@@ -2938,7 +2912,11 @@ async function openAdd() {
   document.getElementById('fVisibleField').style.display = 'block';
   setupVisibilityField('everyone');
   updateNumFieldForVisibility();
-  setPersonField('');
+  // Default responsible party: the project's chosen architect (if any). The
+  // internal section's responsible field is free text for internal people, so
+  // it's left empty there.
+  const defaultArchitect = currentSection === 'internal' ? '' : ((currentProjectData && currentProjectData.contractors && currentProjectData.contractors.arch) || '');
+  setPersonField(defaultArchitect);
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
 }
 function openEdit(id) {
