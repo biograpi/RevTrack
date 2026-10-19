@@ -316,6 +316,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 <!-- ══ AUTH ══ -->
 <div class="auth-screen" id="authScreen">
+  <button type="button" data-lang-toggle data-no-i18n style="position:fixed;top:14px;right:14px;z-index:5;padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.4);color:#fff;cursor:pointer">English</button>
   <div class="auth-box">
     <div class="auth-logo">RevTrack</div>
     <div class="auth-sub">პროექტების რევიზიების სისტემა</div>
@@ -364,6 +365,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
       <button class="btn-hdr" id="btnAdminTools" style="display:none">🛠 ხელსაწყოები</button>
       <span id="projScreenUser"></span>
+      <button class="btn-hdr" type="button" data-lang-toggle data-no-i18n>English</button>
       <button class="btn-hdr" id="btnProjLogout">გამოსვლა</button>
     </div>
   </div>
@@ -417,6 +419,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <span class="role-badge" id="hdrRoleBadge"></span>
     </span>
     <button class="btn-hdr" id="btnManageProject" style="display:none">⚙ პროექტი</button>
+    <button class="btn-hdr" type="button" data-lang-toggle data-no-i18n>English</button>
     <button class="btn-hdr" id="btnAppLogout" style="display:none">გამოსვლა</button>
   </div>
 </header>
@@ -722,7 +725,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     },
     format: function(time) {
       const d = new Date(time);
-      return d.toLocaleDateString('ka-GE', { year:'numeric', month:'short', day:'numeric' });
+      return d.toLocaleDateString((window.UI_LOCALE || 'ka-GE'), { year:'numeric', month:'short', day:'numeric' });
     },
     add: function(time, amount, unit) {
       const d = new Date(time);
@@ -769,6 +772,448 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// ══ LANGUAGE (Georgian / English) ══
+// Georgian is the built-in language of the app. English is a thin layer on top:
+// when it's switched on, every piece of UI text that reaches the page is looked
+// up in a dictionary (exact match, plus a few patterns for texts with numbers
+// or names in them) and swapped for its English version. Anything not in the
+// dictionary simply stays Georgian — nothing ever goes blank. User-written
+// content (issue titles, comments, names) is never translated.
+// Switching language stores the choice and reloads the page.
+(function () {
+  var LS_KEY = 'revtrack_lang';
+  var params = new URLSearchParams(location.search);
+  var urlLang = params.get('lang');
+  if (urlLang === 'en' || urlLang === 'ka') {
+    try { localStorage.setItem(LS_KEY, urlLang); } catch (e) {}
+    params.delete('lang');
+    var q = params.toString();
+    try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) {}
+  }
+  var lang = 'ka';
+  try { lang = localStorage.getItem(LS_KEY) === 'en' ? 'en' : 'ka'; } catch (e) {}
+  window.__LANG = lang;
+  window.UI_LOCALE = lang === 'en' ? 'en-GB' : 'ka-GE';
+
+  // Language buttons (login screen, project list header, project header).
+  document.querySelectorAll('[data-lang-toggle]').forEach(function (btn) {
+    btn.textContent = lang === 'en' ? 'ქართული' : 'English';
+    btn.title = lang === 'en' ? 'ქართულ ენაზე გადართვა' : 'Switch to English';
+    btn.addEventListener('click', function () {
+      try { localStorage.setItem(LS_KEY, lang === 'en' ? 'ka' : 'en'); } catch (e) {}
+      location.reload();
+    });
+  });
+
+  if (lang !== 'en') return;
+  document.documentElement.lang = 'en';
+
+  var D = {
+"პროექტების რევიზიების სისტემა": "Project review system",
+"შესვლა": "Log in",
+"რეგისტრაცია": "Register",
+"ელ. ფოსტა": "Email",
+"პაროლი": "Password",
+"დაგავიწყდათ პაროლი?": "Forgot your password?",
+"სახელი გვარი": "Full name",
+"გიორგი გიორგაძე": "John Smith",
+"მინიმუმ 6 სიმბოლო": "At least 6 characters",
+"თქვენი როლი": "Your role",
+"რევიზორი": "Reviewer",
+"დიზაინ მენეჯერი": "Design Manager",
+"კონტრაქტორი": "Contractor",
+"როლს საბოლოოდ დაადასტურებს ადმინისტრატორი": "The role will be confirmed by an administrator",
+"მოთხოვნა გაიგზავნა! დაელოდეთ ადმინისტრატორის დადასტურებას.": "Request sent! Please wait for administrator approval.",
+"გამოსვლა": "Log out",
+"მეილი ან პაროლი არასწორია": "Incorrect email or password",
+"ჯერ შეიყვანე შენი ელ. ფოსტა ზემოთ ველში": "Enter your email in the field above first",
+"პაროლის აღდგენის ბმული გაიგზავნა თქვენს მეილზე": "A password reset link has been sent to your email",
+"ამ მეილით მომხმარებელი ვერ მოიძებნა": "No user found with this email",
+"ელ. ფოსტის ფორმატი არასწორია": "Invalid email format",
+"სახელი სავალდებულოა": "Name is required",
+"ელ. ფოსტა სავალდებულოა": "Email is required",
+"პაროლი უნდა იყოს მინიმუმ 6 სიმბოლო": "Password must be at least 6 characters",
+"რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად — ამის შემდეგ ანგარიში ავტომატურად გააქტიურდება.": "Registration complete! Check your email to confirm it — your account will then be activated automatically.",
+"რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად, შემდეგ დაელოდეთ ადმინისტრატორის დადასტურებას.": "Registration complete! Check your email to confirm it, then wait for administrator approval.",
+"ეს ელ. ფოსტა უკვე რეგისტრირებულია": "This email is already registered",
+"ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ": "The account has not yet been approved by an administrator",
+"მომხმარებელი ვერ მოიძებნა — გაიარეთ რეგისტრაცია": "User not found — please register",
+"ბადე": "Grid",
+"გრაფიკი": "Chart",
+"+ ახალი პროექტი": "+ New project",
+"👥 მომხმარებლები": "👥 Users",
+"🛠 ხელსაწყოები": "🛠 Tools",
+"დიზაინ მენეჯერები": "Design managers",
+"პროექტ მენეჯერები": "Project managers",
+"არქიტექტორი": "Architect",
+"კონსტრუქტორი": "Structural engineer",
+"რევიზორები": "Reviewers",
+"აქტივობა დროში": "Activity over time",
+"პროექტი": "Project",
+"← უკან დაბრუნება": "← Back",
+"⚙ პროექტი": "⚙ Project",
+"⚙ პროექტის მართვა": "⚙ Manage project",
+"← პროექტები": "← Projects",
+"პროექტები": "Projects",
+"პროექტის მართვა": "Manage project",
+"შექმენი პირველი პროექტი": "Create your first project",
+"პროექტზე არ ხართ დამატებული. დაელოდეთ.": "You haven't been added to any project yet. Please wait.",
+"პროექტი ვერ მოიძებნა": "Project not found",
+"რევიზორი:": "Reviewer:",
+"დიზაინ მენეჯერი:": "Design Manager:",
+"MEP რევიზორი:": "MEP reviewer:",
+"განახლდა:": "Updated:",
+"ფაილი არ არის ატვირთული": "No file uploaded",
+"რევიზია": "Review",
+"MEP რევიზია": "MEP Review",
+"DM საკითხები": "DM issues",
+"პროექტის მენეჯერი": "Project manager",
+"— არავინ": "— None",
+"— არქიტექტორი არ არის": "— No architect",
+"— კონსტრუქტორი არ არის": "— No structural engineer",
+"— MEP არ არის": "— No MEP",
+"ადმინი": "Admin",
+"უცნობი": "Unknown",
+"უცნობია": "Unknown",
+"პროექტების მართვის დიაგრამა": "Project management diagram",
+"რაოდენობა": "Count",
+"შეცდომა გრაფიკის აგებისას — იხილეთ Console": "Error building the chart — see the Console",
+"ჩამოწერა ვერ მოხერხდა — გრაფიკი ჯერ არ ჩატვირთულა": "Download failed — the chart hasn't loaded yet",
+"ჩამოწერა ვერ მოხერხდა": "Download failed",
+"მზადდება...": "Preparing...",
+"🔍 ძებნა": "🔍 Search",
+"ძებნა": "Search",
+"ყველა დისციპლინა": "All disciplines",
+"არქიტექტურა": "Architecture",
+"კონსტრუქცია": "Structural",
+"სხვა": "Other",
+"ყველა სტატუსი": "All statuses",
+"აქტიური": "Active",
+"დასრულებული": "Closed",
+"ყველა საკითხი": "All issues",
+"პრიორიტეტული": "Priority",
+"ჩვეულებრივი": "Normal",
+"+ საკითხი": "+ Issue",
+"📊 ექსპორტი (Excel + ფოტოები)": "📊 Export (Excel + photos)",
+"🔄 კომენტარების გადათვლა": "🔄 Recount comments",
+"ასწორებს ძველი ბაგით დაზიანებულ კომენტარების რაოდენობებს": "Fixes comment counts damaged by an old bug",
+"დისციპლინა": "Discipline",
+"საკითხი": "Issue",
+"პრიორიტეტი": "Priority",
+"პასუხისმგებელი": "Responsible",
+"თარიღი": "Date",
+"დედლაინი": "Deadline",
+"სურათები": "Images",
+"კომენტარები": "Comments",
+"ლინკები": "Links",
+"საკითხები არ მოიძებნა": "No issues found",
+"დრაფტი — ხედავს მხოლოდ შემქმნელი": "Draft — visible only to the creator",
+"ხილვადია მხოლოდ დიზაინ მენეჯერისთვის/რევიზორისთვის": "Visible only to design managers/reviewers",
+"დრაფტი": "Draft",
+"გადაითვალოს ყველა საკითხის კომენტარების რეალური რაოდენობა ამ პროექტში?": "Recount the real number of comments on every issue in this project?",
+"მუშავდება...": "Processing...",
+"გასწორდა": "Fixed",
+"ყველა რაოდენობა უკვე სწორი იყო": "All counts were already correct",
+"დიახ": "Yes",
+"არა": "No",
+"ახალი საკითხი": "New issue",
+"საკითხის რედაქტირება": "Edit issue",
+"ნომერი": "Number",
+"რედაქტირებადია — ჩაწერე მაგ. 2.1, რომ გახდეს 2-ის ქვე-საკითხი": "Editable — enter e.g. 2.1 to make it a sub-issue of 2",
+"დედლაინი (არასავალდებულო)": "Deadline (optional)",
+"ხილვადობა": "Visibility",
+"დრაფტი (ხედავს მხოლოდ შემქმნელი)": "Draft (visible only to the creator)",
+"ბიოგრაფის თანამშრომლები (არა კონტრაქტორი)": "Biograpi staff (not contractors)",
+"ყველა (კონტრაქტორის ჩათვლით)": "Everyone (including contractors)",
+"ყველასთვის": "Everyone",
+"სათაური": "Title",
+"საკითხის მოკლე სათაური": "Short issue title",
+"დეტალური აღწერა": "Detailed description",
+"სად არის, რა პრობლემაა...": "Where it is, what the problem is...",
+"სტატუსი": "Status",
+"— არჩევა —": "— Select —",
+"სახელი / კომპანია": "Name / company",
+"სურათები (screenshot-ები — ჩააწებეთ Ctrl+V, ჩააგდეთ, ან აირჩიეთ ფაილი)": "Images (screenshots — paste with Ctrl+V, drop, or choose a file)",
+"📷 ჩააგდე სურათი აქ, ჩააწებე (Ctrl+V), ან": "📷 Drop an image here, paste (Ctrl+V), or",
+"აირჩიე ფაილი": "choose a file",
+"ლინკები (OneDrive, Google Drive...)": "Links (OneDrive, Google Drive...)",
+"+ ლინკის დამატება": "+ Add link",
+"გაუქმება": "Cancel",
+"შენახვა": "Save",
+"დრაფტს ნომერი არ სჭირდება": "A draft doesn't need a number",
+"დასრულებული (მხოლოდ საკუთარ შემქმნელს/ადმინს)": "Closed (only its creator / admin)",
+"სათაური სავალდებულოა": "Title is required",
+"საკითხის დახურვა შეუძლია მხოლოდ ადმინს ან მისი შემქმნელს.": "Only an admin or the issue's creator can close it.",
+"ნომრის ფორმატი არასწორია (მაგ. 3 ან 2.1)": "Invalid number format (e.g. 3 or 2.1)",
+"ეს ნომერი უკვე დაკავებულია — აირჩიე სხვა.": "This number is already taken — choose another.",
+"განახლდა!": "Updated!",
+"საკითხი დაემატა!": "Issue added!",
+"ნამდვილად წავშალო?": "Really delete?",
+"წაიშალა": "Deleted",
+"სურათების კოპირება...": "Copying images...",
+"ფაილის წაკითხვა ჩავარდა": "Could not read the file",
+"სურათის ჩატვირთვა ჩავარდა": "Image failed to load",
+"კონვერტაცია ჩავარდა": "Conversion failed",
+"სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.": "Access to images is temporarily restricted, so uploading an image is not possible right now.",
+"დუბლირებულია!": "Duplicated!",
+"დუბლირდეს ეს საკითხი ახალი ნომრით ამავე განყოფილებაში?": "Duplicate this issue with a new number in the same section?",
+"დუბლირდეს ეს საკითხი \"რევიზია\" განყოფილებაში?": "Duplicate this issue to the \"Review\" section?",
+"დუბლირდეს ეს საკითხი \"DM საკითხების\" განყოფილებაში?": "Duplicate this issue to the \"DM issues\" section?",
+"წინა საკითხი (←)": "Previous issue (←)",
+"შემდეგი საკითხი (→)": "Next issue (→)",
+"დახურვა": "Close",
+"დუბლირება რევიზიაში": "Duplicate to Review",
+"დუბლირება DM საკითხებში": "Duplicate to DM issues",
+"დუბლირება": "Duplicate",
+"რედაქტირება": "Edit",
+"წაშლა": "Delete",
+"გახსნა": "Opened by",
+"📷 სურათები": "📷 Images",
+"დაწერე კომენტარი... (Enter — გაგზავნა)": "Write a comment... (Enter — send)",
+"სურათის დამატება": "Add image",
+"გაგზავნა": "Send",
+"კომენტარისთვის საჭიროა რეგისტრაცია": "You need to register to comment",
+"კომენტარი ჯერ არ არის": "No comments yet",
+"(რედაქტ.)": "(edited)",
+"წავშალო ეს კომენტარი?": "Delete this comment?",
+"კომენტარი წაიშალა": "Comment deleted",
+"კომენტარი ცარიელი ვერ იქნება": "Comment cannot be empty",
+"იტვირთება...": "Loading...",
+"👥 ყველა მომხმარებელი": "👥 All users",
+"ყველა როლი": "All roles",
+"✓ დამტკიცება": "✓ Approve",
+"მომხმარებელს ჯერ არ დაუდასტურებია საკუთარი მეილი — მაინც შეგიძლია დაამტკიცო": "The user hasn't confirmed their email yet — you can still approve",
+"⏳ მეილი დაუდასტურებელია": "⏳ Email not confirmed",
+"✓ დამტკიცებული": "✓ Approved",
+"მომხმარებლის წაშლა": "Delete user",
+"ლეიბლი:": "Label:",
+"მაგ. DM, PM, TT...": "e.g. DM, PM, TT...",
+"საკითხების გახსნის უფლება": "Permission to open issues",
+"მომხმარებელი არ არის": "No users",
+"დამტკიცდა!": "Approved!",
+"გაუქმდეს ამ მომხმარებლის დამტკიცება? მას აღარ ექნება წვდომა სისტემაზე, სანამ ხელახლა არ დაამტკიცებთ.": "Revoke this user's approval? They will have no access to the system until you approve them again.",
+"დამტკიცება გაუქმდა": "Approval revoked",
+"როლი შეიცვალა": "Role changed",
+"მომხმარებელი წაიშალა": "User deleted",
+"🔄 სახელების გასწორება": "🔄 Fix names",
+"ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე": "Replaces email-based names saved in old projects with real names",
+"🔄 ხილვადობის გასწორება": "🔄 Fix visibility",
+"ძველ საკითხებს ანიჭებს ხილვადობის მნიშვნელობას (მანამდე ეს ველი არ არსებობდა)": "Assigns a visibility value to old issues (this field didn't exist before)",
+"🔄 საკითხების რაოდენობის გადათვლა": "🔄 Recount issue totals",
+"გადაითვლის თითოეული პროექტის საკითხების რაოდენობას ბარათის ფერის გრადაციისთვის (მანამდე ეს ველი არ არსებობდა)": "Recounts each project's issues for the card color gradient (this field didn't exist before)",
+"🔄 საჯარო გრაფიკის მონაცემების შევსება": "🔄 Fill public chart data",
+"ერთჯერადი ნაბიჯი — ავსებს publicProjects კოლექციას ყველა უკვე არსებული პროექტით (projects.html-ისთვის). შემდეგ ეს ავტომატურად ხდება.": "One-time step — fills the publicProjects collection with every existing project (for projects.html). After that it happens automatically.",
+"⬇ გრაფიკის ჩამოწერა (PDF)": "⬇ Download chart (PDF)",
+"⬇ ინტერაქტიული HTML ჩამოწერა": "⬇ Download interactive HTML",
+"ერთჯერადი ნაბიჯი: ყველა არსებული პროექტი გადაიწერება საჯარო გრაფიკის (publicProjects) კოლექციაში. გავაგრძელო?": "One-time step: every existing project will be copied to the public chart (publicProjects) collection. Continue?",
+"გადავამოწმო ყველა პროექტის შემქმნელის სახელი და გავასწორო ძველი (მეილზე დაფუძნებული) ჩანაწერები?": "Check every project's creator name and fix old (email-based) entries?",
+"ყველა სახელი უკვე სწორი იყო": "All names were already correct",
+"ყველა საკითხს უკვე ჰქონდა ხილვადობა მინიჭებული": "All issues already had a visibility assigned",
+"გადაითვალოს ყველა პროექტის საკითხების რაოდენობა (დრაფტების გარეშე) და შეინახოს პროექტზე, ბარათის ფერის გრადაციისთვის?": "Recount every project's issue total (excluding drafts) and store it on the project, for the card color gradient?",
+"პროექტის სახელი": "Project name",
+"პროექტი N123": "Project N123",
+"პროექტის კოდი": "Project code",
+"კოდის შეცვლა მყისიერად ცვლის ყველა საკითხის ნომერს (მაგ. MZK-001)": "Changing the code instantly changes every issue number (e.g. MZK-001)",
+"პროექტის ფერი (ბარათისთვის მთავარ გვერდზე)": "Project color (for the card on the main page)",
+"ნაგულისხმევზე დაბრუნება": "Reset to default",
+"აღწერა": "Description",
+"მოკლე აღწერა": "Short description",
+"GBA (მთლიანი სამშენებლო ფართობი, მ²)": "GBA (gross building area, m²)",
+"პროექტის მენეჯერი (საინფორმაციო — უფლებებზე გავლენას არ ახდენს)": "Project manager (informational — doesn't affect permissions)",
+"— არჩეული არ არის —": "— None selected —",
+"პროექტის მენეჯერი (PM)": "Project manager (PM)",
+"— თავად ჩავწერ —": "— I'll type it —",
+"PM-ის სახელი (თუ დარეგისტრირებული არაა)": "PM name (if not registered)",
+"MEP რევიზორი": "MEP reviewer",
+"გია, იური": "Gia, Iuri",
+"კონტრაქტორები": "Contractors",
+"კომპანია / სახელი": "Company / name",
+"+ სხვა კონტრაქტორის დამატება": "+ Add another contractor",
+"პროექტში ჩართული კონტრაქტორები": "Contractors in this project",
+"მომხმარებლის ძებნა...": "Search users...",
+"IFC ვიუერის ფაილები": "IFC viewer files",
+"+ Fragments ფაილის ატვირთვა (.frag)": "+ Upload fragments file (.frag)",
+"🗑 პროექტის წაშლა": "🗑 Delete project",
+"სახელი": "Name",
+"პროექტის კოდი (საკითხების ნუმერაციისთვის, მაგ. MZK)": "Project code (for issue numbering, e.g. MZK)",
+"მოკლე აღწერა (არასავალდებულო)": "Short description (optional)",
+"შექმნა": "Create",
+"კატეგორია (მაგ. სახანძრო)": "Category (e.g. fire safety)",
+"IFC ვიუერი": "IFC viewer",
+"პროექტის კოდი სავალდებულოა (მაგ. MZK)": "Project code is required (e.g. MZK)",
+"შენახულია!": "Saved!",
+"პროექტი შეიქმნა!": "Project created!",
+"პროექტი წაიშალა": "Project deleted",
+"იშლება...": "Deleting...",
+"სახელი არ ემთხვევა — წაშლა გაუქმდა.": "Name doesn't match — deletion cancelled.",
+"ჯერ შეინახე პროექტი, შემდეგ დაემატება IFC ფაილების ატვირთვის საშუალება.": "Save the project first, then you'll be able to upload IFC files.",
+"ფაილი აიტვირთა": "File uploaded",
+"წავშალო ეს ფაილი?": "Delete this file?",
+"ფაილი წაიშალა": "File deleted",
+"კონტრაქტორია": "Is a contractor",
+"კონტრაქტორი ვერ მოიძებნა": "Contractor not found",
+"გადავამოწმო ყველა პროექტის ყველა საკითხი და მივანიჭო ხილვადობის მნიშვნელობა მათ, ვისაც ჯერ არა აქვს (ძველი საკითხები)? გაუშვი ეს მხოლოდ ერთხელ, სასურველია ახლავე, სანამ ვინმე ახალ დრაფტს შექმნის.": "Check every issue in every project and assign a visibility value to those that don't have one yet (old issues)? Run this only once, preferably right now, before anyone creates a new draft."
+};
+
+  var GEO = /[\u10A0-\u10FF]/;
+  var has = Object.prototype.hasOwnProperty;
+  var missing = {};
+  var missingCount = 0;
+  function noteMissing(s) {
+    s = (s || '').trim();
+    if (!s || s.length > 140 || missingCount > 600 || has.call(missing, s)) return;
+    missing[s] = 1; missingCount++;
+  }
+  window.__i18nMissing = function () { return Object.keys(missing); };
+
+  function plural(n, one, many) { return n + ' ' + (Number(n) === 1 ? one : many); }
+
+  // Patterns for texts that have numbers or names inside them.
+  var P = [
+    [/^შეცდომა: ([\s\S]*)$/, function (m) { return 'Error: ' + m[1]; }],
+    [/^შეცდომა საკითხების ჩატვირთვისას: ([\s\S]*)$/, function (m) { return 'Error loading issues: ' + m[1]; }],
+    [/^შეცდომა ექსპორტისას: ([\s\S]*)$/, function (m) { return 'Export error: ' + m[1]; }],
+    [/^შეცდომა წაშლისას: ([\s\S]*)$/, function (m) { return 'Error while deleting: ' + m[1]; }],
+    [/^სურათის ატვირთვის შეცდომა: ([\s\S]*)$/, function (m) { return 'Image upload error: ' + m[1]; }],
+    [/^კომენტარის დამატება ვერ მოხერხდა: ([\s\S]*)$/, function (m) { return 'Could not add the comment: ' + m[1]; }],
+    [/^(\d+) აქტიური$/, function (m) { return m[1] + ' active'; }],
+    [/^(\d+) დასრულებული$/, function (m) { return m[1] + ' closed'; }],
+    [/^(\d+) საკითხი$/, function (m) { return plural(m[1], 'issue', 'issues'); }],
+    [/^(\d+) სურათი$/, function (m) { return plural(m[1], 'image', 'images'); }],
+    [/^გასწორდა (\d+) საკითხი$/, function (m) { return 'Fixed ' + plural(m[1], 'issue', 'issues'); }],
+    [/^გასწორდა (\d+) პროექტი$/, function (m) { return 'Fixed ' + plural(m[1], 'project', 'projects'); }],
+    [/^გადაითვალა (\d+) პროექტი$/, function (m) { return 'Recounted ' + plural(m[1], 'project', 'projects'); }],
+    [/^შეივსო (\d+) პროექტი$/, function (m) { return 'Filled ' + plural(m[1], 'project', 'projects'); }],
+    [/^გაფრთხილება: (\d+) სურათი ვერ ჩაიტვირთა$/, function (m) { return 'Warning: ' + plural(m[1], 'image', 'images') + ' could not be loaded'; }],
+    [/^ვერ მოიძებნა (\d+) საკითხი — ქვე-საკითხი მხოლოდ არსებული საკითხისთვის შეიძლება\.$/, function (m) { return 'Issue ' + m[1] + ' not found — a sub-issue can only be added to an existing issue.'; }],
+    [/^დუბლირებულია "(.+)"-ში!$/, function (m) { return 'Duplicated to "' + trOr(m[1]) + '"!'; }],
+    [/^🔗 ლინკი (\d+)$/, function (m) { return '🔗 Link ' + m[1]; }],
+    [/^სულ დარეგისტრირებულია: (\d+)$/, function (m) { return 'Total registered: ' + m[1]; }],
+    [/^ბოლო შესვლა: ([\s\S]*)$/, function (m) { return 'Last login: ' + trOr(m[1]); }],
+    [/^([\s\S]*) \(ძველი ჩანაწერი\)$/, function (m) { return m[1] + ' (old entry)'; }],
+    [/^(.+) \(კომენტარები\)$/, function (m) { return m[1] + ' (comments)'; }],
+    [/^(.+) \(კომენტარები, DM\)$/, function (m) { return m[1] + ' (comments, DM)'; }],
+    [/^წავშალო მომხმარებელი "(.*)"\?\n\n[\s\S]*$/, function (m) {
+      return 'Delete user "' + m[1] + '"?\n\nThey will lose access to the system (their account data will be deleted from Firestore). Note: the Firebase Authentication account itself remains — it can only be fully deleted from the Firebase Console.';
+    }],
+    [/^ეს მოქმედება საბოლოოდ წაშლის პროექტს "(.*)" და მასში არსებულ ყველა საკითხს და კომენტარს — გაუქცევადია\.\n\nდასადასტურებლად ჩაწერეთ პროექტის სახელი ზუსტად:$/, function (m) {
+      return 'This action will permanently delete the project "' + m[1] + '" and every issue and comment in it — it cannot be undone.\n\nTo confirm, type the project name exactly:';
+    }]
+  ];
+
+  function lookup(s) {
+    if (has.call(D, s)) return D[s];
+    var flat = s.replace(/[ \t\u00a0]+/g, ' ');   // tolerate doubled spaces in the markup
+    if (flat !== s && has.call(D, flat)) return D[flat];
+    for (var i = 0; i < P.length; i++) {
+      var m = s.match(P[i][0]);
+      if (m) return P[i][1](m);
+    }
+    // "Label: value" — translate just the label when the dictionary knows it.
+    var c = s.indexOf(': ');
+    if (c > 0 && has.call(D, s.slice(0, c + 1))) return D[s.slice(0, c + 1)] + ' ' + trOr(s.slice(c + 2));
+    // "Role — name" (e.g. responsible-party dropdown entries).
+    var d = s.indexOf(' — ');
+    if (d > 0 && has.call(D, s.slice(0, d))) return D[s.slice(0, d)] + ' — ' + trOr(s.slice(d + 3));
+    return null;
+  }
+  function trOr(s) {
+    if (!GEO.test(s)) return s;
+    var out = lookup(s.trim());
+    return out == null ? s : out;
+  }
+
+  // Parts of the page that show user-written content — never translated.
+  var SKIP = '[data-no-i18n],script,style,textarea,.comment-text,.issue-title-cell,.person-chip,.comment-author,.project-card-name';
+  // For attributes only: a textarea's own placeholder is UI text (its content isn't).
+  var SKIP_ATTR = '[data-no-i18n],.comment-text,.issue-title-cell,.person-chip,.comment-author,.project-card-name';
+  function inSkipped(el) { return !!(el && el.closest && el.closest(SKIP)); }
+
+  function translateText(node) {
+    var raw = node.nodeValue;
+    if (!raw || !GEO.test(raw)) return;
+    var parent = node.parentNode;
+    if (inSkipped(parent)) return;
+    var m = raw.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    var core = m[2];
+    var out;
+    // Same Georgian word, different meaning depending on where it is.
+    if (core === 'გაუქმება' && parent && parent.closest && parent.closest('#usersPanel')) out = 'Revoke';
+    else out = lookup(core);
+    if (out == null) { noteMissing(core); return; }
+    if (out !== core) node.nodeValue = m[1] + out + m[3];
+  }
+
+  var ATTRS = ['placeholder', 'title', 'aria-label', 'alt', 'data-label'];
+  function translateAttrs(el) {
+    if (el.closest && el.closest(SKIP_ATTR)) return;
+    for (var i = 0; i < ATTRS.length; i++) {
+      var v = el.getAttribute(ATTRS[i]);
+      if (!v || !GEO.test(v)) continue;
+      var out = lookup(v.trim());
+      if (out == null) { noteMissing(v); continue; }
+      if (out !== v) el.setAttribute(ATTRS[i], out);
+    }
+  }
+
+  function walk(node) {
+    if (node.nodeType === 3) { translateText(node); return; }
+    if (node.nodeType !== 1) return;
+    var tag = node.tagName;
+    if (tag === 'SCRIPT' || tag === 'STYLE') return;
+    translateAttrs(node);
+    if (tag === 'TEXTAREA') return;
+    for (var c = node.firstChild; c; c = c.nextSibling) walk(c);
+  }
+
+  // alert / confirm / prompt messages never touch the page, so wrap them too.
+  function trMsg(m) {
+    if (typeof m !== 'string' || !GEO.test(m)) return m;
+    var out = lookup(m.trim());
+    if (out == null) { noteMissing(m); return m; }
+    return out;
+  }
+  var _alert = window.alert.bind(window), _confirm = window.confirm.bind(window), _prompt = window.prompt.bind(window);
+  window.alert = function (m) { return _alert(trMsg(m)); };
+  window.confirm = function (m) { return _confirm(trMsg(m)); };
+  window.prompt = function (m, def) { return _prompt(trMsg(m), def); };
+
+  walk(document.body);
+  var OPTS = { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS };
+  var mo = new MutationObserver(function (muts) {
+    mo.disconnect(); // don't react to our own edits
+    try {
+      muts.forEach(function (r) {
+        if (r.type === 'childList') r.addedNodes.forEach(walk);
+        else if (r.type === 'characterData') translateText(r.target);
+        else if (r.type === 'attributes') translateAttrs(r.target);
+      });
+    } finally {
+      mo.observe(document.body, OPTS);
+    }
+  });
+  mo.observe(document.body, OPTS);
+
+  // Debug helper: open the site with ?i18n=debug to get a button that copies the
+  // list of Georgian texts that have no English version yet.
+  if (new URLSearchParams(location.search).get('i18n') === 'debug') {
+    var b = document.createElement('button');
+    b.setAttribute('data-no-i18n', '');
+    b.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:99999;padding:6px 10px;font-size:12px;border-radius:6px;border:1px solid #888;background:#fff;color:#000;cursor:pointer';
+    b.textContent = 'Copy untranslated';
+    b.onclick = function () {
+      var list = window.__i18nMissing().join('\n');
+      (navigator.clipboard ? navigator.clipboard.writeText(list) : Promise.reject()).then(
+        function () { b.textContent = 'Copied ' + window.__i18nMissing().length; },
+        function () { prompt('Copy this list:', list); }
+      );
+    };
+    document.body.appendChild(b);
+  }
+})();
+</script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, sendEmailVerification }
@@ -813,13 +1258,18 @@ let currentRole = 'viewer';
 let currentGlobalRole = 'contractor';
 let currentProjectId = null;
 let currentProjectData = null;
-let currentSection = null; // 'review' | 'internal'
+let currentSection = null; // 'review' | 'mep' | 'internal'
 let sectionsViewProjectId = null; // set while viewing a project's 2 section-cards (before picking one)
 let mainListView = 'chart'; // 'grid' | 'chart' — which view shows on the main projects list; defaults to the chart (grid for contractors)
 let mainListViewDefaulted = false; // set once the role-based initial default has been applied
 let unsubActivityChart = null; // listeners for the project-level activity chart (see showProjectSections)
 let activityChartInstance = null;
-const SECTION_LABEL = { review: 'რევიზია', internal: 'DM საკითხები' };
+const SECTION_LABEL = { review: 'რევიზია', mep: 'MEP რევიზია', internal: 'DM საკითხები' };
+// Sections whose issues can be hidden from contractors ('biograpi' visibility):
+// the internal DM section and the MEP review section. Contractors only ever
+// get 'everyone'; everyone else also gets the hidden ones in these sections.
+const sectionCanHide = sec => sec === 'internal' || sec === 'mep';
+const visibilityStatesFor = sec => (sectionCanHide(sec) && currentGlobalRole !== 'contractor') ? ['biograpi','everyone'] : ['everyone'];
 let currentProjectDesignManagers = []; // [{uid, name}] — cached names of design managers assigned to the open project
 let issues = {};
 let allUsers = {};
@@ -1976,7 +2426,7 @@ window.showProjectSections = async function(pid) {
   const ifcLastUpdated = hasIfc
     ? ifcFiles.reduce((latest, f) => {
         const ms = f.uploadedAt?.toDate ? f.uploadedAt.toDate().getTime() : 0;
-        return ms > latest.ms ? { ms, date: f.uploadedAt?.toDate ? f.uploadedAt.toDate().toLocaleDateString('ka-GE') : '' } : latest;
+        return ms > latest.ms ? { ms, date: f.uploadedAt?.toDate ? f.uploadedAt.toDate().toLocaleDateString((window.UI_LOCALE || 'ka-GE')) : '' } : latest;
       }, { ms: 0, date: '' }).date
     : '';
 
@@ -1992,6 +2442,14 @@ window.showProjectSections = async function(pid) {
         <div class="section-label">რევიზია</div>
         <div class="project-card-creator">რევიზორი: ${esc(p.createdByName||'ადმინი')}</div>
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
+      </div>
+    </div>
+    <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','mep')">
+      <div class="project-card-count" id="pcount-mep"></div>
+      <div class="project-card-body">
+        <div class="project-card-name">${esc(p.name)}</div>
+        <div class="section-label">MEP რევიზია</div>
+        <div class="project-card-creator">MEP რევიზორი: ${esc((p.mepReviewer || '').trim() || 'გია, იური')}</div>
       </div>
     </div>
     <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','internal')">
@@ -2016,10 +2474,10 @@ window.showProjectSections = async function(pid) {
   `;
   grid.style.display = 'grid';
 
-  ['review','internal'].forEach(async sec => {
+  ['review','mep','internal'].forEach(async sec => {
     const el = document.getElementById(`pcount-${sec}`);
     if (!el) return;
-    const visStates = (sec === 'internal' && currentGlobalRole !== 'contractor') ? ['biograpi','everyone'] : ['everyone'];
+    const visStates = visibilityStatesFor(sec);
     const fetchCount = () => getCountFromServer(query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates))).then(s=>s.data().count);
     try {
       el.textContent = await fetchCount();
@@ -2098,7 +2556,9 @@ function setupActivityChart(pid, reviewerName, managerName) {
   unsubActivityChart = unsubFns;
 }
 
-const GEORGIAN_MONTHS_ABBR = ['იან.','თებ.','მარ.','აპრ.','მაი.','ივნ.','ივლ.','აგვ.','სექ.','ოქტ.','ნოე.','დეკ.'];
+const GEORGIAN_MONTHS_ABBR = window.__LANG === 'en'
+  ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  : ['იან.','თებ.','მარ.','აპრ.','მაი.','ივნ.','ივლ.','აგვ.','სექ.','ოქტ.','ნოე.','დეკ.'];
 function formatGeorgianDate(d) {
   return `${d.getDate()} ${GEORGIAN_MONTHS_ABBR[d.getMonth()]} ${d.getFullYear()}`;
 }
@@ -2526,9 +2986,7 @@ function subscribeIssues(pid, section) {
   let mainIssues = {}, draftIssues = {};
   function mergeAndRender() { issues = {...mainIssues, ...draftIssues}; render(); }
 
-  const visStates = (section === 'internal' && currentGlobalRole !== 'contractor')
-    ? ['biograpi','everyone']
-    : ['everyone'];
+  const visStates = visibilityStatesFor(section);
   const mainQ = query(collection(db,'projects',pid,'issues'), where('section','==',section), where('visibility','in',visStates));
   const unsub1 = onSnapshot(mainQ, snap => {
     mainIssues = {};
@@ -2600,7 +3058,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
         const c = cDoc.data();
         commentRows.push({
           num: formatIssueNum(iss.seqMajor, iss.seqMinor), title: iss.title||'', author: c.authorName||'',
-          date: c.createdAt && c.createdAt.toDate ? c.createdAt.toDate().toLocaleString('ka-GE') : '',
+          date: c.createdAt && c.createdAt.toDate ? c.createdAt.toDate().toLocaleString((window.UI_LOCALE || 'ka-GE')) : '',
           text: c.text||''
         });
       });
@@ -2634,7 +3092,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
     const xlsxBuffer = await wb.xlsx.writeBuffer();
     const safeName = (currentProjectData?.name || 'პროექტი').replace(/[\\\/*?:[\]]/g,'').slice(0,30);
     const dateStr = new Date().toISOString().slice(0,10);
-    const sectionTag = currentSection === 'internal' ? 'DM' : 'rev';
+    const sectionTag = currentSection === 'internal' ? 'DM' : (currentSection === 'mep' ? 'MEP' : 'rev');
     const baseName = `${dateStr}_${safeName}-${sectionTag}`;
 
     const zip = new JSZip();
@@ -2730,7 +3188,7 @@ function render() {
         </div>`
       : `<div></div>`;
     const isDraft = issue.visibility === 'draft';
-    const isMuted = currentSection==='internal' && (issue.visibility === 'biograpi' || isDraft);
+    const isMuted = sectionCanHide(currentSection) && (issue.visibility === 'biograpi' || isDraft);
     const lockTitle = isDraft ? 'დრაფტი — ხედავს მხოლოდ შემქმნელი' : 'ხილვადია მხოლოდ დიზაინ მენეჯერისთვის/რევიზორისთვის';
     return `<div class="issue-row issue-grid-row ${issue.status}${issue.seqMinor?' sub-issue':''}${isMuted?' issue-row-muted':''}" data-id="${issue.id}">
       <div class="issue-num-cell">${esc(formatIssueNum(issue.seqMajor, issue.seqMinor))}${isMuted?` <span class="dm-only-tag" title="${lockTitle}">🔒</span>`:''}</div>
@@ -2768,7 +3226,7 @@ function formatIssueNum(seqMajor, seqMinor) {
   const code = currentProjectData?.code || '???';
   const major = String(seqMajor).padStart(3,'0');
   const base = seqMinor ? `${code}-${major}.${seqMinor}` : `${code}-${major}`;
-  return currentSection === 'internal' ? `${base}-DM` : base;
+  return currentSection === 'internal' ? `${base}-DM` : (currentSection === 'mep' ? `${base}-MEP` : base);
 }
 // Parses manual entry like "3" or "2.1" -> {major, minor} (minor 0 = none). Returns null if not a valid positive number pattern.
 function parseManualSeq(text) {
@@ -2902,7 +3360,7 @@ async function openAdd() {
   fNumEl.value = String(previewSeqMajor);
   om('issueModal');
   document.getElementById('fDate').value = '';
-  document.getElementById('fDisc').value = 'arch';
+  document.getElementById('fDisc').value = currentSection === 'mep' ? 'mep' : 'arch';
   document.getElementById('fPriority').checked = false;
   document.getElementById('fDeadline').value = '';
   document.getElementById('fPriorityLabel').textContent = 'ჩვეულებრივი';
@@ -2912,11 +3370,13 @@ async function openAdd() {
   document.getElementById('fVisibleField').style.display = 'block';
   setupVisibilityField('everyone');
   updateNumFieldForVisibility();
-  // Default responsible party: the project's chosen architect (if any). The
-  // internal section's responsible field is free text for internal people, so
-  // it's left empty there.
-  const defaultArchitect = currentSection === 'internal' ? '' : ((currentProjectData && currentProjectData.contractors && currentProjectData.contractors.arch) || '');
-  setPersonField(defaultArchitect);
+  // Default responsible party: the project's chosen architect in the review
+  // section, its MEP contractor in the MEP section (if any). The internal
+  // section's responsible field is free text for internal people, so it's
+  // left empty there.
+  const projContractors = (currentProjectData && currentProjectData.contractors) || {};
+  const defaultResponsible = currentSection === 'internal' ? '' : (currentSection === 'mep' ? (projContractors.mep || '') : (projContractors.arch || ''));
+  setPersonField(defaultResponsible);
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
 }
 function openEdit(id) {
@@ -3184,7 +3644,7 @@ async function copyIssueTo(id, targetSection, msg) {
     if (targetSection === currentSection) {
       maxMajor = Object.values(issues).reduce((m,i)=>Math.max(m,i.seqMajor||0),0);
     } else {
-      const safeStates = targetSection === 'internal' ? ['biograpi','everyone'] : ['everyone'];
+      const safeStates = sectionCanHide(targetSection) ? ['biograpi','everyone'] : ['everyone'];
       const snap = await getDocs(query(collection(db,'projects',currentProjectId,'issues'), where('section','==',targetSection), where('visibility','in',safeStates)));
       snap.forEach(d => { maxMajor = Math.max(maxMajor, d.data().seqMajor||0); });
     }
@@ -3329,7 +3789,7 @@ async function loadComments(issueId) {
     const time = c.createdAt?.toDate ? (() => {
       const d = c.createdAt.toDate();
       const date = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-      const clock = d.toLocaleString('ka-GE',{hour:'2-digit',minute:'2-digit'});
+      const clock = d.toLocaleString((window.UI_LOCALE || 'ka-GE'),{hour:'2-digit',minute:'2-digit'});
       return `${date} ${clock}`;
     })() : '';
     const createdMs = c.createdAt?.toDate ? c.createdAt.toDate().getTime() : 0;
@@ -3552,7 +4012,7 @@ function renderUsersPanel() {
         <div class="user-info">
           <div class="ue">${esc(u.name)}</div>
           <div class="um">${esc(u.email)}</div>
-          <div class="um" style="opacity:.7">ბოლო შესვლა: ${u.lastLoginAt?.toDate ? u.lastLoginAt.toDate().toLocaleString('ka-GE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'უცნობია'}</div>
+          <div class="um" style="opacity:.7">ბოლო შესვლა: ${u.lastLoginAt?.toDate ? u.lastLoginAt.toDate().toLocaleString((window.UI_LOCALE || 'ka-GE'),{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'უცნობია'}</div>
         </div>
         ${!canManageUsers ? `<div style="grid-column:2 / -1;color:var(--ink-light);font-size:12px">${roleL[u.role]||u.role}</div>` : u.role!=='admin'?`
           <select onchange="changeUserRole('${u.id}',this.value)">
@@ -3694,7 +4154,7 @@ function renderIfcFilesList(pid, files) {
   list.innerHTML = files.length ? files.map((f,i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--rule);font-size:12px">
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.name)}</span>
-      <span style="color:var(--ink-light)">${f.uploadedAt?.toDate ? f.uploadedAt.toDate().toLocaleDateString('ka-GE') : ''}</span>
+      <span style="color:var(--ink-light)">${f.uploadedAt?.toDate ? f.uploadedAt.toDate().toLocaleDateString((window.UI_LOCALE || 'ka-GE')) : ''}</span>
       <button type="button" class="icon-btn del" title="წაშლა" onclick="deleteIfcFile('${pid}',${i})">${ICON_DELETE}</button>
     </div>`).join('') : '<div style="font-size:12px;color:var(--ink-light)">ფაილი არ არის ატვირთული</div>';
 }
@@ -3939,8 +4399,8 @@ document.getElementById('btnRecalcIssueCounts').addEventListener('click', async 
     let fixed = 0;
     for (const pDoc of projSnap.docs) {
       let total = 0;
-      for (const sec of ['review','internal']) {
-        const visStates = sec === 'internal' ? ['biograpi','everyone'] : ['everyone'];
+      for (const sec of ['review','mep','internal']) {
+        const visStates = sectionCanHide(sec) ? ['biograpi','everyone'] : ['everyone'];
         const countSnap = await getCountFromServer(query(collection(db,'projects',pDoc.id,'issues'), where('section','==',sec), where('visibility','in',visStates)));
         total += countSnap.data().count;
       }
