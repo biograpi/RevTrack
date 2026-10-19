@@ -2507,7 +2507,9 @@ function setupActivityChart(pid, reviewerName, managerName) {
     document.getElementById('activityChartStatus').textContent = 'იტვირთება...';
     const contractorCommentsByName = { review: {}, internal: {} };
     try {
-      const commentFetches = Object.values(chartIssues).map(async (iss) => {
+      // Comments on MEP-section issues aren't charted (only the issues themselves
+      // are), so don't spend reads fetching them.
+      const commentFetches = Object.values(chartIssues).filter(iss => iss.section !== 'mep').map(async (iss) => {
         try {
           const snap = await getDocs(collection(db,'projects',pid,'issues',iss.id,'comments'));
           return snap.docs.map(d => ({ ...d.data(), section: iss.section }));
@@ -2539,8 +2541,8 @@ function setupActivityChart(pid, reviewerName, managerName) {
   }
 
   const unsubFns = [];
-  for (const sec of ['review','internal']) {
-    const visStates = (sec === 'internal' && currentGlobalRole !== 'contractor') ? ['biograpi','everyone'] : ['everyone'];
+  for (const sec of ['review','mep','internal']) {
+    const visStates = visibilityStatesFor(sec);
     const q = query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates));
     const unsub = onSnapshot(q, snap => {
       for (const d of snap.docs) {
@@ -2595,6 +2597,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   }
   const reviewPoints = buildSectionLine('review');
   const internalPoints = buildSectionLine('internal');
+  const mepPoints = buildSectionLine('mep');
 
   // Turns a sparse, step-like cumulative series (jumps instantly at each
   // real event) into an explicit staircase: flat, then a vertical jump
@@ -2616,6 +2619,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   const totalRenderPoints = buildStepRenderLine(totalPoints);
   const reviewRenderPoints = buildStepRenderLine(reviewPoints);
   const internalRenderPoints = buildStepRenderLine(internalPoints);
+  const mepRenderPoints = buildStepRenderLine(mepPoints);
 
   // Step function lookup: how many issues existed in total as of time t.
   function totalValueAt(t) {
@@ -2627,18 +2631,16 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   // Per-creator: an artificial "spike then decay" curve — each event (issue
   // creation or comment) produces a peak on that day, decaying smoothly
   // toward zero afterward. This is a stylistic choice, not a literal count.
-  // Each person's line is SIGNED per event by which section it happened in
-  // (positive for review, negative for DM) and the two are summed into one
-  // combined line — so, e.g., a reviewer who also occasionally opens a DM
-  // issue shows both sides on their own single line, instead of assuming
-  // their role fixes them to only one section.
+  // Each person gets one independent curve per section they were active in
+  // (review, DM, MEP review). Everything is drawn upward from a zero baseline
+  // at the bottom of the chart; the legend label says which section a curve
+  // belongs to ("Name", "Name (DM)", "Name (MEP)").
   const activityEventsByCreator = {};
   for (const name of creators) activityEventsByCreator[name] = [];
   for (const iss of issues) {
     activityEventsByCreator[iss.createdByName].push({ time: iss.createdAt.toDate().getTime(), section: iss.section });
   }
   const BUMP_SIGMA_DAYS = 0.3, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
-  function negate(points) { return points.map(p => ({ x: p.x, y: -p.y })); }
   function bumpValueAt(times, t) {
     let val = 0;
     for (const at of times) {
@@ -2652,18 +2654,19 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   }
   const perCreatorReviewPoints = {};
   const perCreatorInternalPoints = {};
+  const perCreatorMepPoints = {};
   for (const name of creators) {
     const events = activityEventsByCreator[name];
     const reviewTimes = events.filter(e => e.section === 'review').map(e => e.time);
     const internalTimes = events.filter(e => e.section === 'internal').map(e => e.time);
+    const mepTimes = events.filter(e => e.section === 'mep').map(e => e.time);
     if (reviewTimes.length) perCreatorReviewPoints[name] = buildPlainBumpCurve(reviewTimes);
-    if (internalTimes.length) perCreatorInternalPoints[name] = negate(buildPlainBumpCurve(internalTimes));
+    if (internalTimes.length) perCreatorInternalPoints[name] = buildPlainBumpCurve(internalTimes);
+    if (mepTimes.length) perCreatorMepPoints[name] = buildPlainBumpCurve(mepTimes);
   }
 
-  // Same idea for contractor COMMENT activity, but as two INDEPENDENT
-  // curves per contractor (review positive, DM negative) rather than one
-  // summed line — summing let a busier side numerically mask a quieter one
-  // whenever both happened close together in time.
+  // Same idea for contractor COMMENT activity: two independent curves per
+  // contractor (review comments, DM comments), both drawn upward.
   function buildPlainBumpCurve(times) {
     const sorted = [...times].sort((a,b) => a-b);
     const points = [];
@@ -2682,7 +2685,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     const reviewTimes = contractorCommentsByName?.review?.[name] || [];
     const internalTimes = contractorCommentsByName?.internal?.[name] || [];
     if (reviewTimes.length) perContractorReviewCommentPoints[name] = buildPlainBumpCurve(reviewTimes);
-    if (internalTimes.length) perContractorInternalCommentPoints[name] = negate(buildPlainBumpCurve(internalTimes));
+    if (internalTimes.length) perContractorInternalCommentPoints[name] = buildPlainBumpCurve(internalTimes);
   }
 
   // First name only (e.g. "ანა გოგოლაძე" -> "ანა") for the legend label.
@@ -2716,8 +2719,19 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     }] : []),
     ...(internalRenderPoints.length ? [{
       label: 'DM საკითხები',
-      data: negate(internalRenderPoints),
+      data: internalRenderPoints,
       borderColor: '#22d3ee',
+      backgroundColor: 'transparent',
+      borderWidth: 1.75,
+      tension: 0,
+      fill: false,
+      pointRadius: 0,
+      hidden: true,
+    }] : []),
+    ...(mepRenderPoints.length ? [{
+      label: 'MEP რევიზია',
+      data: mepRenderPoints,
+      borderColor: '#a855f7',
       backgroundColor: 'transparent',
       borderWidth: 1.75,
       tension: 0,
@@ -2742,6 +2756,8 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       const sets = [];
       if (perCreatorReviewPoints[name]) sets.push({ ...base, label: firstName(name), data: perCreatorReviewPoints[name] });
       if (perCreatorInternalPoints[name]) sets.push({ ...base, label: `${firstName(name)} (DM)`, data: perCreatorInternalPoints[name] });
+      // MEP curves are never filled, even for the project's own reviewer/manager.
+      if (perCreatorMepPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', label: `${firstName(name)} (MEP)`, data: perCreatorMepPoints[name] });
       return sets;
     }),
     ...contractorNames.flatMap((name, i) => {
@@ -2808,11 +2824,12 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
           },
         },
         y: {
+          min: 0,
           title: { display: true, text: 'რაოდენობა', color: 'rgba(255,255,255,.75)' },
           ticks: {
             color: 'rgba(255,255,255,.75)',
             stepSize: 1,
-            callback: value => Number.isInteger(value) ? Math.abs(value) : null,
+            callback: value => Number.isInteger(value) ? value : null,
           },
           grid: { color: 'rgba(255,255,255,.08)' },
         },
