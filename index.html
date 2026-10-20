@@ -810,6 +810,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.lang = 'en';
 
   var D = {
+"სურათი ჯერ იტვირთება — დაელოდე ატვირთვის დასრულებას და მერე შეინახე.": "An image is still uploading — wait for it to finish, then save.",
+"სურათი ჯერ იტვირთება — დაელოდე ატვირთვის დასრულებას და მერე გააგზავნე.": "An image is still uploading — wait for it to finish, then send.",
 "პროექტების რევიზიების სისტემა": "Project review system",
 "შესვლა": "Log in",
 "რეგისტრაცია": "Register",
@@ -1124,6 +1126,17 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     return out == null ? s : out;
   }
 
+  // Georgian letters -> Latin, for names that should be written out rather than
+  // translated (project names: ბარე -> Bare). Simple, apostrophe-free scheme.
+  var TL = { 'ა':'a','ბ':'b','გ':'g','დ':'d','ე':'e','ვ':'v','ზ':'z','თ':'t','ი':'i','კ':'k','ლ':'l','მ':'m','ნ':'n','ო':'o','პ':'p','ჟ':'zh','რ':'r','ს':'s','ტ':'t','უ':'u','ფ':'p','ქ':'k','ღ':'gh','ყ':'q','შ':'sh','ჩ':'ch','ც':'ts','ძ':'dz','წ':'ts','ჭ':'ch','ხ':'kh','ჯ':'j','ჰ':'h' };
+  function translit(str) {
+    return str.replace(/[\u10D0-\u10FF]+/g, function (word) {
+      var out = '';
+      for (var i = 0; i < word.length; i++) out += has.call(TL, word[i]) ? TL[word[i]] : word[i];
+      return out.charAt(0).toUpperCase() + out.slice(1);   // each Georgian word starts with a capital
+    });
+  }
+
   // Parts of the page that show user-written content — never translated.
   var SKIP = '[data-no-i18n],script,style,textarea,.comment-text,.issue-title-cell,.person-chip,.comment-author,.project-card-name';
   // For attributes only: a textarea's own placeholder is UI text (its content isn't).
@@ -1134,10 +1147,22 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     var raw = node.nodeValue;
     if (!raw || !GEO.test(raw)) return;
     var parent = node.parentNode;
-    if (inSkipped(parent)) return;
     var m = raw.match(/^(\s*)([\s\S]*?)(\s*)$/);
     var core = m[2];
     var out;
+    // Project names are written out in Latin letters, never translated (ბარე -> Bare).
+    var pn = parent && parent.closest ? parent.closest('.project-card-name,#hdrProjectName') : null;
+    if (pn) {
+      if (pn.id === 'hdrProjectName') {
+        // header text is "Project name — Section"
+        var k = core.lastIndexOf(' — ');
+        if (has.call(D, core)) out = D[core];
+        else out = k > 0 ? translit(core.slice(0, k)) + ' — ' + trOr(core.slice(k + 3)) : translit(core);
+      } else out = translit(core);
+      if (out !== core) node.nodeValue = m[1] + out + m[3];
+      return;
+    }
+    if (inSkipped(parent)) return;
     // Same Georgian word, different meaning depending on where it is.
     if (core === 'გაუქმება' && parent && parent.closest && parent.closest('#usersPanel')) out = 'Revoke';
     else out = lookup(core);
@@ -1279,6 +1304,8 @@ let editingId = null;
 let pendingLinks = [];
 let pendingPhotos = [];
 let pendingCommentPhotos = []; // photos attached to the comment currently being composed
+let photoUploadsInFlight = 0;        // issue-form photos still uploading — saving is blocked until 0
+let commentPhotoUploadsInFlight = 0; // comment photos still uploading — sending is blocked until 0
 let originalPhotos = [];
 let photosToDeleteOnSave = []; // removed during editing, but the actual Storage file is only deleted once the form is truly saved
 let currentIssueStorageId = null;
@@ -2444,20 +2471,20 @@ window.showProjectSections = async function(pid) {
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
       </div>
     </div>
-    <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','mep')">
-      <div class="project-card-count" id="pcount-mep"></div>
-      <div class="project-card-body">
-        <div class="project-card-name">${esc(p.name)}</div>
-        <div class="section-label">MEP რევიზია</div>
-        <div class="project-card-creator">MEP რევიზორი: ${esc((p.mepReviewer || '').trim() || 'გია, იური')}</div>
-      </div>
-    </div>
     <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','internal')">
       <div class="project-card-count" id="pcount-internal"></div>
       <div class="project-card-body">
         <div class="project-card-name">${esc(p.name)}</div>
         <div class="section-label">DM საკითხები</div>
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
+      </div>
+    </div>
+    <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','mep')">
+      <div class="project-card-count" id="pcount-mep"></div>
+      <div class="project-card-body">
+        <div class="project-card-name">${esc(p.name)}</div>
+        <div class="section-label">MEP რევიზია</div>
+        <div class="project-card-creator">MEP რევიზორი: ${esc((p.mepReviewer || '').trim() || 'გია, იური')}</div>
       </div>
     </div>
     <div class="project-card project-card-filled${hasIfc?'':' project-card-disabled'}" ${cardStyle} ${hasIfc?`onclick="openIfcViewer('${pid}')"`:''}>
@@ -2474,7 +2501,7 @@ window.showProjectSections = async function(pid) {
   `;
   grid.style.display = 'grid';
 
-  ['review','mep','internal'].forEach(async sec => {
+  ['review','internal','mep'].forEach(async sec => {
     const el = document.getElementById(`pcount-${sec}`);
     if (!el) return;
     const visStates = visibilityStatesFor(sec);
@@ -3473,6 +3500,7 @@ async function uploadPhotoFile(file) {
   spinnerEl.className = 'photo-thumb uploading';
   spinnerEl.innerHTML = '<div class="photo-spin"><span class="spinner-dark"></span></div>';
   c.appendChild(spinnerEl);
+  photoUploadsInFlight++;
   try {
     const blob = await compressImage(file);
     const path = `projects/${currentProjectId}/issues/${currentIssueStorageId}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
@@ -3484,6 +3512,8 @@ async function uploadPhotoFile(file) {
   } catch(e) {
     alert(e && e.code === 'storage/quota-exceeded' ? 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.' : 'სურათის ატვირთვის შეცდომა: '+e.message);
     spinnerEl.remove();
+  } finally {
+    photoUploadsInFlight--;
   }
 }
 async function handlePhotoFiles(fileList) {
@@ -3512,6 +3542,7 @@ async function uploadCommentPhotoFile(file, issueId) {
   spinnerEl.className = 'photo-thumb uploading';
   spinnerEl.innerHTML = '<div class="photo-spin"><span class="spinner-dark"></span></div>';
   if (c) c.appendChild(spinnerEl);
+  commentPhotoUploadsInFlight++;
   try {
     const blob = await compressImage(file);
     const path = `projects/${currentProjectId}/issues/${issueId}/comments/${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
@@ -3523,6 +3554,8 @@ async function uploadCommentPhotoFile(file, issueId) {
   } catch(e) {
     alert(e && e.code === 'storage/quota-exceeded' ? 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.' : 'სურათის ატვირთვის შეცდომა: '+e.message);
     spinnerEl.remove();
+  } finally {
+    commentPhotoUploadsInFlight--;
   }
 }
 async function handleCommentPhotoFiles(fileList, issueId) {
@@ -3560,6 +3593,8 @@ window.cancelIssueModal = async () => {
   for (const url of toRemove) { try { await deleteObject(storageRef(storage, url)); } catch(e) {} }
 };
 document.getElementById('saveIssue').addEventListener('click', async () => {
+  // Saving while a photo is still uploading would silently drop that photo.
+  if (photoUploadsInFlight > 0) { alert('სურათი ჯერ იტვირთება — დაელოდე ატვირთვის დასრულებას და მერე შეინახე.'); return; }
   const title = document.getElementById('fTitle').value.trim();
   if (!title) { alert('სათაური სავალდებულოა'); return; }
   const status = document.getElementById('fStatus').value;
@@ -3876,6 +3911,7 @@ function isIssueUnread(issue) {
 const UNREAD_ROLES = ['design_manager','reviewer','contractor','admin','viewer'];
 
 async function sendComment(issueId) {
+  if (commentPhotoUploadsInFlight > 0) { alert('სურათი ჯერ იტვირთება — დაელოდე ატვირთვის დასრულებას და მერე გააგზავნე.'); return; }
   const inp = document.getElementById('commentInput');
   const text = inp.value.trim();
   if (!text && !pendingCommentPhotos.length) return;
