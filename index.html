@@ -2,6 +2,25 @@
 <html lang="ka">
 <head>
 <meta charset="UTF-8">
+<script>
+// When English is the chosen language, say so before the page is even parsed: the
+// document is declared Georgian (lang="ka"), so a browser could otherwise treat it as
+// Georgian and auto-translate it (e.g. into Russian). Georgian mode is left untouched.
+(function () {
+  try {
+    var q = new URLSearchParams(location.search).get('lang');
+    var lang = (q === 'en' || q === 'ka') ? q : localStorage.getItem('revtrack_lang');
+    if (lang === 'en') {
+      var de = document.documentElement;
+      de.lang = 'en';
+      de.setAttribute('translate', 'no');
+      var m = document.createElement('meta');
+      m.name = 'google'; m.content = 'notranslate';
+      document.head.appendChild(m);
+    }
+  } catch (e) {}
+})();
+</script>
 <meta name="viewport" content="width=1100">
 <title>RevTrack</title>
 <style>
@@ -808,6 +827,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   if (lang !== 'en') return;
   document.documentElement.lang = 'en';
+  document.documentElement.setAttribute('translate', 'no');
 
   var D = {
 "სურათი ჯერ იტვირთება — დაელოდე ატვირთვის დასრულებას და მერე შეინახე.": "An image is still uploading — wait for it to finish, then save.",
