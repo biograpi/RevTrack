@@ -420,16 +420,16 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="activity-chart-head">
       <h3>აქტივობა დროში</h3>
       <div class="activity-view-toggle">
-        <button type="button" class="view-toggle-btn active" id="activityViewLines" onclick="setActivityView('lines')">ხაზები</button>
-        <button type="button" class="view-toggle-btn" id="activityViewRows" onclick="setActivityView('rows')">რიგები</button>
+        <button type="button" class="view-toggle-btn" id="activityViewLines" onclick="setActivityView('lines')">ხაზები</button>
+        <button type="button" class="view-toggle-btn active" id="activityViewRows" onclick="setActivityView('rows')">რიგები</button>
       </div>
       <span id="activityChartStatus" style="font-size:12px;color:rgba(255,255,255,.6)"></span>
     </div>
-    <div id="activityLinesWrap">
+    <div id="activityLinesWrap" style="display:none">
       <canvas id="activityChartCanvas" height="90"></canvas>
       <div class="activity-chart-legend" id="activityChartLegend"></div>
     </div>
-    <div id="activityRowsWrap" style="display:none">
+    <div id="activityRowsWrap">
       <svg id="activityRowsSvg" style="width:100%;height:auto;display:block"></svg>
       <div class="activity-rows-toggles" id="activityRowsToggles"></div>
     </div>
@@ -3148,7 +3148,7 @@ function rowsPattern(key, n) {
   });
   return { wobble, shape };
 }
-let activityViewMode = 'lines'; // 'lines' (the original chart) | 'rows'
+let activityViewMode = 'rows'; // 'rows' (default) | 'lines' (the original line chart). The choice is remembered while the page stays open.
 let activityRowsData = null;    // { startTime, endTime, rows: [{ key, label, sub, curves: [{ kind, points }] }] }
 let activityRowsOff = new Set(); // keys of the people whose line is currently switched off
 
@@ -3425,7 +3425,7 @@ function autoColumns(headers, rows, keys, minW, maxW) {
   });
 }
 // Exports the issues currently shown (filters and sort respected) to an .xlsx with two sheets — issues and comments —
-// and downloads it zipped together with the issues' photos.
+// and downloads it zipped together with the photos — the issues' own and those attached to comments.
 document.getElementById('btnExportExcel').addEventListener('click', async () => {
   const btn = document.getElementById('btnExportExcel');
   const origText = btn.textContent;
@@ -3433,33 +3433,63 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
   try {
     const allIssues = sorted(filtered());
 
+    // 1) Collect everything first: the comments, and every photo that has to go into the zip.
+    //    Issue photos are named  MZK-003-01.jpg ; comment photos  MZK-003-C01-01.jpg  (C01 = that issue's 1st comment,
+    //    the last number = the photo within the comment), so a comment's photos can always be told apart.
+    const photoJobs = []; // { url, fname, ok }
+    const commentRows = [];
+    const commentPhotoCountByIssue = {};
+    for (const iss of allIssues) {
+      const issNum = formatIssueNum(iss.seqMajor, iss.seqMinor);
+      (iss.photos || []).forEach((url, idx) => photoJobs.push({ url, fname: `${issNum}-${String(idx + 1).padStart(2, '0')}.jpg` }));
+      const snap = await getDocs(query(collection(db,'projects',currentProjectId,'issues',iss.id,'comments'), orderBy('createdAt','asc')));
+      let n = 0;
+      snap.forEach(cDoc => {
+        n++;
+        const c = cDoc.data();
+        const commentNo = `C${String(n).padStart(2, '0')}`;
+        const jobs = (c.photos || []).map((url, k) => ({ url, fname: `${issNum}-${commentNo}-${String(k + 1).padStart(2, '0')}.jpg` }));
+        photoJobs.push(...jobs);
+        commentPhotoCountByIssue[iss.id] = (commentPhotoCountByIssue[iss.id] || 0) + jobs.length;
+        commentRows.push({
+          num: issNum, title: iss.title||'', commentNo, author: c.authorName||'',
+          date: c.createdAt && c.createdAt.toDate ? c.createdAt.toDate().toLocaleString((window.UI_LOCALE || 'ka-GE')) : '',
+          text: c.text||'', jobs,
+        });
+      });
+    }
+
+    // 2) Download the photos into the zip. A photo that can't be fetched (deleted file, network) is counted and
+    //    marked in the sheet, instead of ending up as a broken .jpg.
+    const zip = new JSZip();
+    const photosFolder = zip.folder('photos');
+    let photoFetchFailures = 0;
+    for (const job of photoJobs) {
+      try {
+        const resp = await fetch(job.url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        photosFolder.file(job.fname, await resp.blob());
+        job.ok = true;
+      } catch(e) { photoFetchFailures++; job.ok = false; }
+    }
+    for (const r of commentRows) r.photoFiles = r.jobs.map(j => j.ok ? j.fname : `${j.fname} (ვერ ჩაიტვირთა)`).join(', ');
+
+    // 3) The workbook.
     const issueRows = allIssues.map(i => ({
       num: formatIssueNum(i.seqMajor, i.seqMinor), disc: discL[i.disc]||i.disc||'', title: i.title||'', desc: i.desc||'',
       priority: i.priority ? 'დიახ' : 'არა', status: statL[i.status]||i.status||'',
       person: i.person||'', date: i.date||'', deadline: i.deadline||'', createdByName: i.createdByName||'',
-      commentCount: i.commentCount||0, photoCount: (i.photos||[]).length, images: (i.images||[]).join(', ')
+      commentCount: i.commentCount||0, photoCount: (i.photos||[]).length, commentPhotoCount: commentPhotoCountByIssue[i.id] || 0,
+      images: (i.images||[]).join(', ')
     }));
-
-    const commentRows = [];
-    for (const iss of allIssues) {
-      const snap = await getDocs(query(collection(db,'projects',currentProjectId,'issues',iss.id,'comments'), orderBy('createdAt','asc')));
-      snap.forEach(cDoc => {
-        const c = cDoc.data();
-        commentRows.push({
-          num: formatIssueNum(iss.seqMajor, iss.seqMinor), title: iss.title||'', author: c.authorName||'',
-          date: c.createdAt && c.createdAt.toDate ? c.createdAt.toDate().toLocaleString((window.UI_LOCALE || 'ka-GE')) : '',
-          text: c.text||''
-        });
-      });
-    }
 
     const wb = new ExcelJS.Workbook();
 
     const ws1 = wb.addWorksheet('საკითხები');
     ws1.columns = autoColumns(
-      ['ნომერი','დისციპლინა','სათაური','აღწერა','პრიორიტეტული','სტატუსი','პასუხისმგებელი','თარიღი','დედლაინი','შემქმნელი','კომენტარები','სურათები','ლინკები'],
+      ['ნომერი','დისციპლინა','სათაური','აღწერა','პრიორიტეტული','სტატუსი','პასუხისმგებელი','თარიღი','დედლაინი','შემქმნელი','კომენტარები','სურათები','კომენტარების სურათები','ლინკები'],
       issueRows,
-      ['num','disc','title','desc','priority','status','person','date','deadline','createdByName','commentCount','photoCount','images'],
+      ['num','disc','title','desc','priority','status','person','date','deadline','createdByName','commentCount','photoCount','commentPhotoCount','images'],
       10, 45
     );
     ws1.addRows(issueRows);
@@ -3468,13 +3498,13 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
 
     const ws2 = wb.addWorksheet('კომენტარები');
     ws2.columns = autoColumns(
-      ['საკითხის ნომერი','საკითხის სათაური','ავტორი','თარიღი','კომენტარი'],
+      ['საკითხის ნომერი','საკითხის სათაური','კომენტარის №','ავტორი','თარიღი','კომენტარი','სურათების ფაილები'],
       commentRows,
-      ['num','title','author','date','text'],
+      ['num','title','commentNo','author','date','text','photoFiles'],
       10, 50
     );
     if (commentRows.length) ws2.addRows(commentRows);
-    else ws2.addRow({ num:'', title:'კომენტარები არ არის', author:'', date:'', text:'' });
+    else ws2.addRow({ num:'', title:'კომენტარები არ არის', commentNo:'', author:'', date:'', text:'', photoFiles:'' });
     ws2.getRow(1).font = { bold: true };
     ws2.eachRow(row => row.eachCell(cell => { cell.alignment = { wrapText: true, vertical: 'top' }; }));
 
@@ -3483,22 +3513,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
     const dateStr = new Date().toISOString().slice(0,10);
     const sectionTag = currentSection === 'internal' ? 'DM' : (currentSection === 'mep' ? 'MEP' : 'rev');
     const baseName = `${dateStr}_${safeName}-${sectionTag}`;
-
-    const zip = new JSZip();
     zip.file(`${baseName}.xlsx`, xlsxBuffer);
-    const photosFolder = zip.folder('photos');
-    let photoFetchFailures = 0;
-    for (const iss of allIssues) {
-      const photos = iss.photos||[];
-      for (let idx = 0; idx < photos.length; idx++) {
-        try {
-          const resp = await fetch(photos[idx]);
-          const blob = await resp.blob();
-          const fname = `${formatIssueNum(iss.seqMajor, iss.seqMinor)}-${String(idx+1).padStart(2,'0')}.jpg`;
-          photosFolder.file(fname, blob);
-        } catch(e) { photoFetchFailures++; }
-      }
-    }
 
     const zipBlob = await zip.generateAsync({ type: 'blob' });
     const url = URL.createObjectURL(zipBlob);
