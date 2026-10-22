@@ -3471,6 +3471,15 @@ window.downloadActivityWallpaper = async function() {
     ctx.fillStyle = 'rgba(255,255,255,.75)';
     ctx.textBaseline = 'alphabetic';
     ctx.fillText(name, 64, 88);
+    // Bottom-right corner: where the picture came from and the day it was downloaded (local date, yyyy.mm.dd).
+    const today = new Date();
+    const stamp = `downloaded from RevTrack ${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+    await document.fonts.load(`400 16px ${family}`, stamp);
+    ctx.font = `400 16px ${family}`;
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.textAlign = 'right';
+    ctx.fillText(stamp, WALLPAPER_W - 64, WALLPAPER_H - 64);
+    ctx.textAlign = 'left';
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
