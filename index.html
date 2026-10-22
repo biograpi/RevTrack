@@ -76,6 +76,13 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
 .activity-view-toggle{display:flex;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px}
+.rows-scroll{overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.rows-scroll::-webkit-scrollbar{display:none}
+.rows-slider{position:relative;height:14px;margin-top:6px;cursor:pointer;touch-action:none;user-select:none}
+.rows-slider::before{content:'';position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;border-radius:1px;background:rgba(255,255,255,.22)}
+.rows-slider-thumb{position:absolute;top:50%;left:0;width:40px;height:6px;margin-top:-3px;border-radius:3px;background:rgba(255,255,255,.7);cursor:grab}
+.rows-slider:hover .rows-slider-thumb,.rows-slider.dragging .rows-slider-thumb{background:rgba(255,255,255,.95)}
+.rows-slider.dragging .rows-slider-thumb{cursor:grabbing}
 .activity-rows-toggles{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 .activity-rows-person{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;font-size:11px;color:rgba(255,255,255,.85)}
 .activity-rows-name{min-width:96px;font-weight:600;color:#fff}
@@ -423,6 +430,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <button type="button" class="view-toggle-btn" id="activityViewLines" onclick="setActivityView('lines')">ხაზები</button>
         <button type="button" class="view-toggle-btn active" id="activityViewRows" onclick="setActivityView('rows')">რიგები</button>
       </div>
+      <div class="activity-view-toggle" id="activityRangeToggle">
+        <button type="button" class="view-toggle-btn active" id="activityRangeMonth" onclick="setActivityRange('month')">1 თვე</button>
+        <button type="button" class="view-toggle-btn" id="activityRangeAll" onclick="setActivityRange('all')">ყველა</button>
+      </div>
       <span id="activityChartStatus" style="font-size:12px;color:rgba(255,255,255,.6)"></span>
     </div>
     <div id="activityLinesWrap" style="display:none">
@@ -430,7 +441,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <div class="activity-chart-legend" id="activityChartLegend"></div>
     </div>
     <div id="activityRowsWrap">
-      <svg id="activityRowsSvg" style="width:100%;height:auto;display:block"></svg>
+      <div id="activityRowsScroll" class="rows-scroll"><svg id="activityRowsSvg" style="width:100%;height:auto;display:block"></svg></div>
+      <div class="rows-slider" id="activityRowsSlider"><div class="rows-slider-thumb"></div></div>
       <div class="activity-rows-toggles" id="activityRowsToggles"></div>
     </div>
   </div>
@@ -844,6 +856,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"1 თვე": "1 month",
+"ყველა": "All",
 "ხაზები": "Lines",
 "რიგები": "Rows",
 "სურათი ჯერ იტვირთება — დაელოდე ატვირთვის დასრულებას და მერე შეინახე.": "An image is still uploading — wait for it to finish, then save.",
@@ -2624,7 +2638,8 @@ window.showProjectSections = async function(pid) {
 // fetches contractors' comments (not MEP ones) for the comment curves. redrawToken makes sure a slow, older redraw
 // can never overwrite a newer one.
 function setupActivityChart(pid, reviewerName, managerName) {
-  activityRowsOff.clear(); // a different project: all lines on again
+  activityRowsOff.clear(); // a different project: all lines on again, and start at its most recent month
+  activityRowsScrollToEnd = true;
   document.getElementById('activityChartWrap').style.display = 'block';
   const chartIssues = {}; // compositeKey -> {id, section, disc, createdAt, createdByName}
   let redrawToken = 0; // guards against an older, slower-finishing redraw overwriting a newer one
@@ -3151,6 +3166,8 @@ function rowsPattern(key, n) {
 let activityViewMode = 'rows'; // 'rows' (default) | 'lines' (the original line chart). The choice is remembered while the page stays open.
 let activityRowsData = null;    // { startTime, endTime, rows: [{ key, label, sub, curves: [{ kind, points }] }] }
 let activityRowsOff = new Set(); // keys of the people whose line is currently switched off
+let activityRowsRange = 'month'; // 'month' = one month fills the box, scroll sideways for the rest | 'all' = the whole history squeezed in
+let activityRowsScrollToEnd = true; // after the next drawing, jump to the most recent month
 
 // The switch above the chart. Remembers the choice while the page stays open.
 window.setActivityView = function(mode) {
@@ -3160,10 +3177,20 @@ window.setActivityView = function(mode) {
   document.getElementById('activityRowsWrap').style.display = rows ? 'block' : 'none';
   document.getElementById('activityViewLines').classList.toggle('active', !rows);
   document.getElementById('activityViewRows').classList.toggle('active', rows);
+  document.getElementById('activityRangeToggle').style.display = rows ? 'flex' : 'none';
   const tip = document.getElementById('activityChartTip');
   if (tip) tip.style.display = 'none';
-  if (rows) renderActivityRows();
+  if (rows) { activityRowsScrollToEnd = true; renderActivityRows(); }
   else if (activityChartInstance) activityChartInstance.resize(); // it may have been drawn while hidden
+};
+
+// The "1 month / all" switch of the rows view.
+window.setActivityRange = function(range) {
+  activityRowsRange = range === 'all' ? 'all' : 'month';
+  document.getElementById('activityRangeMonth').classList.toggle('active', activityRowsRange === 'month');
+  document.getElementById('activityRangeAll').classList.toggle('active', activityRowsRange === 'all');
+  activityRowsScrollToEnd = true;
+  drawActivityRows();
 };
 
 // The colour actually showing behind an element (the first non-transparent background up its parents).
@@ -3200,30 +3227,45 @@ function renderActivityRows() {
   drawActivityRows();
 }
 
-// Draws the lines into #activityRowsSvg (called again whenever a checkbox changes).
+// Draws the lines into #activityRowsSvg (called again whenever a checkbox or the range changes).
 function drawActivityRows() {
   const svgEl = document.getElementById('activityRowsSvg');
   if (!svgEl) return;
+  const scroller = svgEl.parentElement; // the box that scrolls sideways in the one-month view
+  const keepScroll = scroller.scrollLeft;
   svgEl.innerHTML = '';
   const data = activityRowsData;
-  if (!data || !data.rows.length) return;
+  if (!data || !data.rows.length) { svgEl.style.width = '100%'; syncRowsSlider(); return; }
 
-  const W = 900, padL = 12, padR = 12, step = 8, maxPeak = 110; // step = distance between two lines
-  const bg = effectiveBackground(svgEl.parentElement);
+  const DAY = 86400000;
+  const month = activityRowsRange === 'month';
+  // One-month view: the drawing is as many times wider than the box as the history is longer than a month, so one
+  // month always fills the box (30 days = 900 units) and the rest is reached by scrolling. "All" view: the whole
+  // history is squeezed into the box.
+  const totalDays = (data.endTime - data.startTime) / DAY;
+  const W = month ? Math.max(900, Math.round(900 * totalDays / 30)) : 900;
+  const padL = 12, padR = 12, step = 8, maxPeak = 110; // step = distance between two lines
+  svgEl.style.width = (W / 900 * 100) + '%';
+  const bg = effectiveBackground(scroller);
   const x = d3.scaleTime().domain([new Date(data.startTime), new Date(data.endTime)]).range([padL, W - padR]);
 
   // One line per row of data (a row may carry several curves on the same time grid — they are added together),
-  // plus the cosmetic unevenness (p.n = the small up/down shake in pixels).
+  // plus the cosmetic unevenness (p.n = the small up/down shake in pixels). Very long histories are thinned
+  // out a little (at most about 4000 points per line) to keep the drawing light.
   const rows = data.rows.map(r => {
-    const pat = rowsPattern(r.key, r.curves[0].points.length);
-    return {
-      key: r.key, label: r.label, sub: r.sub,
-      points: r.curves[0].points.map((p, j) => ({
+    const pts = r.curves[0].points;
+    const pat = rowsPattern(r.key, pts.length);
+    const thin = Math.max(1, Math.ceil(pts.length / 4000));
+    const points = [];
+    pts.forEach((p, j) => {
+      if (j % thin && j !== pts.length - 1) return;
+      points.push({
         x: p.x,
         y: r.curves.reduce((sum, c) => sum + c.points[j].y, 0) * (1 + ROWS_SHAPE_JITTER * pat.shape[j]),
         n: ROWS_WOBBLE_PX * pat.wobble[j],
-      })),
-    };
+      });
+    });
+    return { key: r.key, label: r.label, sub: r.sub, points };
   });
 
   // One height scale for everyone, so people stay comparable. The tallest bump rises about maxPeak pixels
@@ -3253,21 +3295,42 @@ function drawActivityRows() {
       .attr('stroke-width', 1).attr('stroke-linejoin', 'round');
   });
 
-  // Time axis: the project's first day and the 1st of every month. A label is skipped when it would sit
-  // too close to the previous one (so the dates never overlap).
-  const ticks = [data.startTime];
+  // Time axis. Months start with a labelled, taller tick; weeks (Mondays) get ticks too. In the one-month view every
+  // week is labelled and each day has a tiny tick; in the "all" view weeks are unlabelled ticks (when they fit).
+  // A label that would sit too close to one already drawn is skipped, so dates never overlap.
+  const axisColor = 'rgba(255,255,255,.3)';
+  svg.append('line').attr('x1', padL).attr('x2', W - padR).attr('y1', axisY).attr('y2', axisY).attr('stroke', axisColor);
+  const tick = (t, len) => svg.append('line').attr('x1', x(t)).attr('x2', x(t)).attr('y1', axisY).attr('y2', axisY + len).attr('stroke', axisColor);
+  const placed = []; // x of every label drawn so far
+  const label = (t, text, anchor) => {
+    const tx = x(t);
+    if (placed.some(px => Math.abs(px - tx) < 74)) return;
+    placed.push(tx);
+    svg.append('text').attr('x', tx).attr('y', axisY + 18).attr('text-anchor', anchor || 'middle')
+      .attr('font-size', 11).attr('fill', 'rgba(255,255,255,.75)').text(text);
+  };
+  if (month) { // a tiny tick for every day
+    const day = new Date(data.startTime); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() + 1);
+    while (day.getTime() <= data.endTime) { tick(day.getTime(), 2); day.setDate(day.getDate() + 1); }
+  }
+  const monthStarts = [data.startTime]; // the first day, then the 1st of every month
   const cursor = new Date(data.startTime);
   cursor.setDate(1); cursor.setMonth(cursor.getMonth() + 1); cursor.setHours(0, 0, 0, 0);
-  while (cursor.getTime() <= data.endTime) { ticks.push(cursor.getTime()); cursor.setMonth(cursor.getMonth() + 1); }
-  svg.append('line').attr('x1', padL).attr('x2', W - padR).attr('y1', axisY).attr('y2', axisY).attr('stroke', 'rgba(255,255,255,.3)');
-  let lastLabelX = -Infinity;
-  ticks.forEach((t, k) => {
-    if (x(t) - lastLabelX < 80) return;
-    lastLabelX = x(t);
-    svg.append('line').attr('x1', x(t)).attr('x2', x(t)).attr('y1', axisY).attr('y2', axisY + 4).attr('stroke', 'rgba(255,255,255,.3)');
-    svg.append('text').attr('x', x(t)).attr('y', axisY + 18).attr('text-anchor', k === 0 ? 'start' : 'middle')
-      .attr('font-size', 11).attr('fill', 'rgba(255,255,255,.75)').text(formatGeorgianDate(new Date(t)));
-  });
+  while (cursor.getTime() <= data.endTime) { monthStarts.push(cursor.getTime()); cursor.setMonth(cursor.getMonth() + 1); }
+  monthStarts.forEach((t, k) => { tick(t, 6); label(t, formatGeorgianDate(new Date(t)), k === 0 ? 'start' : 'middle'); });
+  const monday = new Date(data.startTime); // first Monday on or after the first day
+  monday.setHours(0, 0, 0, 0); monday.setDate(monday.getDate() + ((1 - monday.getDay()) + 7) % 7);
+  while (monday.getTime() <= data.endTime) {
+    const t = monday.getTime();
+    if (month) { tick(t, 4); label(t, `${monday.getDate()} ${GEORGIAN_MONTHS_ABBR[monday.getMonth()]}`); }
+    else if (x(t + 7 * DAY) - x(t) >= 5) tick(t, 4);
+    monday.setDate(monday.getDate() + 7);
+  }
+
+  // Scrolling: show the most recent month after a (re)start, otherwise stay where the reader was.
+  if (activityRowsScrollToEnd && scroller.clientWidth > 0) { scroller.scrollLeft = scroller.scrollWidth; activityRowsScrollToEnd = false; }
+  else scroller.scrollLeft = keepScroll;
+  syncRowsSlider();
 
   // Hover: the lines have no labels, so the tooltip names the person and the date (only near a line that has
   // activity there, not along the flat baseline).
@@ -3306,6 +3369,55 @@ function drawActivityRows() {
   };
   svgEl.onmouseleave = () => { tip.style.display = 'none'; };
 }
+
+// The sideways slider under the rows chart: a thin track with a slightly thicker bar that slides along it. It stands in
+// for the browser's own scrollbar (hidden by CSS) and just mirrors / controls the scroll position of #activityRowsScroll.
+// Hidden while everything fits (nothing to slide). Works with mouse and touch.
+function syncRowsSlider() {
+  const sc = document.getElementById('activityRowsScroll');
+  const track = document.getElementById('activityRowsSlider');
+  if (!sc || !track || !sc.clientWidth) return; // not on screen right now
+  const thumb = track.firstElementChild;
+  const overflow = sc.scrollWidth - sc.clientWidth;
+  if (overflow <= 1) { track.style.visibility = 'hidden'; return; }
+  track.style.visibility = 'visible';
+  const trackW = track.clientWidth;
+  const thumbW = Math.max(28, trackW * sc.clientWidth / sc.scrollWidth); // bar length = the share of the history that is visible
+  thumb.style.width = thumbW + 'px';
+  thumb.style.left = ((trackW - thumbW) * (sc.scrollLeft / overflow)) + 'px';
+}
+(function setupRowsSlider() {
+  const sc = document.getElementById('activityRowsScroll');
+  const track = document.getElementById('activityRowsSlider');
+  if (!sc || !track) return;
+  const thumb = track.firstElementChild;
+  sc.addEventListener('scroll', syncRowsSlider);
+  window.addEventListener('resize', syncRowsSlider);
+  // Move the chart so the bar sits where the pointer is (`grab` = the spot on the bar the pointer is holding).
+  const scrollToPointer = (clientX, grab) => {
+    const rect = track.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (clientX - rect.left - grab) / ((rect.width - thumb.offsetWidth) || 1)));
+    sc.scrollLeft = frac * (sc.scrollWidth - sc.clientWidth);
+  };
+  // Drag the bar, or click the track to jump there (the bar then centres on the click).
+  track.addEventListener('pointerdown', e => {
+    const bar = thumb.getBoundingClientRect();
+    const grab = (e.clientX >= bar.left && e.clientX <= bar.right) ? e.clientX - bar.left : thumb.offsetWidth / 2;
+    scrollToPointer(e.clientX, grab);
+    track.classList.add('dragging');
+    const move = ev => scrollToPointer(ev.clientX, grab);
+    const up = () => {
+      track.classList.remove('dragging');
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    e.preventDefault();
+  });
+})();
 
 // ── OPEN PROJECT ──
 // Opens one section of a project (the issue list): loads the project, the user's read-state and the design managers,
