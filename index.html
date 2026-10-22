@@ -153,6 +153,13 @@ header{background:var(--primary);color:white;padding:0 24px;height:52px;display:
 .filter-group{display:flex;align-items:center;gap:8px;flex:1;min-width:200px;flex-wrap:wrap}
 .search-box{border:1px solid var(--rule);border-radius:var(--r);padding:7px 12px;font-family:inherit;font-size:13px;width:190px;background:var(--bg);color:var(--ink)}
 .search-box:focus{outline:none;border-color:var(--accent)}
+.multisel{position:relative}
+#filterDiscBtn{min-width:150px;max-width:260px}
+.multisel-panel{position:absolute;top:calc(100% + 4px);left:0;z-index:120;min-width:100%;background:white;border:1px solid var(--rule);border-radius:var(--r);box-shadow:0 6px 18px rgba(0,0,0,.15);padding:6px;display:flex;flex-direction:column;gap:2px}
+.multisel-panel[hidden]{display:none}
+.multisel-panel label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;font-size:13px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.multisel-panel label:hover{background:var(--bg)}
+.multisel-clear{margin-top:4px;border:0;border-top:1px solid var(--rule);background:none;color:var(--accent);font-family:inherit;font-size:12px;text-align:left;padding:7px 8px 3px;cursor:pointer}
 select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--ink);cursor:pointer}
 .btn-primary{background:var(--accent);color:white;border:none;border-radius:var(--r);padding:8px 15px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .15s;white-space:nowrap}
 .btn-primary:hover{background:#9c312a}
@@ -472,13 +479,16 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <div class="toolbar">
   <div class="filter-group">
     <input type="search" class="search-box" id="searchInput" placeholder="🔍  ძებნა">
-    <select class="fsel" id="filterDisc">
-      <option value="">ყველა დისციპლინა</option>
-      <option value="arch">არქიტექტურა</option>
-      <option value="struct">კონსტრუქცია</option>
-      <option value="mep">MEP</option>
-      <option value="other">სხვა</option>
-    </select>
+    <div class="multisel" id="filterDisc">
+      <select class="fsel" id="filterDiscBtn"><option>ყველა დისციპლინა</option></select>
+      <div class="multisel-panel" id="filterDiscPanel" hidden>
+        <label><input type="checkbox" value="arch"> არქიტექტურა</label>
+        <label><input type="checkbox" value="struct"> კონსტრუქცია</label>
+        <label><input type="checkbox" value="mep"> MEP</label>
+        <label><input type="checkbox" value="other"> სხვა</label>
+        <button type="button" class="multisel-clear" id="filterDiscClear">გასუფთავება</button>
+      </div>
+    </div>
     <select class="fsel" id="filterStatus">
       <option value="">ყველა სტატუსი</option>
       <option value="active">აქტიური</option>
@@ -856,6 +866,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"გასუფთავება": "Clear",
 "1 თვე": "1 month",
 "ყველა": "All",
 "ხაზები": "Lines",
@@ -1175,6 +1186,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     var out = lookup(s.trim());
     return out == null ? s : out;
   }
+  window.__i18nTr = trOr; // lets other code translate a single word (used by the discipline filter's label)
 
   // Georgian letters -> Latin, for names that should be written out rather than
   // translated (project names: ბარე -> Bare). Simple, apostrophe-free scheme.
@@ -3641,15 +3653,15 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
 });
 
 // ── RENDER ──
-// The issues matching the search box and the three filters (discipline, status, priority).
+// The issues matching the search box and the three filters (discipline — any number of them —, status, priority).
 function filtered() {
   const q = document.getElementById('searchInput').value.toLowerCase();
-  const disc = document.getElementById('filterDisc').value;
+  const discs = activeDisciplines(); // empty = no discipline filter
   const status = document.getElementById('filterStatus').value;
   const priority = document.getElementById('filterPriority').value;
   return Object.values(issues).filter(i =>
     (!q||(i.title||'').toLowerCase().includes(q)||(i.desc||'').toLowerCase().includes(q)||(i.person||'').toLowerCase().includes(q)||formatIssueNum(i.seqMajor,i.seqMinor).toLowerCase().includes(q)) &&
-    (!disc||i.disc===disc) && (!status||i.status===status) &&
+    (!discs.length||discs.includes(i.disc)) && (!status||i.status===status) &&
     (!priority||(priority==='yes'?!!i.priority:!i.priority))
   );
 }
@@ -3738,7 +3750,45 @@ function render() {
     cell.onclick = () => { if(sortCol===cell.dataset.col) sortDir=sortDir==='asc'?'desc':'asc'; else{sortCol=cell.dataset.col;sortDir='asc'} render(); };
   });
 }
-['searchInput','filterDisc','filterStatus','filterPriority'].forEach(id => document.getElementById(id).addEventListener('input', render));
+['searchInput','filterStatus','filterPriority'].forEach(id => document.getElementById(id).addEventListener('input', render));
+
+// ── Discipline filter: a drop-down where several disciplines can be ticked at once ──
+// (e.g. structural + MEP together). Nothing ticked — or all four ticked — means "no discipline filter".
+const DISC_FILTER_NAMES = { arch: 'არქიტექტურა', struct: 'კონსტრუქცია', mep: 'MEP', other: 'სხვა' };
+function tickedDisciplines() {
+  return [...document.querySelectorAll('#filterDiscPanel input:checked')].map(box => box.value);
+}
+function activeDisciplines() {
+  const ticked = tickedDisciplines();
+  return ticked.length === Object.keys(DISC_FILTER_NAMES).length ? [] : ticked;
+}
+// The button shows what is ticked ("კონსტრუქცია, MEP"). In English mode each word goes through the English layer's
+// translator (window.__i18nTr) first.
+function updateDiscFilterLabel() {
+  const tr = window.__i18nTr || (word => word);
+  const ticked = activeDisciplines();
+  document.getElementById('filterDiscBtn').options[0].textContent =
+    ticked.length ? ticked.map(v => tr(DISC_FILTER_NAMES[v])).join(', ') : tr('ყველა დისციპლინა');
+}
+(function setupDiscFilter() {
+  const btn = document.getElementById('filterDiscBtn');
+  const panel = document.getElementById('filterDiscPanel');
+  // The button is a real <select> (so its arrow looks exactly like the status and priority ones), but its own list is
+  // never shown: opening it toggles the tick-box panel instead.
+  btn.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); btn.focus(); panel.hidden = !panel.hidden; });
+  btn.addEventListener('click', e => e.stopPropagation()); // (the click that follows must not count as "outside")
+  btn.addEventListener('keydown', e => {
+    if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); e.stopPropagation(); panel.hidden = !panel.hidden; }
+  });
+  panel.addEventListener('click', e => e.stopPropagation()); // ticking boxes keeps the list open
+  panel.addEventListener('change', () => { updateDiscFilterLabel(); render(); });
+  document.getElementById('filterDiscClear').addEventListener('click', () => {
+    panel.querySelectorAll('input').forEach(box => { box.checked = false; });
+    updateDiscFilterLabel(); render();
+  });
+  document.addEventListener('click', () => { panel.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') panel.hidden = true; });
+})();
 
 // ── ISSUE NUMBERING (project code + live sequence + optional sub-numbers) ──
 // "MZK-003", or "MZK-002.1" for a sub-issue; the DM and MEP sections add a "-DM" / "-MEP" suffix; drafts have no number.
