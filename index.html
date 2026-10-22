@@ -437,6 +437,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <button type="button" class="view-toggle-btn" id="activityViewLines" onclick="setActivityView('lines')">ხაზები</button>
         <button type="button" class="view-toggle-btn active" id="activityViewRows" onclick="setActivityView('rows')">რიგები</button>
       </div>
+      <div class="activity-view-toggle" id="activityWallpaperWrap">
+        <button type="button" class="view-toggle-btn" onclick="downloadActivityWallpaper()" title="ჩამოწერე ამ პროექტის აქტივობა ვოლპეიპერად (1920×1080)">⬇ ვოლპეიპერი</button>
+      </div>
       <div class="activity-view-toggle" id="activityRangeToggle">
         <button type="button" class="view-toggle-btn active" id="activityRangeMonth" onclick="setActivityRange('month')">1 თვე</button>
         <button type="button" class="view-toggle-btn" id="activityRangeAll" onclick="setActivityRange('all')">ყველა</button>
@@ -866,6 +869,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"⬇ ვოლპეიპერი": "⬇ Wallpaper",
+"ჩამოწერე ამ პროექტის აქტივობა ვოლპეიპერად (1920×1080)": "Download this project's activity as a wallpaper (1920×1080)",
+"გრაფიკი ჯერ არ არის ჩატვირთული": "The chart hasn't loaded yet",
+"ვოლპეიპერი მზადდება...": "Preparing the wallpaper...",
+"ვოლპეიპერის შექმნა ვერ მოხერხდა": "Could not create the wallpaper",
 "გასუფთავება": "Clear",
 "1 თვე": "1 month",
 "ყველა": "All",
@@ -1198,6 +1206,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       return out.charAt(0).toUpperCase() + out.slice(1);   // each Georgian word starts with a capital
     });
   }
+
+  window.__i18nTranslit = translit; // project names written in Latin letters (used by the wallpaper download)
 
   // Parts of the page that show user-written content — never translated.
   var SKIP = '[data-no-i18n],script,style,textarea,.comment-text,.issue-title-cell,.person-chip,.comment-author,.project-card-name';
@@ -3190,6 +3200,7 @@ window.setActivityView = function(mode) {
   document.getElementById('activityViewLines').classList.toggle('active', !rows);
   document.getElementById('activityViewRows').classList.toggle('active', rows);
   document.getElementById('activityRangeToggle').style.display = rows ? 'flex' : 'none';
+  document.getElementById('activityWallpaperWrap').style.display = rows ? 'flex' : 'none';
   const tip = document.getElementById('activityChartTip');
   if (tip) tip.style.display = 'none';
   if (rows) { activityRowsScrollToEnd = true; renderActivityRows(); }
@@ -3239,6 +3250,51 @@ function renderActivityRows() {
   drawActivityRows();
 }
 
+// ── Shared by the rows view on screen and by the wallpaper download ──
+// Turns the rows-view data into what gets drawn: one line per row of data (a row may carry several curves on the same
+// time grid — they are added together), plus the cosmetic unevenness (p.n = the small up/down shake in pixels). Very
+// long histories are thinned out a little (at most about 4000 points per line) to keep the drawing light.
+function rowsForDrawing(data) {
+  return data.rows.map(r => {
+    const pts = r.curves[0].points;
+    const pat = rowsPattern(r.key, pts.length);
+    const thin = Math.max(1, Math.ceil(pts.length / 4000));
+    const points = [];
+    pts.forEach((p, j) => {
+      if (j % thin && j !== pts.length - 1) return;
+      points.push({
+        x: p.x,
+        y: r.curves.reduce((sum, c) => sum + c.points[j].y, 0) * (1 + ROWS_SHAPE_JITTER * pat.shape[j]),
+        n: ROWS_WOBBLE_PX * pat.wobble[j],
+      });
+    });
+    return { key: r.key, label: r.label, sub: r.sub, points };
+  });
+}
+// One height scale for everyone, so people stay comparable. The tallest bump rises about maxPeak pixels (overlapping
+// the lines above it), but a lone small bump isn't stretched to that height.
+function rowsHeightScale(rows, step, maxPeak) {
+  let maxV = 0;
+  for (const r of rows) for (const p of r.points) if (p.y > maxV) maxV = p.y;
+  const perUnit = Math.min(maxPeak / (maxV || 1), 40);
+  return { perUnit, topPad: 8 + maxV * perUnit };
+}
+// Paints the lines top to bottom: each line is first filled with the page colour (hiding whatever of the lines above
+// pokes out behind it), then drawn. A switched-off line (key in `off`) is only drawn, faintly — it hides nothing.
+function paintRows(svg, rows, { x, bg, perUnit, topPad, step, off }) {
+  const areaFor = base => d3.area().x(p => x(p.x)).y0(base).y1(p => base - p.y * perUnit + p.n);
+  const lineFor = base => d3.line().x(p => x(p.x)).y(p => base - p.y * perUnit + p.n);
+  rows.forEach((r, i) => {
+    const base = topPad + i * step;
+    const isOff = off.has(r.key);
+    const g = svg.append('g');
+    if (!isOff) g.append('path').attr('d', areaFor(base)(r.points)).attr('fill', bg);
+    g.append('path').attr('d', lineFor(base)(r.points)).attr('fill', 'none')
+      .attr('stroke', isOff ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.92)')
+      .attr('stroke-width', 1).attr('stroke-linejoin', 'round');
+  });
+}
+
 // Draws the lines into #activityRowsSvg (called again whenever a checkbox or the range changes).
 function drawActivityRows() {
   const svgEl = document.getElementById('activityRowsSvg');
@@ -3261,51 +3317,15 @@ function drawActivityRows() {
   const bg = effectiveBackground(scroller);
   const x = d3.scaleTime().domain([new Date(data.startTime), new Date(data.endTime)]).range([padL, W - padR]);
 
-  // One line per row of data (a row may carry several curves on the same time grid — they are added together),
-  // plus the cosmetic unevenness (p.n = the small up/down shake in pixels). Very long histories are thinned
-  // out a little (at most about 4000 points per line) to keep the drawing light.
-  const rows = data.rows.map(r => {
-    const pts = r.curves[0].points;
-    const pat = rowsPattern(r.key, pts.length);
-    const thin = Math.max(1, Math.ceil(pts.length / 4000));
-    const points = [];
-    pts.forEach((p, j) => {
-      if (j % thin && j !== pts.length - 1) return;
-      points.push({
-        x: p.x,
-        y: r.curves.reduce((sum, c) => sum + c.points[j].y, 0) * (1 + ROWS_SHAPE_JITTER * pat.shape[j]),
-        n: ROWS_WOBBLE_PX * pat.wobble[j],
-      });
-    });
-    return { key: r.key, label: r.label, sub: r.sub, points };
-  });
-
-  // One height scale for everyone, so people stay comparable. The tallest bump rises about maxPeak pixels
-  // (overlapping the lines above it), but a lone small bump isn't stretched to that height.
-  let maxV = 0;
-  for (const r of rows) for (const p of r.points) if (p.y > maxV) maxV = p.y;
-  const perUnit = Math.min(maxPeak / (maxV || 1), 40);
-  const topPad = 8 + maxV * perUnit;
+  const rows = rowsForDrawing(data);
+  const { perUnit, topPad } = rowsHeightScale(rows, step, maxPeak);
   const baseOf = i => topPad + i * step;
   const axisY = baseOf(rows.length - 1) + 14;
   const H = axisY + 30; // room for the date labels
   svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
   const svg = d3.select(svgEl);
-  const areaFor = base => d3.area().x(p => x(p.x)).y0(base).y1(p => base - p.y * perUnit + p.n);
-  const lineFor = base => d3.line().x(p => x(p.x)).y(p => base - p.y * perUnit + p.n);
-
-  // Top to bottom: each line is first filled with the page colour (hiding whatever of the lines above pokes out
-  // behind it), then drawn. A switched-off line is only drawn, faintly — it hides nothing.
-  rows.forEach((r, i) => {
-    const base = baseOf(i);
-    const off = activityRowsOff.has(r.key);
-    const g = svg.append('g');
-    if (!off) g.append('path').attr('d', areaFor(base)(r.points)).attr('fill', bg);
-    g.append('path').attr('d', lineFor(base)(r.points)).attr('fill', 'none')
-      .attr('stroke', off ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.92)')
-      .attr('stroke-width', 1).attr('stroke-linejoin', 'round');
-  });
+  paintRows(svg, rows, { x, bg, perUnit, topPad, step, off: activityRowsOff });
 
   // Time axis. Months start with a labelled, taller tick; weeks (Mondays) get ticks too. In the one-month view every
   // week is labelled and each day has a tiny tick; in the "all" view weeks are unlabelled ticks (when they fit).
@@ -3381,6 +3401,87 @@ function drawActivityRows() {
   };
   svgEl.onmouseleave = () => { tip.style.display = 'none'; };
 }
+
+// ── WALLPAPER: the rows view as a 1920 x 1080 picture of the open project ──
+// The project's name sits in the top-left corner (in the app's own font, as on the project cards) and the activity rows
+// below, without the date axis. The project's FIRST day is at the left edge and as much history as fits is shown
+// (WALLPAPER_DAYS); later activity is cut off, and if the project is younger than that, the rest is flat lines.
+// Scale: 1 drawing unit = 1 pixel, 30 units per day — the same proportions as the one-month view.
+const WALLPAPER_W = 1920, WALLPAPER_H = 1080, WALLPAPER_DAYS = 64.8;
+
+// The picture without the name: returns the <svg> (1920 x 1080). `data` is activityRowsData; `bg` the page colour.
+function buildWallpaperSvg(data, bg) {
+  const DAY = 86400000;
+  const start = data.startTime, end = start + WALLPAPER_DAYS * DAY;
+  // Cut every curve at the end of the window, and carry on with zeros (no activity) if the project is shorter.
+  const cut = {
+    rows: data.rows.map(r => ({ ...r, curves: r.curves.map(c => {
+      const pts = c.points.filter(p => p.x.getTime() <= end);
+      const gap = c.points.length > 1 ? c.points[1].x.getTime() - c.points[0].x.getTime() : 3 * 3600 * 1000;
+      for (let t = (pts.length ? pts[pts.length - 1].x.getTime() : start - gap) + gap; t <= end; t += gap) pts.push({ x: new Date(t), y: 0 });
+      return { ...c, points: pts };
+    }) })),
+  };
+  const rows = rowsForDrawing(cut);
+  const step = 8, padL = 12;
+  const { perUnit, topPad } = rowsHeightScale(rows, step, 110);
+  const W = Math.round(900 * WALLPAPER_DAYS / 30); // 30 days = 900 units, as in the one-month view
+  const x = d3.scaleTime().domain([new Date(start), new Date(end)]).range([padL, W - padL]);
+  // The drawing keeps its 32:9 band (as in the wide wallpapers) in the middle of the picture, its last line a little
+  // above the band's bottom; the rest of the height is plain background.
+  const band = WALLPAPER_W * 9 / 32, offset = (WALLPAPER_H - band) / 2;
+  const lastBase = topPad + (rows.length - 1) * step;
+  const shift = (band - 36) - lastBase + offset;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svgEl = document.createElementNS(NS, 'svg');
+  svgEl.setAttribute('xmlns', NS);
+  svgEl.setAttribute('width', WALLPAPER_W);
+  svgEl.setAttribute('height', WALLPAPER_H);
+  svgEl.setAttribute('viewBox', `${padL} ${-shift} ${WALLPAPER_W} ${WALLPAPER_H}`);
+  const svg = d3.select(svgEl);
+  svg.append('rect').attr('x', padL).attr('y', -shift).attr('width', WALLPAPER_W).attr('height', WALLPAPER_H).attr('fill', bg);
+  paintRows(svg, rows, { x, bg, perUnit, topPad, step, off: new Set() });
+  return svgEl;
+}
+
+// The "⬇ ვოლპეიპერი" button: builds the picture, adds the project's name, and downloads it as a PNG.
+window.downloadActivityWallpaper = async function() {
+  const data = activityRowsData;
+  if (!data || !data.rows.length) { showToast('გრაფიკი ჯერ არ არის ჩატვირთული'); return; }
+  showToast('ვოლპეიპერი მზადდება...');
+  try {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--soft-black').trim() || '#1a1120';
+    const svgString = new XMLSerializer().serializeToString(buildWallpaperSvg(data, bg));
+    const url = URL.createObjectURL(new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' }));
+    const img = new Image();
+    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = url; });
+    const canvas = document.createElement('canvas');
+    canvas.width = WALLPAPER_W; canvas.height = WALLPAPER_H;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, WALLPAPER_W, WALLPAPER_H);
+    URL.revokeObjectURL(url);
+    // The name goes straight onto the canvas, so it can use the page's own (Georgian) font — a picture made from an
+    // SVG can't. In English mode it is written in Latin letters, like on the project cards.
+    const rawName = (currentProjectData && currentProjectData.name) || '';
+    const name = window.__i18nTranslit ? window.__i18nTranslit(rawName) : rawName;
+    const family = getComputedStyle(document.body).fontFamily;
+    const NAME_PX = 31; // size of the name (0.7 of the first version's 44) — and a little fainter than the lines
+    await document.fonts.load(`600 ${NAME_PX}px ${family}`, name);
+    ctx.font = `600 ${NAME_PX}px ${family}`;
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(name, 64, 88);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(rawName || 'project').replace(/[\\/:*?"<>|]/g, '').trim() || 'project'}-wallpaper-${WALLPAPER_W}x${WALLPAPER_H}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (e) {
+    console.error('wallpaper failed:', e);
+    showToast('ვოლპეიპერის შექმნა ვერ მოხერხდა');
+  }
+};
 
 // The sideways slider under the rows chart: a thin track with a slightly thicker bar that slides along it. It stands in
 // for the browser's own scrollbar (hidden by CSS) and just mirrors / controls the scroll position of #activityRowsScroll.
