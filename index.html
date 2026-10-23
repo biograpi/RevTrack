@@ -646,6 +646,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-secondary" id="btnBackfillPublicProjects" style="width:100%;justify-content:flex-start" title="ერთჯერადი ნაბიჯი — ავსებს publicProjects კოლექციას ყველა უკვე არსებული პროექტით (projects.html-ისთვის). შემდეგ ეს ავტომატურად ხდება.">🔄 საჯარო გრაფიკის მონაცემების შევსება</button>
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsPdf()">⬇ გრაფიკის ჩამოწერა (PDF)</button>
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsHtml()">⬇ ინტერაქტიული HTML ჩამოწერა</button>
+      <button class="btn-secondary" id="btnAllProjectsWallpaper" style="width:100%;justify-content:flex-start" onclick="downloadAllProjectsWallpaper()" title="გადაიკითხავს ყველა პროექტის საკითხებსა და კომენტარებს და ერთ ვოლპეიპერად (1920×1080) ჩაწერს">🖼 ყველა პროექტის ვოლპეიპერი</button>
     </div>
     <div class="modal-footer"><button class="btn-secondary" onclick="cm('adminToolsModal')">დახურვა</button></div>
   </div>
@@ -869,6 +870,12 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"🖼 ყველა პროექტის ვოლპეიპერი": "🖼 Wallpaper of all projects",
+"გადაიკითხავს ყველა პროექტის საკითხებსა და კომენტარებს და ერთ ვოლპეიპერად (1920×1080) ჩაწერს": "Reads the issues and comments of every project and puts them into one wallpaper (1920×1080)",
+"ყველა პროექტის აქტივობა გადაიკითხება და ერთ ვოლპეიპერად ჩაიწერება. ეს შეიძლება რამდენიმე ათეული წამი გაგრძელდეს. გავაგრძელო?": "The activity of every project will be read and put into one wallpaper. This can take tens of seconds. Continue?",
+"პროექტები ჯერ არ არის ჩატვირთული": "The projects haven't loaded yet",
+"აქტივობის მონაცემი არ მოიძებნა": "No activity data found",
+"ვოლპეიპერი იქმნება...": "Creating the wallpaper...",
 "⬇ ვოლპეიპერი": "⬇ Wallpaper",
 "ჩამოწერე ამ პროექტის აქტივობა ვოლპეიპერად (1920×1080)": "Download this project's activity as a wallpaper (1920×1080)",
 "გრაფიკი ჯერ არ არის ჩატვირთული": "The chart hasn't loaded yet",
@@ -1142,6 +1149,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^მუშავდება\.\.\. (\d+) \/ (\d+) პროექტი$/, function (m) { return 'Working... ' + m[1] + ' / ' + m[2] + ' ' + (m[2] === '1' ? 'project' : 'projects'); }],
+    [/^ვოლპეიპერი მზადაა: (\d+) ხაზი \(სულ (\d+)-დან\), (\d+) პროექტი$/, function (m) { return 'Wallpaper ready: ' + m[1] + ' lines (of ' + m[2] + '), ' + plural(m[3], 'project', 'projects'); }],
     [/^შეცდომა: ([\s\S]*)$/, function (m) { return 'Error: ' + m[1]; }],
     [/^შეცდომა საკითხების ჩატვირთვისას: ([\s\S]*)$/, function (m) { return 'Error loading issues: ' + m[1]; }],
     [/^შეცდომა ექსპორტისას: ([\s\S]*)$/, function (m) { return 'Export error: ' + m[1]; }],
@@ -2732,6 +2741,74 @@ function formatGeorgianDate(d) {
   return `${d.getDate()} ${GEORGIAN_MONTHS_ABBR[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+// ── Bump curves and the rows-view data ──
+// (shared by the project's activity chart and by the all-projects wallpaper)
+const BUMP_SIGMA_DAYS = 0.3, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
+function bumpValueAt(times, t) {
+  let val = 0;
+  for (const at of times) {
+    const daysFromCenter = (t - at) / 86400000;
+    // Symmetric, rounded bump — rises and falls at the same rate on both sides (an upside-down, smoothed
+    // parabola), instead of a sharp spike with a one-sided tail.
+    val += Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
+  }
+  return val;
+}
+// An artificial "spike then fade" curve for a list of event times (issue created, comment written): one point every
+// 3 hours from startTime to endTime. A stylistic choice, not a literal count.
+function bumpCurve(times, startTime, endTime) {
+  const sorted = [...times].sort((a,b) => a-b);
+  const points = [];
+  for (let t = startTime; t <= endTime; t += SAMPLE_STEP_MS) {
+    points.push({ x: new Date(t), y: bumpValueAt(sorted, t) });
+  }
+  return points;
+}
+const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mep', 'review:other', 'internal', 'mep', 'comments']; // order inside a person's group
+const ROW_SUB = { // the words shown next to the person's name (each becomes its own translatable piece)
+  'review:arch': ['რევიზია', 'არქიტექტურა'], 'review:struct': ['რევიზია', 'კონსტრუქცია'],
+  'review:mep': ['რევიზია', 'MEP'], 'review:other': ['რევიზია', 'სხვა'],
+  internal: ['DM'], mep: ['MEP რევიზია'], comments: ['კომენტარები'],
+};
+// The data of the "rows" view (renderActivityRows), finer than the line chart: every person gets a SEPARATE line for
+// each kind of thing they did — issues in the review section split by discipline (architecture / structural / MEP /
+// other), issues in the DM section, issues in the MEP review section, and their comments (any section, whoever they
+// are). `issues` = the project's issues sorted by creation time, commentsByAuthor = {name: [timestamps]}.
+function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime) {
+  const creators = [...new Set(issues.map(i => i.createdByName))];
+  const eventsByCreator = {};
+  for (const name of creators) eventsByCreator[name] = [];
+  for (const iss of issues) eventsByCreator[iss.createdByName].push({ time: iss.createdAt.toDate().getTime(), section: iss.section, disc: iss.disc });
+  const timesByPerson = {}; // name -> slot -> [timestamps]
+  const addTime = (name, slot, t) => {
+    if (!timesByPerson[name]) timesByPerson[name] = {};
+    if (!timesByPerson[name][slot]) timesByPerson[name][slot] = [];
+    timesByPerson[name][slot].push(t);
+  };
+  for (const name of creators) {
+    for (const e of eventsByCreator[name]) {
+      const slot = e.section === 'review' ? `review:${['arch', 'struct', 'mep'].includes(e.disc) ? e.disc : 'other'}` : e.section;
+      addTime(name, slot, e.time);
+    }
+  }
+  for (const [name, times] of Object.entries(commentsByAuthor || {})) for (const t of times) addTime(name, 'comments', t);
+  const rowsList = [];
+  for (const [name, bySlot] of Object.entries(timesByPerson)) {
+    const slots = ROW_SLOTS.filter(slot => bySlot[slot]);
+    if (!slots.length) continue;
+    const firstTime = Math.min(...slots.flatMap(slot => bySlot[slot]));
+    for (const slot of slots) {
+      rowsList.push({
+        person: name, firstTime, key: `${name}|${slot}`, label: nameWithLastInitial(name), sub: ROW_SUB[slot],
+        curves: [{ kind: 'all', points: bumpCurve(bySlot[slot], startTime, endTime) }],
+      });
+    }
+  }
+  // People in the order they became active; each person's own lines stay together (the sort keeps their order).
+  rowsList.sort((a, b) => (a.firstTime - b.firstTime) || a.person.localeCompare(b.person));
+  return { startTime, endTime, rows: rowsList };
+}
+
 // Draws the project activity chart (Chart.js): one curve per person and section — "Name" (review), "Name (DM)",
 // "Name (MEP)" — plus section total lines and contractors' comment curves, all drawn upward from zero.
 // issuesMap = the project's issues; reviewerName / managerName pick the two highlighted (filled) people;
@@ -2812,18 +2889,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   for (const iss of issues) {
     activityEventsByCreator[iss.createdByName].push({ time: iss.createdAt.toDate().getTime(), section: iss.section, disc: iss.disc });
   }
-  const BUMP_SIGMA_DAYS = 0.3, SAMPLE_STEP_MS = 3 * 3600 * 1000; // every 3 hours
-  function bumpValueAt(times, t) {
-    let val = 0;
-    for (const at of times) {
-      const daysFromCenter = (t - at) / 86400000;
-      // Symmetric, rounded bump — rises and falls at the same rate on both
-      // sides (an upside-down, smoothed parabola), instead of a sharp spike
-      // with a one-sided tail.
-      val += Math.exp(-(daysFromCenter*daysFromCenter) / (2*BUMP_SIGMA_DAYS*BUMP_SIGMA_DAYS));
-    }
-    return val;
-  }
+  // (the bump curves themselves are made by bumpCurve(), defined above this function)
   const perCreatorReviewPoints = {};
   const perCreatorInternalPoints = {};
   const perCreatorMepPoints = {};
@@ -2839,14 +2905,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
 
   // Same idea for contractor COMMENT activity: two independent curves per
   // contractor (review comments, DM comments), both drawn upward.
-  function buildPlainBumpCurve(times) {
-    const sorted = [...times].sort((a,b) => a-b);
-    const points = [];
-    for (let t = startTime; t <= endTime; t += SAMPLE_STEP_MS) {
-      points.push({ x: new Date(t), y: bumpValueAt(sorted, t) });
-    }
-    return points;
-  }
+  function buildPlainBumpCurve(times) { return bumpCurve(times, startTime, endTime); }
   const contractorNames = [...new Set([
     ...Object.keys(contractorCommentsByName?.review || {}),
     ...Object.keys(contractorCommentsByName?.internal || {}),
@@ -2956,44 +3015,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     }),
   ];
 
-  // ── Data for the "rows" view (renderActivityRows): finer than the line chart. ──
-  // Every person gets a SEPARATE line for each kind of thing they did: issues in the review section split by
-  // discipline (architecture / structural / MEP / other), issues in the DM section, issues in the MEP review
-  // section, and their comments (any section, whoever they are). Each line is a smoothed bump curve like above.
-  const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mep', 'review:other', 'internal', 'mep', 'comments']; // order inside a person's group
-  const ROW_SUB = { // the words shown next to the person's name (each becomes its own translatable piece)
-    'review:arch': ['რევიზია', 'არქიტექტურა'], 'review:struct': ['რევიზია', 'კონსტრუქცია'],
-    'review:mep': ['რევიზია', 'MEP'], 'review:other': ['რევიზია', 'სხვა'],
-    internal: ['DM'], mep: ['MEP რევიზია'], comments: ['კომენტარები'],
-  };
-  const timesByPerson = {}; // name -> slot -> [timestamps]
-  const addTime = (name, slot, t) => {
-    if (!timesByPerson[name]) timesByPerson[name] = {};
-    if (!timesByPerson[name][slot]) timesByPerson[name][slot] = [];
-    timesByPerson[name][slot].push(t);
-  };
-  for (const name of creators) {
-    for (const e of activityEventsByCreator[name]) {
-      const slot = e.section === 'review' ? `review:${['arch', 'struct', 'mep'].includes(e.disc) ? e.disc : 'other'}` : e.section;
-      addTime(name, slot, e.time);
-    }
-  }
-  for (const [name, times] of Object.entries(commentsByAuthor || {})) for (const t of times) addTime(name, 'comments', t);
-  const rowsList = [];
-  for (const [name, bySlot] of Object.entries(timesByPerson)) {
-    const slots = ROW_SLOTS.filter(slot => bySlot[slot]);
-    if (!slots.length) continue;
-    const firstTime = Math.min(...slots.flatMap(slot => bySlot[slot]));
-    for (const slot of slots) {
-      rowsList.push({
-        person: name, firstTime, key: `${name}|${slot}`, label: nameWithLastInitial(name), sub: ROW_SUB[slot],
-        curves: [{ kind: 'all', points: buildPlainBumpCurve(bySlot[slot]) }],
-      });
-    }
-  }
-  // People in the order they became active; each person's own lines stay together (the sort keeps their order).
-  rowsList.sort((a, b) => (a.firstTime - b.firstTime) || a.person.localeCompare(b.person));
-  activityRowsData = { startTime, endTime, rows: rowsList };
+  activityRowsData = buildActivityRowsData(issues, commentsByAuthor, startTime, endTime); // for the rows view
   if (activityViewMode === 'rows') renderActivityRows();
 
   const ctx = document.getElementById('activityChartCanvas').getContext('2d');
@@ -3402,93 +3424,221 @@ function drawActivityRows() {
   svgEl.onmouseleave = () => { tip.style.display = 'none'; };
 }
 
-// ── WALLPAPER: the rows view as a 1920 x 1080 picture of the open project ──
-// The project's name sits in the top-left corner (in the app's own font, as on the project cards) and the activity rows
-// below, without the date axis. The project's FIRST day is at the left edge and as much history as fits is shown
-// (WALLPAPER_DAYS); later activity is cut off, and if the project is younger than that, the rest is flat lines.
+// ── WALLPAPERS: the rows view as a 1920 x 1080 picture ──
+// One project (the "⬇ ვოლპეიპერი" button next to its chart): the project's name in the top-left corner (in the app's own
+// font, as on the project cards) and its activity rows below, without the date axis. All projects (admin tools): the
+// lines of every project in one picture. In both, a project's FIRST day is at the left edge and as much history as fits
+// is shown (WALLPAPER_DAYS); later activity is cut off, and if a project is younger than that, the rest is flat lines.
 // Scale: 1 drawing unit = 1 pixel, 30 units per day — the same proportions as the one-month view.
-const WALLPAPER_W = 1920, WALLPAPER_H = 1080, WALLPAPER_DAYS = 64.8;
+const WALLPAPER_W = 1920, WALLPAPER_H = 1080, WALLPAPER_DAYS = 64.8, WALLPAPER_DAY = 86400000;
 
-// The picture without the name: returns the <svg> (1920 x 1080). `data` is activityRowsData; `bg` the page colour.
-function buildWallpaperSvg(data, bg) {
-  const DAY = 86400000;
-  const start = data.startTime, end = start + WALLPAPER_DAYS * DAY;
-  // Cut every curve at the end of the window, and carry on with zeros (no activity) if the project is shorter.
+// One project's lines for a wallpaper, with time counted from the project's first day (so every project starts at the
+// left edge). Each curve is cut at WALLPAPER_DAYS and carried on with zeros (no activity) if the project is shorter.
+function wallpaperRows(data) {
+  const start = data.startTime, end = start + WALLPAPER_DAYS * WALLPAPER_DAY;
   const cut = {
     rows: data.rows.map(r => ({ ...r, curves: r.curves.map(c => {
       const pts = c.points.filter(p => p.x.getTime() <= end);
       const gap = c.points.length > 1 ? c.points[1].x.getTime() - c.points[0].x.getTime() : 3 * 3600 * 1000;
       for (let t = (pts.length ? pts[pts.length - 1].x.getTime() : start - gap) + gap; t <= end; t += gap) pts.push({ x: new Date(t), y: 0 });
-      return { ...c, points: pts };
+      return { ...c, points: pts.map(p => ({ ...p, x: new Date(p.x.getTime() - start) })) };
     }) })),
   };
-  const rows = rowsForDrawing(cut);
-  const step = 8, padL = 12;
-  const { perUnit, topPad } = rowsHeightScale(rows, step, 110);
-  const W = Math.round(900 * WALLPAPER_DAYS / 30); // 30 days = 900 units, as in the one-month view
-  const x = d3.scaleTime().domain([new Date(start), new Date(end)]).range([padL, W - padL]);
-  // The drawing keeps its 32:9 band (as in the wide wallpapers) in the middle of the picture, its last line a little
-  // above the band's bottom; the rest of the height is plain background.
-  const band = WALLPAPER_W * 9 / 32, offset = (WALLPAPER_H - band) / 2;
-  const lastBase = topPad + (rows.length - 1) * step;
-  const shift = (band - 36) - lastBase + offset;
+  return rowsForDrawing(cut);
+}
+// The horizontal scale of every wallpaper: time since the project's first day (30 days = 900 units, like the one-month view).
+function wallpaperScale() {
+  const W = Math.round(900 * WALLPAPER_DAYS / 30), padL = 12;
+  return { padL, x: d3.scaleTime().domain([new Date(0), new Date(WALLPAPER_DAYS * WALLPAPER_DAY)]).range([padL, W - padL]) };
+}
+// An empty wallpaper <svg> (1920 x 1080) filled with the page colour; viewY moves the drawing up or down.
+function newWallpaperSvg(bg, padL, viewY) {
   const NS = 'http://www.w3.org/2000/svg';
   const svgEl = document.createElementNS(NS, 'svg');
   svgEl.setAttribute('xmlns', NS);
   svgEl.setAttribute('width', WALLPAPER_W);
   svgEl.setAttribute('height', WALLPAPER_H);
-  svgEl.setAttribute('viewBox', `${padL} ${-shift} ${WALLPAPER_W} ${WALLPAPER_H}`);
+  svgEl.setAttribute('viewBox', `${padL} ${viewY} ${WALLPAPER_W} ${WALLPAPER_H}`);
   const svg = d3.select(svgEl);
-  svg.append('rect').attr('x', padL).attr('y', -shift).attr('width', WALLPAPER_W).attr('height', WALLPAPER_H).attr('fill', bg);
+  svg.append('rect').attr('x', padL).attr('y', viewY).attr('width', WALLPAPER_W).attr('height', WALLPAPER_H).attr('fill', bg);
+  return { svgEl, svg };
+}
+
+// One project's picture, without the captions. `data` is activityRowsData; `bg` the page colour.
+function buildWallpaperSvg(data, bg) {
+  const rows = wallpaperRows(data);
+  const step = 8;
+  const { perUnit, topPad } = rowsHeightScale(rows, step, 110);
+  const { padL, x } = wallpaperScale();
+  // The drawing keeps its 32:9 band (as in the wide wallpapers) in the middle of the picture, its last line a little
+  // above the band's bottom; the rest of the height is plain background.
+  const band = WALLPAPER_W * 9 / 32, offset = (WALLPAPER_H - band) / 2;
+  const lastBase = topPad + (rows.length - 1) * step;
+  const shift = (band - 36) - lastBase + offset;
+  const { svgEl, svg } = newWallpaperSvg(bg, padL, -shift);
   paintRows(svg, rows, { x, bg, perUnit, topPad, step, off: new Set() });
   return svgEl;
 }
 
-// The "⬇ ვოლპეიპერი" button: builds the picture, adds the project's name, and downloads it as a PNG.
+// All projects in one picture. `blocks` = [{ data }] in the order of the project list. Lines are stacked from the
+// bottom up: the first line sits WALLPAPER_ALL_MARGIN px above the bottom edge, and lines keep being added while the
+// highest drawn point of the picture — bumps included, not just the top line's base — stays at least that many px
+// from the top. Whatever doesn't fit isn't drawn. The first project is at the bottom and a project's own lines keep
+// their usual top-to-bottom order; the bottom strip is left free for the caption.
+const WALLPAPER_ALL_MARGIN = 300;
+function buildAllProjectsWallpaperSvg(blocks, bg) {
+  const step = 8, bottomY = WALLPAPER_H - WALLPAPER_ALL_MARGIN, topY = WALLPAPER_ALL_MARGIN;
+  const capacity = Math.floor((bottomY - topY) / step) + 1;
+  const stack = []; // bottom to top
+  blocks.forEach((b, bi) => {
+    const rows = wallpaperRows(b.data);
+    for (let i = rows.length - 1; i >= 0; i--) stack.push({ row: rows[i], project: bi });
+  });
+  // How the picture looks with the first n lines: the lines top to bottom, their height scale, and the highest point drawn.
+  const layout = n => {
+    const rows = stack.slice(0, n).map(s => s.row).reverse(); // painted top to bottom
+    const { perUnit } = rowsHeightScale(rows, step, 100);
+    const topPad = bottomY - (rows.length - 1) * step;
+    let highest = Infinity;
+    rows.forEach((r, i) => { for (const p of r.points) highest = Math.min(highest, topPad + i * step - p.y * perUnit + p.n); });
+    return { rows, perUnit, topPad, highest };
+  };
+  // As many lines as fit; drop lines from the top while a bump would reach into the top margin.
+  let count = Math.min(capacity, stack.length), lay = layout(count);
+  while (count > 1 && lay.highest < topY) { count--; lay = layout(count); }
+  const shown = stack.slice(0, count);
+  const { padL, x } = wallpaperScale();
+  const { svgEl, svg } = newWallpaperSvg(bg, padL, 0);
+  if (shown.length) paintRows(svg, lay.rows, { x, bg, perUnit: lay.perUnit, topPad: lay.topPad, step, off: new Set() });
+  const linesPerProject = blocks.map((b, bi) => stack.filter(s => s.project === bi).length);
+  const shownPerProject = blocks.map((b, bi) => shown.filter(s => s.project === bi).length);
+  return {
+    svgEl, drawn: shown.length, total: stack.length,
+    projectsShown: shownPerProject.filter(n => n > 0).length,
+    projectsComplete: linesPerProject.filter((n, bi) => n > 0 && shownPerProject[bi] === n).length,
+  };
+}
+
+const wallpaperBackground = () => getComputedStyle(document.documentElement).getPropertyValue('--soft-black').trim() || '#1a1120';
+
+// Draws the picture onto a canvas, writes the captions and returns the PNG (a Blob). The captions go straight onto the
+// canvas so they can use the page's own (Georgian) font — a picture made from an SVG can't. nameText: the project's
+// name for the top-left corner (none for the all-projects picture).
+async function wallpaperPng(svgEl, nameText) {
+  const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svgEl)], { type: 'image/svg+xml;charset=utf-8' }));
+  const img = new Image();
+  await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = url; });
+  const canvas = document.createElement('canvas');
+  canvas.width = WALLPAPER_W; canvas.height = WALLPAPER_H;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, WALLPAPER_W, WALLPAPER_H);
+  URL.revokeObjectURL(url);
+  const family = getComputedStyle(document.body).fontFamily;
+  ctx.textBaseline = 'alphabetic';
+  if (nameText) {
+    const NAME_PX = 31; // size of the name — and a little fainter than the lines
+    await document.fonts.load(`600 ${NAME_PX}px ${family}`, nameText);
+    ctx.font = `600 ${NAME_PX}px ${family}`;
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.fillText(nameText, 64, 88);
+  }
+  // Bottom-right corner: where the picture came from and the day it was downloaded (local date, yyyy.mm.dd).
+  const today = new Date();
+  const stamp = `downloaded from RevTrack ${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+  await document.fonts.load(`400 16px ${family}`, stamp);
+  ctx.font = `400 16px ${family}`;
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.textAlign = 'right';
+  ctx.fillText(stamp, WALLPAPER_W - 64, WALLPAPER_H - 64);
+  ctx.textAlign = 'left';
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+function saveBlobAs(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+// The "⬇ ვოლპეიპერი" button of an open project: its name, its rows, downloaded as a PNG.
 window.downloadActivityWallpaper = async function() {
   const data = activityRowsData;
   if (!data || !data.rows.length) { showToast('გრაფიკი ჯერ არ არის ჩატვირთული'); return; }
   showToast('ვოლპეიპერი მზადდება...');
   try {
-    const bg = getComputedStyle(document.documentElement).getPropertyValue('--soft-black').trim() || '#1a1120';
-    const svgString = new XMLSerializer().serializeToString(buildWallpaperSvg(data, bg));
-    const url = URL.createObjectURL(new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' }));
-    const img = new Image();
-    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = url; });
-    const canvas = document.createElement('canvas');
-    canvas.width = WALLPAPER_W; canvas.height = WALLPAPER_H;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, WALLPAPER_W, WALLPAPER_H);
-    URL.revokeObjectURL(url);
-    // The name goes straight onto the canvas, so it can use the page's own (Georgian) font — a picture made from an
-    // SVG can't. In English mode it is written in Latin letters, like on the project cards.
+    // In English mode the name is written in Latin letters, like on the project cards.
     const rawName = (currentProjectData && currentProjectData.name) || '';
     const name = window.__i18nTranslit ? window.__i18nTranslit(rawName) : rawName;
-    const family = getComputedStyle(document.body).fontFamily;
-    const NAME_PX = 31; // size of the name (0.7 of the first version's 44) — and a little fainter than the lines
-    await document.fonts.load(`600 ${NAME_PX}px ${family}`, name);
-    ctx.font = `600 ${NAME_PX}px ${family}`;
-    ctx.fillStyle = 'rgba(255,255,255,.75)';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(name, 64, 88);
-    // Bottom-right corner: where the picture came from and the day it was downloaded (local date, yyyy.mm.dd).
-    const today = new Date();
-    const stamp = `downloaded from RevTrack ${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-    await document.fonts.load(`400 16px ${family}`, stamp);
-    ctx.font = `400 16px ${family}`;
-    ctx.fillStyle = 'rgba(255,255,255,.5)';
-    ctx.textAlign = 'right';
-    ctx.fillText(stamp, WALLPAPER_W - 64, WALLPAPER_H - 64);
-    ctx.textAlign = 'left';
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${(rawName || 'project').replace(/[\\/:*?"<>|]/g, '').trim() || 'project'}-wallpaper-${WALLPAPER_W}x${WALLPAPER_H}.png`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    const blob = await wallpaperPng(buildWallpaperSvg(data, wallpaperBackground()), name);
+    saveBlobAs(blob, `${(rawName || 'project').replace(/[\\/:*?"<>|]/g, '').trim() || 'project'}-wallpaper-${WALLPAPER_W}x${WALLPAPER_H}.png`);
   } catch (e) {
     console.error('wallpaper failed:', e);
     showToast('ვოლპეიპერის შექმნა ვერ მოხერხდა');
+  }
+};
+
+// Reads one project's issues (all three sections, no drafts) and their comments ONCE and builds its rows-view data —
+// the same data the project's own chart shows. Issues whose counter says "0 comments" are not asked for comments.
+async function loadProjectActivityRows(project) {
+  const issues = [];
+  for (const sec of ['review', 'mep', 'internal']) {
+    const snap = await getDocs(query(collection(db,'projects',project.id,'issues'), where('section','==',sec), where('visibility','in',visibilityStatesFor(sec))));
+    snap.forEach(d => {
+      const x = d.data();
+      if (x.createdAt && x.createdAt.toDate) issues.push({ id: d.id, section: sec, disc: x.disc, createdAt: x.createdAt, createdByName: x.createdByName || 'უცნობი', commentCount: x.commentCount });
+    });
+  }
+  if (!issues.length) return null;
+  issues.sort((a, b) => a.createdAt.toDate() - b.createdAt.toDate());
+  const commentsByAuthor = {};
+  const withComments = issues.filter(i => i.commentCount !== 0);
+  for (let i = 0; i < withComments.length; i += 20) { // 20 issues at a time
+    await Promise.all(withComments.slice(i, i + 20).map(async iss => {
+      try {
+        const snap = await getDocs(collection(db,'projects',project.id,'issues',iss.id,'comments'));
+        snap.forEach(cd => {
+          const c = cd.data();
+          if (!c.createdAt || !c.createdAt.toDate) return;
+          const author = c.authorName || (allUsers[c.authorId] && allUsers[c.authorId].name) || 'უცნობი';
+          if (!commentsByAuthor[author]) commentsByAuthor[author] = [];
+          commentsByAuthor[author].push(c.createdAt.toDate().getTime());
+        });
+      } catch (e) { /* a comment list that can't be read just isn't counted */ }
+    }));
+  }
+  const startTime = issues[0].createdAt.toDate().getTime();
+  const endTime = Math.max(issues[issues.length - 1].createdAt.toDate().getTime(), Date.now());
+  return buildActivityRowsData(issues, commentsByAuthor, startTime, endTime);
+}
+
+// Admin tools → the all-projects wallpaper: goes through every project of the list on the main page, one after the
+// other (progress is shown on the button), and puts their lines into one picture.
+window.downloadAllProjectsWallpaper = async function() {
+  const btn = document.getElementById('btnAllProjectsWallpaper');
+  const projects = lastChartProjects;
+  if (!projects || !projects.length) { showToast('პროექტები ჯერ არ არის ჩატვირთული'); return; }
+  if (!confirm('ყველა პროექტის აქტივობა გადაიკითხება და ერთ ვოლპეიპერად ჩაიწერება. ეს შეიძლება რამდენიმე ათეული წამი გაგრძელდეს. გავაგრძელო?')) return;
+  const label = btn.textContent;
+  btn.disabled = true;
+  try {
+    const blocks = [];
+    for (let i = 0; i < projects.length; i++) {
+      btn.textContent = `მუშავდება... ${i + 1} / ${projects.length} პროექტი`;
+      const data = await loadProjectActivityRows(projects[i]);
+      if (data) blocks.push({ data });
+    }
+    if (!blocks.length) { showToast('აქტივობის მონაცემი არ მოიძებნა'); return; }
+    btn.textContent = 'ვოლპეიპერი იქმნება...';
+    const out = buildAllProjectsWallpaperSvg(blocks, wallpaperBackground());
+    saveBlobAs(await wallpaperPng(out.svgEl, null), `all-projects-wallpaper-${WALLPAPER_W}x${WALLPAPER_H}.png`);
+    showToast(`ვოლპეიპერი მზადაა: ${out.drawn} ხაზი (სულ ${out.total}-დან), ${out.projectsShown} პროექტი`);
+  } catch (e) {
+    console.error('all-projects wallpaper failed:', e);
+    showToast('ვოლპეიპერის შექმნა ვერ მოხერხდა');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
   }
 };
 
