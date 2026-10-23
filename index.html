@@ -912,7 +912,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 "სახელი სავალდებულოა": "Name is required",
 "ელ. ფოსტა სავალდებულოა": "Email is required",
 "პაროლი უნდა იყოს მინიმუმ 6 სიმბოლო": "Password must be at least 6 characters",
-"რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად — ამის შემდეგ ანგარიში ავტომატურად გააქტიურდება.": "Registration complete! Check your email to confirm it — your account will then be activated automatically.",
 "რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად, შემდეგ დაელოდეთ ადმინისტრატორის დადასტურებას.": "Registration complete! Check your email to confirm it, then wait for administrator approval.",
 "ეს ელ. ფოსტა უკვე რეგისტრირებულია": "This email is already registered",
 "ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ": "The account has not yet been approved by an administrator",
@@ -1591,25 +1590,13 @@ onAuthStateChanged(auth, async user => {
     if (uDoc.exists() && uDoc.data().name) name = uDoc.data().name;
   } else if (uDoc.exists()) {
     const d = uDoc.data();
-    // Keep Firestore's copy of the verification status in sync (client SDK
-    // can only ever see this on the currently signed-in user, so we mirror
-    // it here whenever they log in — needed so admin can see it too).
-    // This must happen even if the account isn't approved yet, otherwise a
-    // pending user who verifies their email would never have that fact
-    // recorded, since the block below signs them straight back out.
+    // Keep Firestore's copy of the verification status in sync (client SDK can only ever see this on the currently
+    // signed-in user, so we mirror it here whenever they log in — needed so admin can see it too). This must happen
+    // even if the account isn't approved yet, otherwise a pending user who verifies their email would never have that
+    // fact recorded, since the check below signs them straight back out. Verifying the email does NOT approve the
+    // account: an admin approves every registration.
     if (user.emailVerified && !d.emailVerified) {
-      try {
-        const patch = { emailVerified: true };
-        // Auto-approval for same-domain viewer accounts only ever fires
-        // here — once the address is actually confirmed to be under this
-        // person's control — never at registration time, when the email
-        // string alone can't be trusted.
-        if (!d.approved && d.role === 'viewer' && (d.email||'').toLowerCase().endsWith('@biograpi.ge')) {
-          patch.approved = true;
-          d.approved = true; // so the !d.approved check just below doesn't sign them straight back out
-        }
-        await updateDoc(doc(db,'users',user.uid), patch);
-      } catch(e) {}
+      try { await updateDoc(doc(db,'users',user.uid), { emailVerified: true }); } catch(e) {}
     }
     if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ'); await signOut(auth); return; }
     role = d.role || 'contractor';
@@ -4832,7 +4819,6 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
   isRegistering = true;
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    const isBiograpiViewer = role === 'viewer' && email.toLowerCase().endsWith('@biograpi.ge');
     await setDoc(doc(db,'users',cred.user.uid), {
       name, email, role, approved: false, emailVerified: false, createdAt: serverTimestamp()
     });
@@ -4842,9 +4828,7 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
     document.getElementById('regEmail').value = '';
     document.getElementById('regPass').value = '';
     document.getElementById('tabLogin').click();
-    showToast(isBiograpiViewer
-      ? 'რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად — ამის შემდეგ ანგარიში ავტომატურად გააქტიურდება.'
-      : 'რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად, შემდეგ დაელოდეთ ადმინისტრატორის დადასტურებას.');
+    showToast('რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად, შემდეგ დაელოდეთ ადმინისტრატორის დადასტურებას.');
   } catch(e) {
     let msg = 'შეცდომა: ' + e.message;
     if (e.code === 'auth/email-already-in-use') msg = 'ეს ელ. ფოსტა უკვე რეგისტრირებულია';
