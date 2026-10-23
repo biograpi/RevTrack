@@ -1150,7 +1150,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   // Patterns for texts that have numbers or names inside them.
   var P = [
     [/^მუშავდება\.\.\. (\d+) \/ (\d+) პროექტი$/, function (m) { return 'Working... ' + m[1] + ' / ' + m[2] + ' ' + (m[2] === '1' ? 'project' : 'projects'); }],
-    [/^ვოლპეიპერი მზადაა: (\d+) ხაზი \(სულ (\d+)-დან\), (\d+) პროექტი$/, function (m) { return 'Wallpaper ready: ' + m[1] + ' lines (of ' + m[2] + '), ' + plural(m[3], 'project', 'projects'); }],
+    [/^ვოლპეიპერი მზადაა: (\d+) ხაზი \(სულ (\d+)-დან\)\. პროექტები: ([\s\S]*)$/, function (m) { return 'Wallpaper ready: ' + m[1] + ' lines (of ' + m[2] + '). Projects: ' + translit(m[3].replace(/\(ნაწილობრივ\)/g, '(partly)')); }],
     [/^შეცდომა: ([\s\S]*)$/, function (m) { return 'Error: ' + m[1]; }],
     [/^შეცდომა საკითხების ჩატვირთვისას: ([\s\S]*)$/, function (m) { return 'Error loading issues: ' + m[1]; }],
     [/^შეცდომა ექსპორტისას: ([\s\S]*)$/, function (m) { return 'Export error: ' + m[1]; }],
@@ -3304,14 +3304,13 @@ function rowsHeightScale(rows, step, maxPeak) {
 // Paints the lines top to bottom: each line is first filled with the page colour (hiding whatever of the lines above
 // pokes out behind it), then drawn. A switched-off line (key in `off`) is only drawn, faintly — it hides nothing.
 function paintRows(svg, rows, { x, bg, perUnit, topPad, step, off }) {
-  const areaFor = base => d3.area().x(p => x(p.x)).y0(base).y1(p => base - p.y * perUnit + p.n);
-  const lineFor = base => d3.line().x(p => x(p.x)).y(p => base - p.y * perUnit + p.n);
   rows.forEach((r, i) => {
+    const pu = typeof perUnit === 'function' ? perUnit(r, i) : perUnit; // one scale for all lines, or one per line
     const base = topPad + i * step;
     const isOff = off.has(r.key);
     const g = svg.append('g');
-    if (!isOff) g.append('path').attr('d', areaFor(base)(r.points)).attr('fill', bg);
-    g.append('path').attr('d', lineFor(base)(r.points)).attr('fill', 'none')
+    if (!isOff) g.append('path').attr('d', d3.area().x(p => x(p.x)).y0(base).y1(p => base - p.y * pu + p.n)(r.points)).attr('fill', bg);
+    g.append('path').attr('d', d3.line().x(p => x(p.x)).y(p => base - p.y * pu + p.n)(r.points)).attr('fill', 'none')
       .attr('stroke', isOff ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.92)')
       .attr('stroke-width', 1).attr('stroke-linejoin', 'round');
   });
@@ -3492,16 +3491,19 @@ function buildAllProjectsWallpaperSvg(blocks, bg) {
   const stack = []; // bottom to top
   blocks.forEach((b, bi) => {
     const rows = wallpaperRows(b.data);
-    for (let i = rows.length - 1; i >= 0; i--) stack.push({ row: rows[i], project: bi });
+    // Every project keeps the height scale of its OWN wallpaper, so its waves look exactly as they do there (a common
+    // scale would make a quiet project look flat next to a busy one).
+    const perUnit = rowsHeightScale(rows, step, 110).perUnit;
+    for (let i = rows.length - 1; i >= 0; i--) stack.push({ row: rows[i], project: bi, perUnit });
   });
   // How the picture looks with the first n lines: the lines top to bottom, their height scale, and the highest point drawn.
   const layout = n => {
-    const rows = stack.slice(0, n).map(s => s.row).reverse(); // painted top to bottom
-    const { perUnit } = rowsHeightScale(rows, step, 100);
+    const part = stack.slice(0, n).reverse(); // painted top to bottom
+    const rows = part.map(s => s.row), units = part.map(s => s.perUnit);
     const topPad = bottomY - (rows.length - 1) * step;
     let highest = Infinity;
-    rows.forEach((r, i) => { for (const p of r.points) highest = Math.min(highest, topPad + i * step - p.y * perUnit + p.n); });
-    return { rows, perUnit, topPad, highest };
+    rows.forEach((r, i) => { for (const p of r.points) highest = Math.min(highest, topPad + i * step - p.y * units[i] + p.n); });
+    return { rows, units, topPad, highest };
   };
   // As many lines as fit; drop lines from the top while a bump would reach into the top margin.
   let count = Math.min(capacity, stack.length), lay = layout(count);
@@ -3509,13 +3511,16 @@ function buildAllProjectsWallpaperSvg(blocks, bg) {
   const shown = stack.slice(0, count);
   const { padL, x } = wallpaperScale();
   const { svgEl, svg } = newWallpaperSvg(bg, padL, 0);
-  if (shown.length) paintRows(svg, lay.rows, { x, bg, perUnit: lay.perUnit, topPad: lay.topPad, step, off: new Set() });
+  if (shown.length) paintRows(svg, lay.rows, { x, bg, perUnit: (r, i) => lay.units[i], topPad: lay.topPad, step, off: new Set() });
   const linesPerProject = blocks.map((b, bi) => stack.filter(s => s.project === bi).length);
   const shownPerProject = blocks.map((b, bi) => shown.filter(s => s.project === bi).length);
   return {
     svgEl, drawn: shown.length, total: stack.length,
     projectsShown: shownPerProject.filter(n => n > 0).length,
     projectsComplete: linesPerProject.filter((n, bi) => n > 0 && shownPerProject[bi] === n).length,
+    // which projects are in the picture (a project that only partly fits is marked)
+    listing: blocks.map((b, bi) => ({ name: b.name, shown: shownPerProject[bi], total: linesPerProject[bi] }))
+      .filter(o => o.shown > 0).map(o => o.name + (o.shown < o.total ? ' (ნაწილობრივ)' : '')),
   };
 }
 
@@ -3579,7 +3584,8 @@ window.downloadActivityWallpaper = async function() {
 };
 
 // Reads one project's issues (all three sections, no drafts) and their comments ONCE and builds its rows-view data —
-// the same data the project's own chart shows. Issues whose counter says "0 comments" are not asked for comments.
+// the same data the project's own chart shows (every issue is asked for its comments, like the project's own chart does,
+// so the waves come out the same).
 async function loadProjectActivityRows(project) {
   const issues = [];
   for (const sec of ['review', 'mep', 'internal']) {
@@ -3592,7 +3598,7 @@ async function loadProjectActivityRows(project) {
   if (!issues.length) return null;
   issues.sort((a, b) => a.createdAt.toDate() - b.createdAt.toDate());
   const commentsByAuthor = {};
-  const withComments = issues.filter(i => i.commentCount !== 0);
+  const withComments = issues;
   for (let i = 0; i < withComments.length; i += 20) { // 20 issues at a time
     await Promise.all(withComments.slice(i, i + 20).map(async iss => {
       try {
@@ -3626,13 +3632,13 @@ window.downloadAllProjectsWallpaper = async function() {
     for (let i = 0; i < projects.length; i++) {
       btn.textContent = `მუშავდება... ${i + 1} / ${projects.length} პროექტი`;
       const data = await loadProjectActivityRows(projects[i]);
-      if (data) blocks.push({ data });
+      if (data) blocks.push({ name: projects[i].name, data });
     }
     if (!blocks.length) { showToast('აქტივობის მონაცემი არ მოიძებნა'); return; }
     btn.textContent = 'ვოლპეიპერი იქმნება...';
     const out = buildAllProjectsWallpaperSvg(blocks, wallpaperBackground());
     saveBlobAs(await wallpaperPng(out.svgEl, null), `all-projects-wallpaper-${WALLPAPER_W}x${WALLPAPER_H}.png`);
-    showToast(`ვოლპეიპერი მზადაა: ${out.drawn} ხაზი (სულ ${out.total}-დან), ${out.projectsShown} პროექტი`);
+    showToast(`ვოლპეიპერი მზადაა: ${out.drawn} ხაზი (სულ ${out.total}-დან). პროექტები: ${out.listing.join(', ')}`);
   } catch (e) {
     console.error('all-projects wallpaper failed:', e);
     showToast('ვოლპეიპერის შექმნა ვერ მოხერხდა');
