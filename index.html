@@ -65,7 +65,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-header{height:52px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px;position:sticky;top:0;z-index:100}
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
-.view-toggle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px}
+.main-view-toggle{display:flex;width:max-content;margin:24px auto 0;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px}
 .sankey-size-toggle{display:flex;justify-content:center;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px;width:fit-content;margin:0 auto 10px}
 .view-toggle-btn{border:none;background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-family:inherit;padding:6px 16px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s}
 .view-toggle-btn:hover{color:#fff}
@@ -83,6 +83,8 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .rows-slider-thumb{position:absolute;top:50%;left:0;width:40px;height:6px;margin-top:-3px;border-radius:3px;background:rgba(255,255,255,.7);cursor:grab}
 .rows-slider:hover .rows-slider-thumb,.rows-slider.dragging .rows-slider-thumb{background:rgba(255,255,255,.95)}
 .rows-slider.dragging .rows-slider-thumb{cursor:grabbing}
+.activity-rows-person .activity-legend-item input{appearance:none;-webkit-appearance:none;margin:0;width:11px;height:11px;border-radius:2px;flex-shrink:0;box-sizing:border-box;cursor:pointer;border:1.75px solid rgba(255,255,255,.5);background:rgba(255,255,255,.5)}
+.activity-rows-person .activity-legend-item input:not(:checked){background:transparent}
 .activity-rows-toggles{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 .activity-rows-person{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;font-size:11px;color:rgba(255,255,255,.85)}
 .activity-rows-name{min-width:96px;font-weight:600;color:#fff}
@@ -393,10 +395,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <div class="projects-screen" id="projectsScreen">
   <div class="projects-header">
     <div class="projects-logo">RevTrack <span style="opacity:.6;font-weight:400">1.0</span></div>
-    <div class="view-toggle" id="mainViewToggle" style="display:none">
-      <button class="view-toggle-btn" id="mainViewToggleGrid" onclick="setMainListView('grid')">ბადე</button>
-      <button class="view-toggle-btn" id="mainViewToggleChart" onclick="setMainListView('chart')">გრაფიკი</button>
-    </div>
     <div class="projects-user">
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
@@ -405,6 +403,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-hdr" type="button" data-lang-toggle data-no-i18n>English</button>
       <button class="btn-hdr" id="btnProjLogout">გამოსვლა</button>
     </div>
+  </div>
+  <div class="main-view-toggle" id="mainViewToggle" style="display:none">
+    <button class="view-toggle-btn" id="mainViewToggleGrid" onclick="setMainListView('grid')">ბადე</button>
+    <button class="view-toggle-btn" id="mainViewToggleChart" onclick="setMainListView('chart')">გრაფიკი</button>
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
@@ -3249,10 +3251,11 @@ function renderActivityRows() {
     }
     box.innerHTML = groups.map(g => `<div class="activity-rows-person">
       <span class="activity-rows-name">${esc(g.label)}</span>
-      ${g.rows.map(r => `<label class="activity-legend-item"><input type="checkbox" data-key="${esc(r.key)}" ${activityRowsOff.has(r.key) ? '' : 'checked'}> ${subHtml(r.sub)}</label>`).join('')}
+      ${g.rows.map(r => `<label class="activity-legend-item${activityRowsOff.has(r.key) ? ' is-hidden' : ''}"><input type="checkbox" data-key="${esc(r.key)}" ${activityRowsOff.has(r.key) ? '' : 'checked'}> ${subHtml(r.sub)}</label>`).join('')}
     </div>`).join('');
     box.querySelectorAll('input').forEach(inp => inp.addEventListener('change', () => {
       if (inp.checked) activityRowsOff.delete(inp.dataset.key); else activityRowsOff.add(inp.dataset.key);
+      inp.closest('label').classList.toggle('is-hidden', !inp.checked); // dimmed label when off, like the line chart's legend
       drawActivityRows();
     }));
   }
