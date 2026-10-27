@@ -1410,6 +1410,9 @@ let sortCol = 'num', sortDir = 'asc';
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 // Shows the small message at the bottom of the screen for 2.5 seconds.
 const showToast = msg => { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); };
+// Today's date in the user's own time zone as yyyy.mm.dd. (new Date().toISOString() would give the UTC date, which here
+// is still yesterday's during the first hours after midnight.)
+const todayDotted = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`; };
 // om(id) / cm(id): open / close a modal window by id (adds / removes its "open" class).
 window.cm = id => document.getElementById(id).classList.remove('open');
 const om = id => document.getElementById(id).classList.add('open');
@@ -2080,7 +2083,7 @@ window.downloadSankeyAsHtml = function() {
     mepReviewer: (p.mepReviewer || '').trim() || 'გია, იური',
   }));
   const dataJson = JSON.stringify(dataSnapshot);
-  const todayStr = new Date().toISOString().slice(0,10).replace(/-/g, '.');
+  const todayStr = todayDotted();
 
   // The page below is a COPY of the diagram code (it has to work on its own). When the diagram logic changes,
   // the same change must be repeated here and in projects.html.
@@ -2389,7 +2392,8 @@ window.downloadSankeyAsPdf = function() {
   const EXPORT_WIDTH = Math.round(liveViewBox[2]) || Math.round(liveBBox.width) || 900;
   const DIAGRAM_HEIGHT = Math.round(liveViewBox[3]) || Math.round(liveBBox.height) || 480;
   const TITLE_AREA_HEIGHT = 60; // room for the title + date, above the diagram
-  const EXPORT_HEIGHT = DIAGRAM_HEIGHT + TITLE_AREA_HEIGHT;
+  const FOOTER_HEIGHT = 26;     // room for the "downloaded from" line, below it
+  const EXPORT_HEIGHT = DIAGRAM_HEIGHT + TITLE_AREA_HEIGHT + FOOTER_HEIGHT;
   const exportSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   renderReviewerManagerChart(lastChartProjects, {
     svgEl: exportSvg,
@@ -2428,8 +2432,18 @@ window.downloadSankeyAsPdf = function() {
   dateText.setAttribute('fill', 'rgba(0,0,0,.55)');
   dateText.setAttribute('font-size', '12px');
   dateText.setAttribute('font-family', "'Noto Sans Georgian','Inter',sans-serif");
-  dateText.textContent = '2026.09.21';
+  dateText.textContent = todayDotted();
   exportSvg.appendChild(dateText);
+  // Bottom-right corner: where the file came from and the day it was downloaded (same line as on the wallpapers).
+  const footerText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  footerText.setAttribute('x', EXPORT_WIDTH - 16);
+  footerText.setAttribute('y', EXPORT_HEIGHT - 10);
+  footerText.setAttribute('text-anchor', 'end');
+  footerText.setAttribute('fill', 'rgba(0,0,0,.45)');
+  footerText.setAttribute('font-size', '11px');
+  footerText.setAttribute('font-family', "'Noto Sans Georgian','Inter',sans-serif");
+  footerText.textContent = `downloaded from RevTrack ${todayDotted()}`;
+  exportSvg.appendChild(footerText);
 
   exportSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   exportSvg.setAttribute('width', EXPORT_WIDTH);
@@ -2473,7 +2487,7 @@ window.downloadSankeyAsPdf = function() {
     const offsetY = marginPt + (usableHeightPt - drawHeightPt) / 2;
     const dataUrl = fullCanvas.toDataURL('image/jpeg', 0.95);
     pdf.addImage(dataUrl, 'JPEG', offsetX, offsetY, drawWidthPt, drawHeightPt);
-    pdf.save(`revtrack-reviewer-manager-${new Date().toISOString().slice(0,10)}.pdf`);
+    pdf.save(`revtrack-reviewer-manager-${todayDotted().replace(/\./g, '-')}.pdf`);
   };
   img.onerror = () => { URL.revokeObjectURL(url); showToast('ჩამოწერა ვერ მოხერხდა'); };
   img.src = url;
