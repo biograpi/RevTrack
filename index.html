@@ -637,6 +637,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-secondary" id="btnBackfillPublicProjects" style="width:100%;justify-content:flex-start" title="ერთჯერადი ნაბიჯი — ავსებს publicProjects კოლექციას ყველა უკვე არსებული პროექტით (projects.html-ისთვის). შემდეგ ეს ავტომატურად ხდება.">🔄 საჯარო გრაფიკის მონაცემების შევსება</button>
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsPdf()">⬇ გრაფიკის ჩამოწერა (PDF)</button>
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsHtml()">⬇ ინტერაქტიული HTML ჩამოწერა</button>
+      <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsWallpaper(false)" title="ჩამოწერს მთავარი გვერდის დიაგრამას ვოლპეიპერად (1920×1080), წარწერების გარეშე">🖼 გრაფიკი ვოლპეიპერად — წარწერების გარეშე</button>
+      <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsWallpaper(true)" title="ჩამოწერს მთავარი გვერდის დიაგრამას ვოლპეიპერად (1920×1080), სახელებითა და სვეტების სათაურებით">🖼 გრაფიკი ვოლპეიპერად — წარწერებით</button>
       <button class="btn-secondary" id="btnAllProjectsWallpaper" style="width:100%;justify-content:flex-start" onclick="downloadAllProjectsWallpaper()" title="გადაიკითხავს ყველა პროექტის საკითხებსა და კომენტარებს და ერთ ვოლპეიპერად (1920×1080) ჩაწერს">🖼 ყველა პროექტის ვოლპეიპერი</button>
     </div>
     <div class="modal-footer"><button class="btn-secondary" onclick="cm('adminToolsModal')">დახურვა</button></div>
@@ -861,6 +863,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"🖼 გრაფიკი ვოლპეიპერად — წარწერების გარეშე": "🖼 Diagram as a wallpaper — without labels",
+"🖼 გრაფიკი ვოლპეიპერად — წარწერებით": "🖼 Diagram as a wallpaper — with labels",
+"ჩამოწერს მთავარი გვერდის დიაგრამას ვოლპეიპერად (1920×1080), სახელებითა და სვეტების სათაურებით": "Downloads the main-page diagram as a wallpaper (1920×1080), with the names and column headers",
+"ჩამოწერს მთავარი გვერდის დიაგრამას ვოლპეიპერად (1920×1080), წარწერების გარეშე": "Downloads the main-page diagram as a wallpaper (1920×1080), without any labels",
 "🖼 ყველა პროექტის ვოლპეიპერი": "🖼 Wallpaper of all projects",
 "გადაიკითხავს ყველა პროექტის საკითხებსა და კომენტარებს და ერთ ვოლპეიპერად (1920×1080) ჩაწერს": "Reads the issues and comments of every project and puts them into one wallpaper (1920×1080)",
 "ყველა პროექტის აქტივობა გადაიკითხება და ერთ ვოლპეიპერად ჩაიწერება. ეს შეიძლება რამდენიმე ათეული წამი გაგრძელდეს. გავაგრძელო?": "The activity of every project will be read and put into one wallpaper. This can take tens of seconds. Continue?",
@@ -1736,6 +1742,12 @@ function renderReviewerManagerChart(projects, opts) {
   svgEl.innerHTML = ''; // clear any previous render
   const width = opts.width || (svgEl.parentElement && svgEl.parentElement.clientWidth) || 800;
   const height = opts.height || Math.max(200, computeMaxColumnNodeCount(projects) * 50);
+  // Used by the wallpaper: noLabels draws the picture without any text (no names, no column headers, no tooltips), and
+  // margin moves the diagram away from the edges. Without these options everything is drawn exactly as before.
+  const noLabels = !!opts.noLabels;
+  const fontPx = (opts.fontSize || 11) + 'px'; // text size (the wallpaper uses a bigger one)
+  const tr = window.__i18nTr || (word => word); // English mode: column headers in English even in a picture made off-screen
+  const mg = Object.assign({ left: 1, right: 1, top: 34, bottom: 5 }, opts.margin || {});
 
   // Build unique node ids per column so a project can't collide in name
   // with a reviewer, manager, or PM (each gets its own id prefix; the
@@ -1858,7 +1870,7 @@ function renderReviewerManagerChart(projects, opts) {
     .nodeId(d => d.id)
     .nodeWidth(14)
     .nodePadding(20)
-    .extent([[1, 34], [width - 1, height - 5]]);
+    .extent([[mg.left, mg.top], [width - mg.right, height - mg.bottom]]);
 
   const graph = sankeyGen({
     nodes: [...nodesById.values()].map(d => ({ ...d })),
@@ -1891,7 +1903,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('stroke', d => `url(#${d.gradientId})`)
     .attr('stroke-width', d => d.width)
     .attr('opacity', 0.45);
-  linkSel.append('title').text(d => `${d.source.name} → ${d.target.name}`);
+  if (!noLabels) linkSel.append('title').text(d => `${d.source.name} → ${d.target.name}`);
 
   // Given ANY node, finds every link sharing a projectId with a link that
   // directly touches this node — i.e. the full DM→project→reviewer→PM flow
@@ -1920,8 +1932,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('height', d => Math.max(1, d.y1 - d.y0))
     .attr('width', d => d.x1 - d.x0)
     .attr('fill', d => d.color)
-    .append('title')
-    .text(d => d.name);
+    .each(function(d) { if (!noLabels) d3.select(this).append('title').text(d.name); });
 
   // Every link gets a matching pair of thin "segment" rects drawn right on
   // top of its source and target nodes (after the base solid rects above,
@@ -1953,13 +1964,13 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('height', d => d.width)
     .attr('fill', d => d.target.color);
 
-  const nodeTextSel = node.append('text')
+  if (!noLabels) node.append('text')
     .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
     .attr('y', d => (d.y0 + d.y1) / 2)
     .attr('dy', '0.35em')
     .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
     .attr('fill', textColor)
-    .attr('font-size', '11px')
+    .attr('font-size', fontPx)
     .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif")
     .text(d => d.name);
 
@@ -2027,10 +2038,11 @@ function renderReviewerManagerChart(projects, opts) {
     });
   }
 
+  if (!noLabels) { // the column headers
   const headerStyle = t => t
-    .attr('y', 20)
+    .attr('y', mg.top - 14)   // just above the diagram (20 with the default margin)
     .attr('fill', headerTextColor)
-    .attr('font-size', '11px')
+    .attr('font-size', fontPx)
     .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif");
   // Center each header over its column's actual node position, rather than
   // assuming an even 1/4-width split — d3-sankey doesn't necessarily space
@@ -2039,26 +2051,27 @@ function renderReviewerManagerChart(projects, opts) {
     const n = graph.nodes.find(nd => nd.id.startsWith(prefix));
     return n ? (n.x0 + n.x1) / 2 : 0;
   }
-  headerStyle(svg.append('text').attr('x', 1).attr('text-anchor', 'start')).text('პროექტი');
+  headerStyle(svg.append('text').attr('x', mg.left).attr('text-anchor', 'start')).text(tr('პროექტი'));
   const showDm = sankeyManagerTypes.dm;
   const showPm = sankeyManagerTypes.pm;
   const showContractors = sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mep;
   const dmIsLast = showDm && !showContractors && !sankeyShowReviewer && !showPm;
   if (showDm) {
-    headerStyle(svg.append('text').attr('x', dmIsLast ? width - 1 : colCenterX('m:')).attr('text-anchor', dmIsLast ? 'end' : 'middle')).text('დიზაინ მენეჯერი');
+    headerStyle(svg.append('text').attr('x', dmIsLast ? width - mg.right : colCenterX('m:')).attr('text-anchor', dmIsLast ? 'end' : 'middle')).text(tr('დიზაინ მენეჯერი'));
   }
   if (showContractors) {
     const activeDisciplines = [sankeyDisciplines.arch && 'არქიტექტორი', sankeyDisciplines.struct && 'კონსტრუქტორი', sankeyDisciplines.mep && 'MEP'].filter(Boolean);
     const contractorIsLast = !sankeyShowReviewer && !showPm;
     const label = activeDisciplines.length === 1 ? activeDisciplines[0] : 'კონტრაქტორი';
-    headerStyle(svg.append('text').attr('x', contractorIsLast ? width - 1 : colCenterX('c:')).attr('text-anchor', contractorIsLast ? 'end' : 'middle')).text(label);
+    headerStyle(svg.append('text').attr('x', contractorIsLast ? width - mg.right : colCenterX('c:')).attr('text-anchor', contractorIsLast ? 'end' : 'middle')).text(tr(label));
   }
   if (sankeyShowReviewer) {
-    headerStyle(svg.append('text').attr('x', showPm ? colCenterX('r:') : width - 1).attr('text-anchor', showPm ? 'middle' : 'end')).text('რევიზორი');
+    headerStyle(svg.append('text').attr('x', showPm ? colCenterX('r:') : width - mg.right).attr('text-anchor', showPm ? 'middle' : 'end')).text(tr('რევიზორი'));
   }
   if (showPm) {
-    headerStyle(svg.append('text').attr('x', width - 1).attr('text-anchor', 'end')).text('პროექტის მენეჯერი');
+    headerStyle(svg.append('text').attr('x', width - mg.right).attr('text-anchor', 'end')).text(tr('პროექტის მენეჯერი'));
   }
+  } // end of the column headers
 }
 
 // Downloads the diagram as a standalone page (projects.zip containing projects.html): a snapshot of the data is
@@ -3648,6 +3661,30 @@ window.downloadAllProjectsWallpaper = async function() {
   } finally {
     btn.disabled = false;
     btn.textContent = label;
+  }
+};
+
+// Admin tools → the main-page diagram as a wallpaper: the same picture as on the site (same background and colours,
+// the boxes ticked above it right now) with the usual "downloaded from RevTrack" line in the bottom-right corner,
+// 1920 x 1080 like the other wallpapers. Two versions: without any text, or with the names and the column headers
+// (never a title). Both place the diagram identically, so the labelled one is the plain one plus text.
+window.downloadSankeyAsWallpaper = async function(withLabels) {
+  if (!lastChartProjects || !lastChartProjects.length) { showToast('ჩამოწერა ვერ მოხერხდა — გრაფიკი ჯერ არ ჩატვირთულა'); return; }
+  showToast('ვოლპეიპერი მზადდება...');
+  try {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svgEl = document.createElementNS(NS, 'svg');
+    renderReviewerManagerChart(lastChartProjects, {
+      svgEl, forceSizeMode: 'gba', theme: 'dark', width: WALLPAPER_W, height: WALLPAPER_H,
+      noLabels: !withLabels, fontSize: 14, margin: { left: 60, right: 60, top: 80, bottom: 120 }, // room above, and for the caption + taskbar below
+    });
+    svgEl.setAttribute('xmlns', NS);
+    svgEl.setAttribute('width', WALLPAPER_W);
+    svgEl.setAttribute('height', WALLPAPER_H);
+    saveBlobAs(await wallpaperPng(svgEl, null), `revtrack-diagram-wallpaper${withLabels ? '-labels' : ''}-${WALLPAPER_W}x${WALLPAPER_H}.png`);
+  } catch (e) {
+    console.error('diagram wallpaper failed:', e);
+    showToast('ვოლპეიპერის შექმნა ვერ მოხერხდა');
   }
 };
 
