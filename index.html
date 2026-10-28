@@ -632,7 +632,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div class="modal-header"><h2>🛠 ხელსაწყოები</h2><button class="modal-close" onclick="cm('adminToolsModal')">✕</button></div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:10px">
       <button class="btn-secondary" id="btnFixNames" style="width:100%;justify-content:flex-start" title="ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე">🔄 სახელების გასწორება</button>
-      <button class="btn-secondary" id="btnFixVisibility" style="width:100%;justify-content:flex-start" title="ძველ საკითხებს ანიჭებს ხილვადობის მნიშვნელობას (მანამდე ეს ველი არ არსებობდა)">🔄 ხილვადობის გასწორება</button>
       <button class="btn-secondary" id="btnRecalcIssueCounts" style="width:100%;justify-content:flex-start" title="გადაითვლის თითოეული პროექტის საკითხების რაოდენობას ბარათის ფერის გრადაციისთვის (მანამდე ეს ველი არ არსებობდა)">🔄 საკითხების რაოდენობის გადათვლა</button>
       <button class="btn-secondary" id="btnBackfillPublicProjects" style="width:100%;justify-content:flex-start" title="ერთჯერადი ნაბიჯი — ავსებს publicProjects კოლექციას ყველა უკვე არსებული პროექტით (projects.html-ისთვის). შემდეგ ეს ავტომატურად ხდება.">🔄 საჯარო გრაფიკის მონაცემების შევსება</button>
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsPdf()">⬇ გრაფიკის ჩამოწერა (PDF)</button>
@@ -640,6 +639,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsWallpaper(false)" title="ჩამოწერს მთავარი გვერდის დიაგრამას ვოლპეიპერად (1920×1080), წარწერების გარეშე">🖼 გრაფიკი ვოლპეიპერად — წარწერების გარეშე</button>
       <button class="btn-secondary" style="width:100%;justify-content:flex-start" onclick="downloadSankeyAsWallpaper(true)" title="ჩამოწერს მთავარი გვერდის დიაგრამას ვოლპეიპერად (1920×1080), სახელებითა და სვეტების სათაურებით">🖼 გრაფიკი ვოლპეიპერად — წარწერებით</button>
       <button class="btn-secondary" id="btnAllProjectsWallpaper" style="width:100%;justify-content:flex-start" onclick="downloadAllProjectsWallpaper()" title="გადაიკითხავს ყველა პროექტის საკითხებსა და კომენტარებს და ერთ ვოლპეიპერად (1920×1080) ჩაწერს">🖼 ყველა პროექტის ვოლპეიპერი</button>
+      <button class="btn-secondary" id="btnProjectLinesWallpaper" style="width:100%;justify-content:flex-start" onclick="downloadProjectLinesWallpaper()" title="ყოველ პროექტს ერთი ხაზი აქვს: საკითხებისა და კომენტარების აქტივობა ერთად ბორცვებად ჯგუფდება (1920×1080)">🖼 ვოლპეიპერი: ხაზი თითო პროექტზე</button>
     </div>
     <div class="modal-footer"><button class="btn-secondary" onclick="cm('adminToolsModal')">დახურვა</button></div>
   </div>
@@ -863,6 +863,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"🖼 ვოლპეიპერი: ხაზი თითო პროექტზე": "🖼 Wallpaper: one line per project",
+"ყოველ პროექტს ერთი ხაზი აქვს: საკითხებისა და კომენტარების აქტივობა ერთად ბორცვებად ჯგუფდება (1920×1080)": "Every project is one line: the activity of issues and comments is added up into bumps (1920×1080)",
 "🖼 გრაფიკი ვოლპეიპერად — წარწერების გარეშე": "🖼 Diagram as a wallpaper — without labels",
 "🖼 გრაფიკი ვოლპეიპერად — წარწერებით": "🖼 Diagram as a wallpaper — with labels",
 "ჩამოწერს მთავარი გვერდის დიაგრამას ვოლპეიპერად (1920×1080), სახელებითა და სვეტების სათაურებით": "Downloads the main-page diagram as a wallpaper (1920×1080), with the names and column headers",
@@ -1072,8 +1074,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 "მომხმარებელი წაიშალა": "User deleted",
 "🔄 სახელების გასწორება": "🔄 Fix names",
 "ასწორებს ძველ პროექტებში შენახულ მეილ-ბაზირებულ სახელებს რეალურ სახელებზე": "Replaces email-based names saved in old projects with real names",
-"🔄 ხილვადობის გასწორება": "🔄 Fix visibility",
-"ძველ საკითხებს ანიჭებს ხილვადობის მნიშვნელობას (მანამდე ეს ველი არ არსებობდა)": "Assigns a visibility value to old issues (this field didn't exist before)",
 "🔄 საკითხების რაოდენობის გადათვლა": "🔄 Recount issue totals",
 "გადაითვლის თითოეული პროექტის საკითხების რაოდენობას ბარათის ფერის გრადაციისთვის (მანამდე ეს ველი არ არსებობდა)": "Recounts each project's issues for the card color gradient (this field didn't exist before)",
 "🔄 საჯარო გრაფიკის მონაცემების შევსება": "🔄 Fill public chart data",
@@ -1083,7 +1083,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 "ერთჯერადი ნაბიჯი: ყველა არსებული პროექტი გადაიწერება საჯარო გრაფიკის (publicProjects) კოლექციაში. გავაგრძელო?": "One-time step: every existing project will be copied to the public chart (publicProjects) collection. Continue?",
 "გადავამოწმო ყველა პროექტის შემქმნელის სახელი და გავასწორო ძველი (მეილზე დაფუძნებული) ჩანაწერები?": "Check every project's creator name and fix old (email-based) entries?",
 "ყველა სახელი უკვე სწორი იყო": "All names were already correct",
-"ყველა საკითხს უკვე ჰქონდა ხილვადობა მინიჭებული": "All issues already had a visibility assigned",
 "გადაითვალოს ყველა პროექტის საკითხების რაოდენობა (დრაფტების გარეშე) და შეინახოს პროექტზე, ბარათის ფერის გრადაციისთვის?": "Recount every project's issue total (excluding drafts) and store it on the project, for the card color gradient?",
 "პროექტის სახელი": "Project name",
 "პროექტი N123": "Project N123",
@@ -1127,7 +1126,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 "ფაილი წაიშალა": "File deleted",
 "კონტრაქტორია": "Is a contractor",
 "კონტრაქტორი ვერ მოიძებნა": "Contractor not found",
-"გადავამოწმო ყველა პროექტის ყველა საკითხი და მივანიჭო ხილვადობის მნიშვნელობა მათ, ვისაც ჯერ არა აქვს (ძველი საკითხები)? გაუშვი ეს მხოლოდ ერთხელ, სასურველია ახლავე, სანამ ვინმე ახალ დრაფტს შექმნის.": "Check every issue in every project and assign a visibility value to those that don't have one yet (old issues)? Run this only once, preferably right now, before anyone creates a new draft."
 };
 
   var GEO = /[\u10A0-\u10FF]/;
@@ -1145,6 +1143,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^ვოლპეიპერი მზადაა: (\d+) პროექტი$/, function (m) { return 'Wallpaper ready: ' + plural(m[1], 'project', 'projects'); }],
     [/^მუშავდება\.\.\. (\d+) \/ (\d+) პროექტი$/, function (m) { return 'Working... ' + m[1] + ' / ' + m[2] + ' ' + (m[2] === '1' ? 'project' : 'projects'); }],
     [/^ვოლპეიპერი მზადაა: (\d+) ხაზი \(სულ (\d+)-დან\)\. პროექტები: ([\s\S]*)$/, function (m) { return 'Wallpaper ready: ' + m[1] + ' lines (of ' + m[2] + '). Projects: ' + translit(m[3].replace(/\(ნაწილობრივ\)/g, '(partly)')); }],
     [/^შეცდომა: ([\s\S]*)$/, function (m) { return 'Error: ' + m[1]; }],
@@ -3446,11 +3445,14 @@ function drawActivityRows() {
 // is shown (WALLPAPER_DAYS); later activity is cut off, and if a project is younger than that, the rest is flat lines.
 // Scale: 1 drawing unit = 1 pixel, 30 units per day — the same proportions as the one-month view.
 const WALLPAPER_W = 1920, WALLPAPER_H = 1080, WALLPAPER_DAYS = 64.8, WALLPAPER_DAY = 86400000;
+// The activity of the all-projects and one-line-per-project wallpapers starts a little AFTER the left end of the line: a
+// straight stretch first, and the first bump begins about 12 px later (the first event's bump peaks 34 px in).
+const WALLPAPER_LEAD_PX = 34;
 
 // One project's lines for a wallpaper, with time counted from the project's first day (so every project starts at the
 // left edge). Each curve is cut at WALLPAPER_DAYS and carried on with zeros (no activity) if the project is shorter.
-function wallpaperRows(data) {
-  const start = data.startTime, end = start + WALLPAPER_DAYS * WALLPAPER_DAY;
+function wallpaperRows(data, days = WALLPAPER_DAYS) {
+  const start = data.startTime, end = start + days * WALLPAPER_DAY;
   const cut = {
     rows: data.rows.map(r => ({ ...r, curves: r.curves.map(c => {
       const pts = c.points.filter(p => p.x.getTime() <= end);
@@ -3602,7 +3604,7 @@ window.downloadActivityWallpaper = async function() {
 // Reads one project's issues (all three sections, no drafts) and their comments ONCE and builds its rows-view data —
 // the same data the project's own chart shows (every issue is asked for its comments, like the project's own chart does,
 // so the waves come out the same).
-async function loadProjectActivityRows(project) {
+async function loadProjectActivityRaw(project) {
   const issues = [];
   for (const sec of ['review', 'mep', 'internal']) {
     const snap = await getDocs(query(collection(db,'projects',project.id,'issues'), where('section','==',sec), where('visibility','in',visibilityStatesFor(sec))));
@@ -3611,9 +3613,9 @@ async function loadProjectActivityRows(project) {
       if (x.createdAt && x.createdAt.toDate) issues.push({ id: d.id, section: sec, disc: x.disc, createdAt: x.createdAt, createdByName: x.createdByName || 'უცნობი', commentCount: x.commentCount });
     });
   }
-  if (!issues.length) return null;
-  issues.sort((a, b) => a.createdAt.toDate() - b.createdAt.toDate());
   const commentsByAuthor = {};
+  if (!issues.length) return { issues, commentsByAuthor };
+  issues.sort((a, b) => a.createdAt.toDate() - b.createdAt.toDate());
   const withComments = issues;
   for (let i = 0; i < withComments.length; i += 20) { // 20 issues at a time
     await Promise.all(withComments.slice(i, i + 20).map(async iss => {
@@ -3629,7 +3631,14 @@ async function loadProjectActivityRows(project) {
       } catch (e) { /* a comment list that can't be read just isn't counted */ }
     }));
   }
-  const startTime = issues[0].createdAt.toDate().getTime();
+  return { issues, commentsByAuthor };
+}
+// The same, built into the rows-view data (null for a project without issues). leadMs moves the start of the time axis
+// that much BEFORE the project's first issue, so the curves begin with a straight stretch (0 = start at the first issue).
+async function loadProjectActivityRows(project, leadMs = 0) {
+  const { issues, commentsByAuthor } = await loadProjectActivityRaw(project);
+  if (!issues.length) return null;
+  const startTime = issues[0].createdAt.toDate().getTime() - leadMs;
   const endTime = Math.max(issues[issues.length - 1].createdAt.toDate().getTime(), Date.now());
   return buildActivityRowsData(issues, commentsByAuthor, startTime, endTime);
 }
@@ -3647,7 +3656,7 @@ window.downloadAllProjectsWallpaper = async function() {
     const blocks = [];
     for (let i = 0; i < projects.length; i++) {
       btn.textContent = `მუშავდება... ${i + 1} / ${projects.length} პროექტი`;
-      const data = await loadProjectActivityRows(projects[i]);
+      const data = await loadProjectActivityRows(projects[i], (WALLPAPER_LEAD_PX / 30) * WALLPAPER_DAY); // begin with a straight stretch
       if (data) blocks.push({ name: projects[i].name, data });
     }
     if (!blocks.length) { showToast('აქტივობის მონაცემი არ მოიძებნა'); return; }
@@ -3657,6 +3666,65 @@ window.downloadAllProjectsWallpaper = async function() {
     showToast(`ვოლპეიპერი მზადაა: ${out.drawn} ხაზი (სულ ${out.total}-დან). პროექტები: ${out.listing.join(', ')}`);
   } catch (e) {
     console.error('all-projects wallpaper failed:', e);
+    showToast('ვოლპეიპერის შექმნა ვერ მოხერხდა');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+};
+
+// ── WALLPAPER: ONE LINE PER PROJECT ──
+// Every project is one line; all its activity (issues opened, comments written — by anyone, in any section) is added up
+// into that line's bumps. No names or other text, only the "downloaded from RevTrack" line in the corner. The lines
+// are 8 px apart (as in the other wallpapers), start at a fixed distance from the left edge, and the first bump begins a
+// few pixels after the line does. The first project is at the bottom (like in the all-projects wallpaper); all projects
+// are drawn.
+const PROJECT_LINES_STEP = 8;      // distance between two lines
+const PROJECT_LINES_START = 120;   // x where every line begins
+
+// One project's activity as a single bump curve. The time axis begins a little before the project's first day.
+function projectLineData(project, raw, endTime) {
+  const issueTimes = raw.issues.map(i => i.createdAt.toDate().getTime());
+  const times = [...issueTimes, ...Object.values(raw.commentsByAuthor).flat()];
+  const first = issueTimes.length ? Math.min(...issueTimes) : endTime; // a project without issues is just a flat line
+  const startTime = first - (WALLPAPER_LEAD_PX / 30) * WALLPAPER_DAY; // 30 px per day
+  const end = Math.max(endTime, first);
+  return { startTime, endTime: end, rows: [{ key: 'project:' + project.id, label: project.name, sub: [], curves: [{ kind: 'all', points: bumpCurve(times, startTime, end) }] }] };
+}
+
+// The picture. items = [{ data }] in the order of the project list; lineStart = x where every line begins.
+function buildProjectLinesWallpaperSvg(items, bg, lineStart) {
+  const step = PROJECT_LINES_STEP, bottomY = WALLPAPER_H - 300; // the first project's line, 300 px above the bottom edge
+  const days = (WALLPAPER_W - lineStart) / 30;                  // the lines run from lineStart to the right edge
+  const x = d3.scaleTime().domain([new Date(0), new Date(days * WALLPAPER_DAY)]).range([lineStart, WALLPAPER_W]);
+  const rows = items.map(it => wallpaperRows(it.data, days)[0]);   // rows[0] = the first project (the bottom line)
+  const units = rows.map(r => rowsHeightScale([r], step, 100).perUnit); // every project at the height scale of its own biggest bump
+  const order = rows.map((r, i) => i).reverse();                    // painted top to bottom
+  const { svgEl, svg } = newWallpaperSvg(bg, 0, 0);
+  if (rows.length) paintRows(svg, order.map(i => rows[i]), { x, bg, perUnit: (r, k) => units[order[k]], topPad: bottomY - (rows.length - 1) * step, step, off: new Set() });
+  return { svgEl, lines: rows.length };
+}
+
+// Admin tools → "one line per project" wallpaper: reads every project one after the other (progress on the button).
+window.downloadProjectLinesWallpaper = async function() {
+  const btn = document.getElementById('btnProjectLinesWallpaper');
+  const projects = lastChartProjects;
+  if (!projects || !projects.length) { showToast('პროექტები ჯერ არ არის ჩატვირთული'); return; }
+  if (!confirm('ყველა პროექტის აქტივობა გადაიკითხება და ერთ ვოლპეიპერად ჩაიწერება. ეს შეიძლება რამდენიმე ათეული წამი გაგრძელდეს. გავაგრძელო?')) return;
+  const label = btn.textContent;
+  btn.disabled = true;
+  try {
+    const endTime = Date.now(), items = [];
+    for (let i = 0; i < projects.length; i++) {
+      btn.textContent = `მუშავდება... ${i + 1} / ${projects.length} პროექტი`;
+      items.push({ data: projectLineData(projects[i], await loadProjectActivityRaw(projects[i]), endTime) });
+    }
+    btn.textContent = 'ვოლპეიპერი იქმნება...';
+    const out = buildProjectLinesWallpaperSvg(items, wallpaperBackground(), PROJECT_LINES_START);
+    saveBlobAs(await wallpaperPng(out.svgEl, null), `all-projects-lines-wallpaper-${WALLPAPER_W}x${WALLPAPER_H}.png`);
+    showToast(`ვოლპეიპერი მზადაა: ${out.lines} პროექტი`);
+  } catch (e) {
+    console.error('project-lines wallpaper failed:', e);
     showToast('ვოლპეიპერის შექმნა ვერ მოხერხდა');
   } finally {
     btn.disabled = false;
@@ -5266,7 +5334,7 @@ async function deleteProjectFully(pid, name) {
 }
 
 // ── NEW PROJECT ──
-// Admin tools (the 🛠 panel): fix old creator names, fix missing visibility values, recount issues, fill the public mirror.
+// Admin tools (the 🛠 panel): fix old creator names, recount issues, fill the public mirror.
 // (For historical reasons these sit under the NEW PROJECT header — the new-project handler is further down.)
 document.getElementById('btnFixNames').addEventListener('click', async () => {
   if (!confirm('გადავამოწმო ყველა პროექტის შემქმნელის სახელი და გავასწორო ძველი (მეილზე დაფუძნებული) ჩანაწერები?')) return;
@@ -5288,33 +5356,6 @@ document.getElementById('btnFixNames').addEventListener('click', async () => {
     }
     showToast(fixed ? `გასწორდა ${fixed} პროექტი` : 'ყველა სახელი უკვე სწორი იყო');
     await showProjects();
-  } catch(e) { alert('შეცდომა: '+e.message); }
-  btn.disabled = false; btn.textContent = origText;
-});
-document.getElementById('btnFixVisibility').addEventListener('click', async () => {
-  if (!confirm('გადავამოწმო ყველა პროექტის ყველა საკითხი და მივანიჭო ხილვადობის მნიშვნელობა მათ, ვისაც ჯერ არა აქვს (ძველი საკითხები)? გაუშვი ეს მხოლოდ ერთხელ, სასურველია ახლავე, სანამ ვინმე ახალ დრაფტს შექმნის.')) return;
-  const btn = document.getElementById('btnFixVisibility');
-  const origText = btn.textContent;
-  btn.disabled = true; btn.textContent = 'მუშავდება...';
-  try {
-    const projSnap = await getDocs(collection(db,'projects'));
-    let fixed = 0;
-    for (const pDoc of projSnap.docs) {
-      const issuesSnap = await getDocs(collection(db,'projects',pDoc.id,'issues'));
-      for (const iDoc of issuesSnap.docs) {
-        const i = iDoc.data();
-        if (i.visibility) continue; // already migrated
-        let newVisibility;
-        if (i.section === 'review') {
-          newVisibility = 'everyone';
-        } else {
-          newVisibility = i.visibleToContractors === true ? 'everyone' : 'biograpi';
-        }
-        await updateDoc(doc(db,'projects',pDoc.id,'issues',iDoc.id), { visibility: newVisibility });
-        fixed++;
-      }
-    }
-    showToast(fixed ? `გასწორდა ${fixed} საკითხი` : 'ყველა საკითხს უკვე ჰქონდა ხილვადობა მინიჭებული');
   } catch(e) { alert('შეცდომა: '+e.message); }
   btn.disabled = false; btn.textContent = origText;
 });
