@@ -1746,6 +1746,7 @@ function renderReviewerManagerChart(projects, opts) {
   const noLabels = !!opts.noLabels;
   const fontPx = (opts.fontSize || 11) + 'px'; // text size (the wallpaper uses a bigger one)
   const tr = window.__i18nTr || (word => word); // English mode: column headers in English even in a picture made off-screen
+  const projectLabel = window.__i18nTranslit || (name => name); // English mode: project names in Latin letters, as on the project cards
   const mg = Object.assign({ left: 1, right: 1, top: 34, bottom: 5 }, opts.margin || {});
 
   // Build unique node ids per column so a project can't collide in name
@@ -1780,7 +1781,7 @@ function renderReviewerManagerChart(projects, opts) {
     const reviewerColor = colorFor(reviewerColorByName, reviewerFullName, SANKEY_REVIEWER_PALETTE);
     // Keep a visible minimum width even for a brand-new/empty project.
     const value = sizeMode === 'gba' ? Math.max(p.gba || 1000, 1) : Math.max(p.issueCount || 0, 1);
-    const projectId = addNode(`p:${p.id}`, p.name, projectColor);
+    const projectId = addNode(`p:${p.id}`, projectLabel(p.name), projectColor);
     const reviewerId = sankeyShowReviewer ? addNode(`r:${reviewerFullName}`, firstNameOnly(reviewerFullName), reviewerColor) : null;
     // Every link carries the project's id explicitly — this is what makes
     // hover-highlighting correct and simple regardless of how many hops
