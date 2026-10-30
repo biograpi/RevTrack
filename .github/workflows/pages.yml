@@ -1,0 +1,49 @@
+# Publishes the site to GitHub Pages on every upload (commit) to the main branch, and puts the build number into
+# index.html first: the placeholder in the file is replaced by the number of commits in the repository, so the
+# header reads 1.0.<number>. The file in the repository itself is NOT changed — only the published copy.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the whole history — otherwise the commits can't be counted
+
+      - name: Put the build number into the page
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          echo "Commits in the repository: $COUNT"
+          sed -i "s/__BUILD__/${COUNT}/g" index.html
+          grep -n "const APP_BUILD" index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
