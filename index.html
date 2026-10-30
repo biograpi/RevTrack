@@ -390,6 +390,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <div class="auth-err" id="regErr"></div>
       <div class="auth-ok" id="regOk">მოთხოვნა გაიგზავნა! დაელოდეთ ადმინისტრატორის დადასტურებას.</div>
       <button class="btn-primary" style="width:100%;justify-content:center" id="btnRegister">რეგისტრაცია</button>
+      <div class="auth-note">ტექნიკური კითხვების შემთხვევაში დაუკავშირდით: <a href="mailto:d.avalishvili@biograpi.ge" style="color:var(--accent);text-decoration:none">d.avalishvili@biograpi.ge</a></div>
     </div>
   </div>
 </div>
@@ -397,7 +398,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <!-- ══ PROJECTS ══ -->
 <div class="projects-screen" id="projectsScreen">
   <div class="projects-header">
-    <div class="projects-logo">RevTrack <span style="opacity:.6;font-weight:400">1.0</span></div>
+    <div class="projects-logo">RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></div>
     <div class="projects-user">
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
@@ -457,7 +458,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
 <header>
   <div class="header-left">
-    <span class="header-logo" id="btnBackProjects">RevTrack <span style="opacity:.6;font-weight:400">1.0</span></span>
+    <span class="header-logo" id="btnBackProjects">RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></span>
     <span class="header-sep">/</span>
     <span class="project-name-hdr" id="hdrProjectName">პროექტი</span>
     <button class="btn-hdr" id="btnBackExplicit" style="margin-left:10px">← უკან დაბრუნება</button>
@@ -889,6 +890,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"ტექნიკური კითხვების შემთხვევაში დაუკავშირდით:": "For technical questions, please contact:",
 "MP რევიზორი": "MP reviewer",
 "MP რევიზორის სახელი (თუ დარეგისტრირებული არაა)": "MP reviewer's name (if not registered)",
 "Electrical რევიზორი": "Electrical reviewer",
@@ -1386,6 +1388,11 @@ const ADMIN_EMAILS = ['biograpirev@gmail.com']; // ← admins
 // becoming "admin" — they keep showing up as "რევიზორი" everywhere (project
 // creation, badges, etc.), this only widens what they're PERMITTED to do.
 const SUPER_REVIEWER_EMAILS = ['d.avalishvili@biograpi.ge'];
+// The version shown next to the name in both headers. The publishing workflow on GitHub (.github/workflows/pages.yml) replaces the
+// placeholder below with the number of commits in the repository, so the header reads 1.0.<number> and goes up by one with every
+// upload. Opened any other way (a local copy), the placeholder stays and the header just shows "1.0".
+const APP_BUILD = '__BUILD__';
+document.querySelectorAll('.app-version').forEach(el => { if (/^\d+$/.test(APP_BUILD)) el.textContent = '1.0.' + APP_BUILD; });
 // True for real admins AND the super-reviewer accounts. Use this (not currentRole === 'admin') for admin-style permissions in the UI.
 function isAdminLike() {
   return currentRole === 'admin' || SUPER_REVIEWER_EMAILS.includes(currentUser?.email);
