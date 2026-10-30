@@ -617,8 +617,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <div class="modal-overlay" id="usersModal">
   <div class="modal" style="max-width:720px">
     <div class="modal-header"><h2>👥 ყველა მომხმარებელი</h2><button class="modal-close" onclick="cm('usersModal')">✕</button></div>
-    <div style="padding:14px 20px 0;display:flex;align-items:center;gap:10px">
-      <select id="usersRoleFilter" style="flex:1;border:1px solid var(--rule);border-radius:var(--r);padding:8px;font-family:inherit;font-size:13px">
+    <div style="padding:14px 20px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <input type="search" id="usersSearch" placeholder="🔍 ძებნა: სახელი, მეილი, ლეიბლი" autocomplete="off" style="flex:2;min-width:190px;border:1px solid var(--rule);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:13px">
+      <select id="usersRoleFilter" style="flex:1;min-width:130px;border:1px solid var(--rule);border-radius:var(--r);padding:8px;font-family:inherit;font-size:13px">
         <option value="">ყველა როლი</option>
         <option value="admin">Admin</option>
         <option value="reviewer">რევიზორი</option>
@@ -890,6 +891,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"ძებნით ან ფილტრით არავინ მოიძებნა": "No one matches the search or filter",
+"🔍 ძებნა: სახელი, მეილი, ლეიბლი": "🔍 Search: name, email, label",
 "ტექნიკური კითხვების შემთხვევაში დაუკავშირდით:": "For technical questions, please contact:",
 "MP რევიზორი": "MP reviewer",
 "MP რევიზორის სახელი (თუ დარეგისტრირებული არაა)": "MP reviewer's name (if not registered)",
@@ -1205,6 +1208,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     [/^დუბლირებულია "(.+)"-ში!$/, function (m) { return 'Duplicated to "' + trOr(m[1]) + '"!'; }],
     [/^🔗 ლინკი (\d+)$/, function (m) { return '🔗 Link ' + m[1]; }],
     [/^სულ დარეგისტრირებულია: (\d+)$/, function (m) { return 'Total registered: ' + m[1]; }],
+    [/^სულ დარეგისტრირებულია: (\d+) \(ნაჩვენებია: (\d+)\)$/, function (m) { return 'Total registered: ' + m[1] + ' (shown: ' + m[2] + ')'; }],
     [/^ბოლო შესვლა: ([\s\S]*)$/, function (m) { return 'Last login: ' + trOr(m[1]); }],
     [/^([\s\S]*) \(ძველი ჩანაწერი\)$/, function (m) { return m[1] + ' (old entry)'; }],
     [/^(.+) \(კომენტარები\)$/, function (m) { return m[1] + ' (comments)'; }],
@@ -5110,13 +5114,18 @@ async function loadAllUsers() {
     showToast('შეცდომა: ' + e.message);
   }
 }
-// Draws the admin users panel: role, approval, status label, DM-issue permission and delete.
+// Draws the admin users panel: role, approval, status label, DM/MEP permissions and delete. The list can be narrowed by role
+// and by the search box: every typed word has to appear somewhere in the person's name, email or status label (capital
+// letters don't matter), so "gia ber" finds "Gia Beridze".
 function renderUsersPanel() {
   const panel = document.getElementById('usersPanel');
   const roleFilter = document.getElementById('usersRoleFilter').value;
+  const words = document.getElementById('usersSearch').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matchesSearch = u => { const text = `${u.name || ''} ${u.email || ''} ${u.statusLabel || ''}`.toLowerCase(); return words.every(w => text.includes(w)); };
   const allCount = Object.keys(allUsers).length;
-  document.getElementById('usersTotalCount').textContent = `სულ დარეგისტრირებულია: ${allCount}`;
-  const users = Object.values(allUsers).filter(u => !roleFilter || u.role === roleFilter);
+  const users = Object.values(allUsers).filter(u => (!roleFilter || u.role === roleFilter) && matchesSearch(u));
+  // "Total" is always everyone registered; when the list is narrowed, how many of them are shown is added.
+  document.getElementById('usersTotalCount').textContent = `სულ დარეგისტრირებულია: ${allCount}` + ((roleFilter || words.length) ? ` (ნაჩვენებია: ${users.length})` : '');
   const canManageUsers = isAdminLike();
   panel.innerHTML = users.length ? users.map(u => `
     <div class="user-row-wrap">
@@ -5158,13 +5167,16 @@ function renderUsersPanel() {
           MEP საკითხების გახსნის უფლება
         </label>
       </div>`:''}
-    </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">მომხმარებელი არ არის</div>';
+    </div>`).join('') : `<div style="padding:20px;color:var(--ink-light);font-size:13px">${allCount ? 'ძებნით ან ფილტრით არავინ მოიძებნა' : 'მომხმარებელი არ არის'}</div>`;
 }
 document.getElementById('usersRoleFilter').addEventListener('change', renderUsersPanel);
+document.getElementById('usersSearch').addEventListener('input', renderUsersPanel);
 document.getElementById('btnGlobalUsers').addEventListener('click', async () => {
   await loadAllUsers();
+  document.getElementById('usersSearch').value = ''; // every time the panel opens it starts with the whole list
   renderUsersPanel();
   om('usersModal');
+  document.getElementById('usersSearch').focus();
 });
 document.getElementById('btnAdminTools').addEventListener('click', () => om('adminToolsModal'));
 window.updateUserLabel = async (uid, label) => {
