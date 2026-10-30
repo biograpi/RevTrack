@@ -3931,7 +3931,7 @@ async function openProject(pid, section) {
   const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&currentSection==='internal')||canOpenInSectionAsUser(currentSection);
   const canComment = true; // any real (registered, approved) role can comment
   const isMyOwnProject = currentProjectData.createdBy === currentUser.uid;
-  const canManageProject = myRole==='admin'||(myRole==='reviewer'&&isMyOwnProject);
+  const canManageProject = isAdminLike()||(myRole==='reviewer'&&isMyOwnProject);
   const roleLabel = roleL[myRole] || myRole;
 
   document.getElementById('authScreen').style.display = 'none';
@@ -4285,11 +4285,12 @@ function parseManualSeq(text) {
   return { major, minor };
 }
 
-// ── CLOSE PERMISSION: only admin, or the reviewer who opened the issue ──
+// ── CLOSE PERMISSION: an admin (the super reviewer included — they have an admin's rights everywhere), or whoever opened the
+// issue: a reviewer, a design manager, or a User with the DM / MEP opening right. The same as the database rules for editing. ──
 function canCloseIssue(issue) {
-  if (currentRole === 'admin') return true;
-  if (currentRole === 'reviewer' || currentRole === 'design_manager') return !issue || issue.createdBy === currentUser?.uid;
-  return false;
+  if (isAdminLike()) return true;
+  const mayOpenIssues = currentRole === 'reviewer' || currentRole === 'design_manager' || canOpenDmAsUser() || canOpenMepAsUser();
+  return mayOpenIssues && (!issue || issue.createdBy === currentUser?.uid);
 }
 // Greys out the "closed" choice in the form for people who may not close this issue.
 function applyStatusOptionState(issue) {
