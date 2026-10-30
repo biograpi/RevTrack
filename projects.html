@@ -34,7 +34,9 @@ onSnapshot(collection(db, 'publicProjects'), (snap) => {
       pm: p.pmName || '— არავინ',
       arch: (p.contractors && p.contractors.arch) || '— არქიტექტორი არ არის',
       struct: (p.contractors && p.contractors.struct) || '— კონსტრუქტორი არ არის',
-      mep: (p.contractors && p.contractors.mep) || '— MEP არ არის',
+      mp: ((p.contractors && p.contractors.mp) || '').trim(),
+      elec: ((p.contractors && p.contractors.elec) || '').trim(),
+      mepOld: ((p.contractors && p.contractors.mep) || '').trim(), // the old single MEP contractor of a project not yet moved over
       mepReviewer: p.mepReviewer || 'გია, იური',
     };
   });
@@ -67,7 +69,8 @@ onSnapshot(collection(db, 'publicProjects'), (snap) => {
   <label><input type="checkbox" id="chkPm"> პროექტ მენეჯერები</label>
   <label><input type="checkbox" id="chkArch" checked> არქიტექტორი</label>
   <label><input type="checkbox" id="chkStruct" checked> კონსტრუქტორი</label>
-  <label><input type="checkbox" id="chkMep" checked> MEP</label>
+  <label><input type="checkbox" id="chkMp" checked> MP</label>
+  <label><input type="checkbox" id="chkElec" checked> Electrical</label>
   <label><input type="checkbox" id="chkReviewer" checked> რევიზორები</label>
 </div>
 <div id="loadingMsg">იტვირთება...</div>
@@ -81,6 +84,7 @@ var PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#
 var ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
 var STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
 var MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
+var ELEC_PALETTE = ['#14b8a6','#0d9488','#2dd4bf','#0f766e','#5eead4','#10b981','#34d399'];
 
 function firstName(n) { return (n||'').trim().split(/\s+/)[0] || n; }
 function withInitial(n) {
@@ -101,15 +105,16 @@ window.renderChart = function() {
   var showPm = document.getElementById('chkPm').checked;
   var showArch = document.getElementById('chkArch').checked;
   var showStruct = document.getElementById('chkStruct').checked;
-  var showMep = document.getElementById('chkMep').checked;
+  var showMp = document.getElementById('chkMp').checked;
+  var showElec = document.getElementById('chkElec').checked;
   var showReviewer = document.getElementById('chkReviewer').checked;
-  var showContractors = showArch || showStruct || showMep;
+  var showContractors = showArch || showStruct || showMp || showElec;
 
   var svgEl = document.getElementById('chartSvg');
   svgEl.innerHTML = '';
   var width = svgEl.parentElement.clientWidth || 900;
 
-  var reviewerColors = {}, managerColors = {}, pmColors = {}, archColors = {}, structColors = {}, mepColors = {};
+  var reviewerColors = {}, managerColors = {}, pmColors = {}, archColors = {}, structColors = {}, mepColors = {}, elecColors = {};
   var nodesById = {};
   function addNode(id, name, color) {
     if (!nodesById[id]) nodesById[id] = { id: id, name: name, color: color };
@@ -153,9 +158,18 @@ window.renderChart = function() {
         links.push({ source: preId, target: structId, value: value, pid: p.id, c1: preColor, c2: structColor });
         if (afterId) links.push({ source: structId, target: afterId, value: value, pid: p.id, c1: structColor, c2: afterColor });
       }
-      if (showMep) {
-        var mepColor = colorFor(mepColors, p.mep, MEP_PALETTE);
-        var mepId = addNode('c:' + p.mep, p.mep, mepColor);
+      // mechanical & plumbing and electrical (or the old single MEP contractor of a project not yet moved over)
+      var mepList = [];
+      if (p.mepOld && !p.mp && !p.elec) { if (showMp || showElec) mepList.push({ name: p.mepOld, kind: 'mep' }); }
+      else {
+        if (showMp) mepList.push({ name: p.mp || '— MP არ არის', kind: 'mp' });
+        if (showElec) mepList.push({ name: p.elec || '— Electrical არ არის', kind: 'elec' });
+        if (p.mepOld && (showMp || showElec)) mepList.push({ name: p.mepOld, kind: 'mep' });
+      }
+      var mepReviewerPmLinked = false;
+      mepList.forEach(function(m) {
+        var mepColor = m.kind === 'elec' ? colorFor(elecColors, m.name, ELEC_PALETTE) : colorFor(mepColors, m.name, MEP_PALETTE);
+        var mepId = addNode('c:' + m.name, m.name, mepColor);
         links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
         if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
         if (showReviewer) {
@@ -163,9 +177,9 @@ window.renderChart = function() {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
           var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
-          if (pmId) links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor });
+          if (pmId && !mepReviewerPmLinked) { links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor }); mepReviewerPmLinked = true; }
         }
-      }
+      });
     } else if (afterId) {
       links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
     }
@@ -299,7 +313,7 @@ window.renderChart = function() {
   var dmIsLast = showDm && !showContractors && !showReviewer && !showPm;
   if (showDm) header(dmIsLast ? width - 1 : colCenterX('m:'), dmIsLast ? 'end' : 'middle', 'დიზაინ მენეჯერი');
   if (showContractors) {
-    var activeDisciplines = [showArch && 'არქიტექტორი', showStruct && 'კონსტრუქტორი', showMep && 'MEP'].filter(Boolean);
+    var activeDisciplines = [showArch && 'არქიტექტორი', showStruct && 'კონსტრუქტორი', showMp && 'MP', showElec && 'Electrical'].filter(Boolean);
     var contractorIsLast = !showReviewer && !showPm;
     var label = activeDisciplines.length === 1 ? activeDisciplines[0] : 'კონტრაქტორი';
     header(contractorIsLast ? width - 1 : colCenterX('c:'), contractorIsLast ? 'end' : 'middle', label);
@@ -308,7 +322,7 @@ window.renderChart = function() {
   if (showPm) header(width - 1, 'end', 'პროექტის მენეჯერი');
 };
 
-['chkDm','chkPm','chkArch','chkStruct','chkMep','chkReviewer'].forEach(function(id) {
+['chkDm','chkPm','chkArch','chkStruct','chkMp','chkElec','chkReviewer'].forEach(function(id) {
   document.getElementById(id).addEventListener('change', window.renderChart);
 });
 window.addEventListener('resize', window.renderChart);

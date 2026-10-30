@@ -229,6 +229,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .disc-arch{background:#e0e7ff;color:#3730a3}
 .disc-struct{background:#fce7f3;color:#9d174d}
 .disc-mep{background:#d1fae5;color:#065f46}
+.disc-mp{background:#cffafe;color:#155e75}
+.disc-elec{background:#fef9c3;color:#854d0e}
 .disc-fire{background:#fee2e2;color:#991b1b}
 .disc-other{background:var(--rule);color:var(--ink-mid)}
 .status-dot{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;white-space:nowrap}
@@ -416,7 +418,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyPm" onchange="toggleSankeyManagerType()"> პროექტ მენეჯერები</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyArch" checked onchange="toggleSankeyDiscipline()"> არქიტექტორი</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyStruct" checked onchange="toggleSankeyDiscipline()"> კონსტრუქტორი</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyMep" checked onchange="toggleSankeyDiscipline()"> MEP</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyMp" checked onchange="toggleSankeyDiscipline()"> MP</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyElec" checked onchange="toggleSankeyDiscipline()"> Electrical</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyReviewer" checked onchange="toggleSankeyReviewer()"> რევიზორები</label>
     </div>
     <svg id="reviewerManagerChartSvg"></svg>
@@ -478,7 +481,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <div class="multisel-panel" id="filterDiscPanel" hidden>
         <label><input type="checkbox" value="arch"> არქიტექტურა</label>
         <label><input type="checkbox" value="struct"> კონსტრუქცია</label>
-        <label><input type="checkbox" value="mep"> MEP</label>
+        <label><input type="checkbox" value="mp"> Mechanical &amp; Plumbing</label>
+        <label><input type="checkbox" value="elec"> Electrical</label>
+        <label id="filterDiscLegacy" hidden><input type="checkbox" value="mep"> MEP (ძველი)</label>
         <label><input type="checkbox" value="other"> სხვა</label>
         <button type="button" class="multisel-clear" id="filterDiscClear">გასუფთავება</button>
       </div>
@@ -535,7 +540,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         </div>
         <input type="hidden" id="fDate">
         <div class="field"><label>დისციპლინა</label>
-          <select id="fDisc"><option value="arch">არქიტექტურა</option><option value="struct">კონსტრუქცია</option><option value="mep">MEP</option><option value="other">სხვა</option></select>
+          <select id="fDisc"><option value="arch">არქიტექტურა</option><option value="struct">კონსტრუქცია</option><option value="mp">Mechanical &amp; Plumbing</option><option value="elec">Electrical</option><option value="other">სხვა</option></select>
         </div>
         <div class="field">
           <label>პრიორიტეტი</label>
@@ -690,8 +695,13 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <div class="detail-label" style="margin-bottom:8px">კონტრაქტორები</div>
       <div class="form-grid" style="margin-bottom:10px">
         <div class="field"><label>არქიტექტორი</label><input id="cArch" placeholder="კომპანია / სახელი"></div>
-        <div class="field"><label>MEP</label><input id="cMep" placeholder="კომპანია / სახელი"></div>
+        <div class="field"><label>Mechanical &amp; Plumbing</label><input id="cMp" placeholder="კომპანია / სახელი"></div>
+        <div class="field"><label>Electrical</label><input id="cElec" placeholder="კომპანია / სახელი"></div>
         <div class="field"><label>კონსტრუქტორი</label><input id="cStruct" placeholder="კომპანია / სახელი"></div>
+      </div>
+      <div class="field" id="cMepOldRow" style="display:none;margin-bottom:10px">
+        <label>MEP (ძველი) <span style="font-weight:400;color:var(--ink-mid)">— გადაიტანე Mechanical &amp; Plumbing-ში ან Electrical-ში და გაასუფთავე</span></label>
+        <input id="cMepOld" placeholder="კომპანია / სახელი">
       </div>
       <div id="extraContractorsList"></div>
       <button type="button" class="btn-add-link" id="btnAddContractor" style="margin-bottom:16px">+ სხვა კონტრაქტორის დამატება</button>
@@ -863,6 +873,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"— MP არ არის": "— No MP",
+"— Electrical არ არის": "— No Electrical",
+"MEP (ძველი)": "MEP (old)",
+"— გადაიტანე Mechanical & Plumbing-ში ან Electrical-ში და გაასუფთავე": "— move it to Mechanical & Plumbing or Electrical, then clear this",
 "🖼 ვოლპეიპერი: ხაზი თითო პროექტზე": "🖼 Wallpaper: one line per project",
 "ყოველ პროექტს ერთი ხაზი აქვს: საკითხებისა და კომენტარების აქტივობა ერთად ბორცვებად ჯგუფდება (1920×1080)": "Every project is one line: the activity of issues and comments is added up into bumps (1920×1080)",
 "🖼 გრაფიკი ვოლპეიპერად — წარწერების გარეშე": "🖼 Diagram as a wallpaper — without labels",
@@ -1522,7 +1536,8 @@ document.addEventListener('keydown', e => {
 const initials = n => (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
 
 // Display names for stored codes. The database keeps the keys (arch, active, ...); these are what people see.
-const discL = {arch:'არქიტექტურა',struct:'კონსტრუქცია',mep:'MEP',other:'სხვა'};
+// 'mep' is the OLD single MEP discipline, split into mp and elec; issues created before keep it and are shown as "MEP (ძველი)".
+const discL = {arch:'არქიტექტურა',struct:'კონსტრუქცია',mp:'Mechanical & Plumbing',elec:'Electrical',mep:'MEP (ძველი)',other:'სხვა'};
 const statL = {active:'აქტიური', closed:'დასრულებული'};
 // ── SPECIAL-CASE PROJECT LOGO (testing on "Bare" only) ──
 // NOTE: the logo constants and the is...Project() name matchers below are currently NOT shown anywhere
@@ -1647,6 +1662,19 @@ function firstNameOnly(fullName) { return (fullName||'').trim().split(/\s+/)[0] 
 // How many distinct nodes will the busiest column need? Used to size the
 // diagram's height so nothing gets cramped, regardless of how many
 // reviewers/managers/contractors/PMs actually exist in the data.
+// The contractors a project has in the "MEP part" of the diagram: mechanical & plumbing and electrical (a placeholder when one
+// is missing), or — for a project that still only has the old single MEP contractor — just that one. `on` = the ticked boxes.
+// Returns [{ name, kind }] with kind 'mp' | 'elec' | 'mep' (the old one).
+function sankeyMepContractors(p, on) {
+  const c = p.contractors || {};
+  const mp = (c.mp || '').trim(), elec = (c.elec || '').trim(), old = (c.mep || '').trim();
+  const list = [];
+  if (old && !mp && !elec) { if (on.mp || on.elec) list.push({ name: old, kind: 'mep' }); return list; }
+  if (on.mp) list.push({ name: mp || '— MP არ არის', kind: 'mp' });
+  if (on.elec) list.push({ name: elec || '— Electrical არ არის', kind: 'elec' });
+  if (old && (on.mp || on.elec)) list.push({ name: old, kind: 'mep' });
+  return list;
+}
 function computeMaxColumnNodeCount(projects) {
   const managers = new Set(), reviewers = new Set(), pms = new Set(), contractors = new Set();
   projects.forEach(p => {
@@ -1659,7 +1687,7 @@ function computeMaxColumnNodeCount(projects) {
     }
     if (sankeyDisciplines.arch) contractors.add((p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის');
     if (sankeyDisciplines.struct) contractors.add((p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის');
-    if (sankeyDisciplines.mep) contractors.add((p.contractors?.mep||'').trim() || '— MEP არ არის');
+    sankeyMepContractors(p, sankeyDisciplines).forEach(m => contractors.add(m.name));
   });
   return Math.max(projects.length, managers.size, reviewers.size, pms.size, contractors.size);
 }
@@ -1676,10 +1704,11 @@ const SANKEY_PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#1
 const SANKEY_ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
 const SANKEY_STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
 const SANKEY_MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
+const SANKEY_ELEC_PALETTE = ['#14b8a6','#0d9488','#2dd4bf','#0f766e','#5eead4','#10b981','#34d399'];
 let sankeySizeMode = 'gba'; // always GBA on the live app now — the issues/GBA toggle was removed
 let sankeyManagerTypes = { dm: true, pm: false }; // which manager column(s) are included
 let sankeyShowReviewer = true; // whether the reviewer column is shown
-let sankeyDisciplines = { arch: true, struct: true, mep: true }; // which contractor disciplines are included
+let sankeyDisciplines = { arch: true, struct: true, mp: true, elec: true }; // which contractor disciplines are included
 let lastChartProjects = null; // cached for re-render when the size toggle changes, without refetching
 
 // The three toggle functions below are called by the checkboxes above the diagram: they read the checkboxes, then redraw.
@@ -1698,7 +1727,8 @@ window.toggleSankeyManagerType = function() {
 window.toggleSankeyDiscipline = function() {
   sankeyDisciplines.arch = document.getElementById('chkSankeyArch').checked;
   sankeyDisciplines.struct = document.getElementById('chkSankeyStruct').checked;
-  sankeyDisciplines.mep = document.getElementById('chkSankeyMep').checked;
+  sankeyDisciplines.mp = document.getElementById('chkSankeyMp').checked;
+  sankeyDisciplines.elec = document.getElementById('chkSankeyElec').checked;
   syncSankeyChecks();
   if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
 };
@@ -1710,7 +1740,7 @@ window.toggleSankeyReviewer = function() {
 };
 
 // Draws the project-structure diagram (a D3 Sankey chart). Each project flows:
-//   project -> design manager -> contractors (architect / structural / MEP) -> reviewer (+ MEP reviewer) -> project manager.
+//   project -> design manager -> contractors (architect / structural / mechanical & plumbing / electrical) -> reviewer (+ MEP reviewer) -> project manager.
 // projects = array of project documents. opts (used by the PDF export) can render into another SVG (svgEl, width, height),
 // use a light theme, or force sizing by GBA. Link thickness = the project's GBA. Every link carries its project id,
 // so hovering any node highlights that project's whole path.
@@ -1733,7 +1763,8 @@ function renderReviewerManagerChart(projects, opts) {
     document.getElementById('chkSankeyPm').checked = sankeyManagerTypes.pm;
     document.getElementById('chkSankeyArch').checked = sankeyDisciplines.arch;
     document.getElementById('chkSankeyStruct').checked = sankeyDisciplines.struct;
-    document.getElementById('chkSankeyMep').checked = sankeyDisciplines.mep;
+    document.getElementById('chkSankeyMp').checked = sankeyDisciplines.mp;
+    document.getElementById('chkSankeyElec').checked = sankeyDisciplines.elec;
     document.getElementById('chkSankeyReviewer').checked = sankeyShowReviewer;
     syncSankeyChecks();
   }
@@ -1775,6 +1806,7 @@ function renderReviewerManagerChart(projects, opts) {
   const archColorByName = new Map();
   const structColorByName = new Map();
   const mepColorByName = new Map();
+  const elecColorByName = new Map();
   projects.forEach(p => {
     const reviewerFullName = p.createdByName || 'ადმინი';
     const projectColor = p.color || DEFAULT_CARD_COLOR;
@@ -1815,7 +1847,7 @@ function renderReviewerManagerChart(projects, opts) {
     const afterId = sankeyShowReviewer ? reviewerId : pmId;
     const afterColor = sankeyShowReviewer ? reviewerColor : pmColor;
 
-    if (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mep) {
+    if (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mp || sankeyDisciplines.elec) {
       // One combined column, up to three parallel nodes — architect,
       // structural, and MEP all work on the SAME project in parallel, not
       // in sequence, so they share one column rather than three chained
@@ -1836,22 +1868,20 @@ function renderReviewerManagerChart(projects, opts) {
         pushLink(preContractorId, structId, value, p.id, preContractorColor, structColor, projectColor);
         if (afterId) pushLink(structId, afterId, value, p.id, structColor, afterColor, projectColor);
       }
-      if (sankeyDisciplines.mep) {
-        const mepName = (p.contractors?.mep || '').trim() || '— MEP არ არის';
-        const mepColor = colorFor(mepColorByName, mepName, SANKEY_MEP_PALETTE);
-        const mepId = addNode(`c:${mepName}`, mepName, mepColor);
+      // Mechanical & plumbing and electrical (or the old single MEP contractor) — one node each. The MEP reviewer
+      // (Gia/Iuri) reviews their work specifically: connected FROM those nodes, not from the project/DM directly.
+      let mepReviewerPmLinked = false;
+      for (const m of sankeyMepContractors(p, sankeyDisciplines)) {
+        const mepColor = m.kind === 'elec' ? colorFor(elecColorByName, m.name, SANKEY_ELEC_PALETTE) : colorFor(mepColorByName, m.name, SANKEY_MEP_PALETTE);
+        const mepId = addNode(`c:${m.name}`, m.name, mepColor);
         pushLink(preContractorId, mepId, value, p.id, preContractorColor, mepColor, projectColor);
         if (afterId) pushLink(mepId, afterId, value, p.id, mepColor, afterColor, projectColor);
         if (sankeyShowReviewer) {
-          // MEP reviewer (Gia/Iuri) reviews the MEP contractor's work
-          // specifically — connected FROM the MEP contractor node, not
-          // from the project/DM directly, and only when MEP is actually
-          // shown as a discipline.
           const mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
           const mepReviewerColor = colorFor(reviewerColorByName, mepReviewerName, SANKEY_REVIEWER_PALETTE);
           const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor);
           pushLink(mepId, mepReviewerId, value, p.id, mepColor, mepReviewerColor, projectColor);
-          if (pmId) pushLink(mepReviewerId, pmId, value, p.id, mepReviewerColor, pmColor, projectColor);
+          if (pmId && !mepReviewerPmLinked) { pushLink(mepReviewerId, pmId, value, p.id, mepReviewerColor, pmColor, projectColor); mepReviewerPmLinked = true; }
         }
       }
     } else if (afterId) {
@@ -2054,13 +2084,13 @@ function renderReviewerManagerChart(projects, opts) {
   headerStyle(svg.append('text').attr('x', mg.left).attr('text-anchor', 'start')).text(tr('პროექტი'));
   const showDm = sankeyManagerTypes.dm;
   const showPm = sankeyManagerTypes.pm;
-  const showContractors = sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mep;
+  const showContractors = sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mp || sankeyDisciplines.elec;
   const dmIsLast = showDm && !showContractors && !sankeyShowReviewer && !showPm;
   if (showDm) {
     headerStyle(svg.append('text').attr('x', dmIsLast ? width - mg.right : colCenterX('m:')).attr('text-anchor', dmIsLast ? 'end' : 'middle')).text(tr('დიზაინ მენეჯერი'));
   }
   if (showContractors) {
-    const activeDisciplines = [sankeyDisciplines.arch && 'არქიტექტორი', sankeyDisciplines.struct && 'კონსტრუქტორი', sankeyDisciplines.mep && 'MEP'].filter(Boolean);
+    const activeDisciplines = [sankeyDisciplines.arch && 'არქიტექტორი', sankeyDisciplines.struct && 'კონსტრუქტორი', sankeyDisciplines.mp && 'MP', sankeyDisciplines.elec && 'Electrical'].filter(Boolean);
     const contractorIsLast = !sankeyShowReviewer && !showPm;
     const label = activeDisciplines.length === 1 ? activeDisciplines[0] : 'კონტრაქტორი';
     headerStyle(svg.append('text').attr('x', contractorIsLast ? width - mg.right : colCenterX('c:')).attr('text-anchor', contractorIsLast ? 'end' : 'middle')).text(tr(label));
@@ -2092,7 +2122,9 @@ window.downloadSankeyAsHtml = function() {
     pm: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
     arch: (p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის',
     struct: (p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის',
-    mep: (p.contractors?.mep||'').trim() || '— MEP არ არის',
+    mp: (p.contractors?.mp||'').trim(),
+    elec: (p.contractors?.elec||'').trim(),
+    mepOld: (p.contractors?.mep||'').trim(), // the old single MEP contractor of a project not yet moved over
     mepReviewer: (p.mepReviewer || '').trim() || 'გია, იური',
   }));
   const dataJson = JSON.stringify(dataSnapshot);
@@ -2127,7 +2159,8 @@ window.downloadSankeyAsHtml = function() {
   <label><input type="checkbox" id="chkPm" checked> პროექტ მენეჯერები</label>
   <label><input type="checkbox" id="chkArch"> არქიტექტორი</label>
   <label><input type="checkbox" id="chkStruct"> კონსტრუქტორი</label>
-  <label><input type="checkbox" id="chkMep"> MEP</label>
+  <label><input type="checkbox" id="chkMp"> MP</label>
+  <label><input type="checkbox" id="chkElec"> Electrical</label>
   <label><input type="checkbox" id="chkReviewer" checked> რევიზორები</label>
 </div>
 <div class="chart-wrap"><svg id="chartSvg"></svg></div>
@@ -2139,6 +2172,7 @@ var PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#
 var ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
 var STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
 var MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
+var ELEC_PALETTE = ['#14b8a6','#0d9488','#2dd4bf','#0f766e','#5eead4','#10b981','#34d399'];
 
 function firstName(n) { return (n||'').trim().split(/\\s+/)[0] || n; }
 function withInitial(n) {
@@ -2156,15 +2190,16 @@ function render() {
   var showPm = document.getElementById('chkPm').checked;
   var showArch = document.getElementById('chkArch').checked;
   var showStruct = document.getElementById('chkStruct').checked;
-  var showMep = document.getElementById('chkMep').checked;
+  var showMp = document.getElementById('chkMp').checked;
+  var showElec = document.getElementById('chkElec').checked;
   var showReviewer = document.getElementById('chkReviewer').checked;
-  var showContractors = showArch || showStruct || showMep;
+  var showContractors = showArch || showStruct || showMp || showElec;
 
   var svgEl = document.getElementById('chartSvg');
   svgEl.innerHTML = '';
   var width = svgEl.parentElement.clientWidth || 900;
 
-  var reviewerColors = {}, managerColors = {}, pmColors = {}, archColors = {}, structColors = {}, mepColors = {};
+  var reviewerColors = {}, managerColors = {}, pmColors = {}, archColors = {}, structColors = {}, mepColors = {}, elecColors = {};
   var nodesById = {};
   function addNode(id, name, color) {
     if (!nodesById[id]) nodesById[id] = { id: id, name: name, color: color };
@@ -2210,9 +2245,18 @@ function render() {
         links.push({ source: preId, target: structId, value: value, pid: p.id, c1: preColor, c2: structColor });
         if (afterId) links.push({ source: structId, target: afterId, value: value, pid: p.id, c1: structColor, c2: afterColor });
       }
-      if (showMep) {
-        var mepColor = colorFor(mepColors, p.mep, MEP_PALETTE);
-        var mepId = addNode('c:' + p.mep, p.mep, mepColor);
+      // mechanical & plumbing and electrical (or the old single MEP contractor of a project not yet moved over)
+      var mepList = [];
+      if (p.mepOld && !p.mp && !p.elec) { if (showMp || showElec) mepList.push({ name: p.mepOld, kind: 'mep' }); }
+      else {
+        if (showMp) mepList.push({ name: p.mp || '— MP არ არის', kind: 'mp' });
+        if (showElec) mepList.push({ name: p.elec || '— Electrical არ არის', kind: 'elec' });
+        if (p.mepOld && (showMp || showElec)) mepList.push({ name: p.mepOld, kind: 'mep' });
+      }
+      var mepReviewerPmLinked = false;
+      mepList.forEach(function(m) {
+        var mepColor = m.kind === 'elec' ? colorFor(elecColors, m.name, ELEC_PALETTE) : colorFor(mepColors, m.name, MEP_PALETTE);
+        var mepId = addNode('c:' + m.name, m.name, mepColor);
         links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
         if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
         if (showReviewer) {
@@ -2220,9 +2264,9 @@ function render() {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
           var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
-          if (pmId) links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor });
+          if (pmId && !mepReviewerPmLinked) { links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor }); mepReviewerPmLinked = true; }
         }
-      }
+      });
     } else if (afterId) {
       links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
     }
@@ -2357,7 +2401,7 @@ function render() {
   var dmIsLast = showDm && !showContractors && !showReviewer && !showPm;
   if (showDm) header(dmIsLast ? width - 1 : colCenterX('m:'), dmIsLast ? 'end' : 'middle', 'დიზაინ მენეჯერი');
   if (showContractors) {
-    var activeDisciplines = [showArch && 'არქიტექტორი', showStruct && 'კონსტრუქტორი', showMep && 'MEP'].filter(Boolean);
+    var activeDisciplines = [showArch && 'არქიტექტორი', showStruct && 'კონსტრუქტორი', showMp && 'MP', showElec && 'Electrical'].filter(Boolean);
     var contractorIsLast = !showReviewer && !showPm;
     var label = activeDisciplines.length === 1 ? activeDisciplines[0] : 'კონტრაქტორი';
     header(contractorIsLast ? width - 1 : colCenterX('c:'), contractorIsLast ? 'end' : 'middle', label);
@@ -2366,7 +2410,7 @@ function render() {
   if (showPm) header(width - 1, 'end', 'პროექტის მენეჯერი');
 }
 
-['chkDm','chkPm','chkArch','chkStruct','chkMep','chkReviewer'].forEach(function(id) {
+['chkDm','chkPm','chkArch','chkStruct','chkMp','chkElec','chkReviewer'].forEach(function(id) {
   document.getElementById(id).addEventListener('change', render);
 });
 window.addEventListener('resize', render);
@@ -2779,15 +2823,16 @@ function bumpCurve(times, startTime, endTime) {
   }
   return points;
 }
-const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mep', 'review:other', 'internal', 'mep', 'comments']; // order inside a person's group
+const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mp', 'review:elec', 'review:mep', 'review:other', 'internal', 'mep', 'comments']; // order inside a person's group
 const ROW_SUB = { // the words shown next to the person's name (each becomes its own translatable piece)
   'review:arch': ['რევიზია', 'არქიტექტურა'], 'review:struct': ['რევიზია', 'კონსტრუქცია'],
-  'review:mep': ['რევიზია', 'MEP'], 'review:other': ['რევიზია', 'სხვა'],
+  'review:mp': ['რევიზია', 'Mechanical & Plumbing'], 'review:elec': ['რევიზია', 'Electrical'],
+  'review:mep': ['რევიზია', 'MEP (ძველი)'], 'review:other': ['რევიზია', 'სხვა'],
   internal: ['DM'], mep: ['MEP რევიზია'], comments: ['კომენტარები'],
 };
 // The data of the "rows" view (renderActivityRows), finer than the line chart: every person gets a SEPARATE line for
-// each kind of thing they did — issues in the review section split by discipline (architecture / structural / MEP /
-// other), issues in the DM section, issues in the MEP review section, and their comments (any section, whoever they
+// each kind of thing they did — issues in the review section split by discipline (architecture / structural /
+// mechanical & plumbing / electrical / the old single MEP / other), issues in the DM section, issues in the MEP review section, and their comments (any section, whoever they
 // are). `issues` = the project's issues sorted by creation time, commentsByAuthor = {name: [timestamps]}.
 function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime) {
   const creators = [...new Set(issues.map(i => i.createdByName))];
@@ -2802,7 +2847,7 @@ function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime) {
   };
   for (const name of creators) {
     for (const e of eventsByCreator[name]) {
-      const slot = e.section === 'review' ? `review:${['arch', 'struct', 'mep'].includes(e.disc) ? e.disc : 'other'}` : e.section;
+      const slot = e.section === 'review' ? `review:${['arch', 'struct', 'mp', 'elec', 'mep'].includes(e.disc) ? e.disc : 'other'}` : e.section;
       addTime(name, slot, e.time);
     }
   }
@@ -4064,6 +4109,7 @@ function sorted(arr) {
 // Redraws the issue list: the counters, the rows, permission-dependent buttons (edit / duplicate / delete),
 // unread-comment markers and the click handlers.
 function render() {
+  syncLegacyDiscFilter();
   const arr = sorted(filtered());
   const all = filtered();
   document.getElementById('cntActive').textContent = all.filter(i=>i.status==='active').length+' აქტიური';
@@ -4128,14 +4174,21 @@ function render() {
 ['searchInput','filterStatus','filterPriority'].forEach(id => document.getElementById(id).addEventListener('input', render));
 
 // ── Discipline filter: a drop-down where several disciplines can be ticked at once ──
-// (e.g. structural + MEP together). Nothing ticked — or all four ticked — means "no discipline filter".
-const DISC_FILTER_NAMES = { arch: 'არქიტექტურა', struct: 'კონსტრუქცია', mep: 'MEP', other: 'სხვა' };
+// (e.g. mechanical + electrical together). Nothing ticked — or every visible box ticked — means "no discipline filter".
+// The "MEP (ძველი)" box (the old single MEP discipline) is only visible while the open list still has such issues.
+const DISC_FILTER_NAMES = { arch: 'არქიტექტურა', struct: 'კონსტრუქცია', mp: 'Mechanical & Plumbing', elec: 'Electrical', mep: 'MEP (ძველი)', other: 'სხვა' };
 function tickedDisciplines() {
   return [...document.querySelectorAll('#filterDiscPanel input:checked')].map(box => box.value);
 }
 function activeDisciplines() {
   const ticked = tickedDisciplines();
-  return ticked.length === Object.keys(DISC_FILTER_NAMES).length ? [] : ticked;
+  const visibleBoxes = [...document.querySelectorAll('#filterDiscPanel label:not([hidden]) input')].length;
+  return ticked.length === visibleBoxes ? [] : ticked;
+}
+// Shows the old-MEP box only if some issue in the list has that value (or it is ticked right now).
+function syncLegacyDiscFilter() {
+  const box = document.querySelector('#filterDiscLegacy input'), label = document.getElementById('filterDiscLegacy');
+  label.hidden = !(box.checked || Object.values(issues).some(i => i.disc === 'mep'));
 }
 // The button shows what is ticked ("კონსტრუქცია, MEP"). In English mode each word goes through the English layer's
 // translator (window.__i18nTr) first.
@@ -4201,13 +4254,16 @@ function applyStatusOptionState(issue) {
 }
 
 // ── CONTRACTORS / RESPONSIBLE PARTY ──
-// The choices of the "Responsible" dropdown: the project's architect / MEP / structural contractors, any extra
-// contractors and its design managers. `disc` = the discipline each one implies (used to keep both fields in sync).
+// The choices of the "Responsible" dropdown: the project's architect / mechanical & plumbing / electrical / structural
+// contractors (and the old single MEP one, while a project still has it), any extra contractors and its design
+// managers. `disc` = the discipline each one implies (used to keep both fields in sync).
 function contractorOptions() {
   const c = (currentProjectData && currentProjectData.contractors) || {};
   const opts = [];
   if (c.arch) opts.push({value:c.arch, label:'არქიტექტორი — '+c.arch, disc:'arch'});
-  if (c.mep) opts.push({value:c.mep, label:'MEP — '+c.mep, disc:'mep'});
+  if (c.mp) opts.push({value:c.mp, label:'Mechanical & Plumbing — '+c.mp, disc:'mp'});
+  if (c.elec) opts.push({value:c.elec, label:'Electrical — '+c.elec, disc:'elec'});
+  if (c.mep) opts.push({value:c.mep, label:'MEP (ძველი) — '+c.mep, disc:'mep'});
   if (c.struct) opts.push({value:c.struct, label:'კონსტრუქტორი — '+c.struct, disc:'struct'});
   (c.extra||[]).forEach(e => { if (e && e.name) opts.push({value:e.name, label:(e.label||'სხვა')+' — '+e.name, disc:null}); });
   currentProjectDesignManagers.forEach(dm => { opts.push({value:dm.name, label:'დიზაინ მენეჯერი — '+dm.name, disc:null}); });
@@ -4247,7 +4303,7 @@ function setPersonField(selected) {
 document.getElementById('fDisc').addEventListener('change', () => {
   if (currentSection === 'internal') return; // free-text field in the internal section — no contractor auto-suggest
   const c = (currentProjectData && currentProjectData.contractors) || {};
-  const suggestion = ({arch:c.arch, mep:c.mep, struct:c.struct})[document.getElementById('fDisc').value];
+  const suggestion = ({arch:c.arch, mp:c.mp, elec:c.elec, mep:c.mep, struct:c.struct})[document.getElementById('fDisc').value];
   if (suggestion) {
     renderPersonSelect(suggestion);
   }
@@ -4299,8 +4355,8 @@ function updateNumFieldForVisibility() {
 }
 document.getElementById('fVisibility').addEventListener('change', updateNumFieldForVisibility);
 
-// Opens the empty form for a new issue. Defaults: discipline architecture (MEP in the MEP section), normal priority,
-// Responsible = the project's architect (MEP contractor in the MEP section).
+// Opens the empty form for a new issue. Defaults: discipline architecture (mechanical & plumbing in the MEP section), normal priority,
+// Responsible = the project's architect (mechanical & plumbing contractor in the MEP section).
 async function openAdd() {
   editingId = null; pendingLinks = [];
   currentIssueStorageId = doc(collection(db,'projects',currentProjectId,'issues')).id;
@@ -4317,7 +4373,8 @@ async function openAdd() {
   fNumEl.value = String(previewSeqMajor);
   om('issueModal');
   document.getElementById('fDate').value = '';
-  document.getElementById('fDisc').value = currentSection === 'mep' ? 'mep' : 'arch';
+  setLegacyDiscOption(null);
+  document.getElementById('fDisc').value = currentSection === 'mep' ? 'mp' : 'arch';
   document.getElementById('fPriority').checked = false;
   document.getElementById('fDeadline').value = '';
   document.getElementById('fPriorityLabel').textContent = 'ჩვეულებრივი';
@@ -4332,9 +4389,17 @@ async function openAdd() {
   // section's responsible field is free text for internal people, so it's
   // left empty there.
   const projContractors = (currentProjectData && currentProjectData.contractors) || {};
-  const defaultResponsible = currentSection === 'internal' ? '' : (currentSection === 'mep' ? (projContractors.mep || '') : (projContractors.arch || ''));
+  const defaultResponsible = currentSection === 'internal' ? '' : (currentSection === 'mep' ? (projContractors.mp || projContractors.mep || '') : (projContractors.arch || ''));
   setPersonField(defaultResponsible);
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
+}
+// An issue made before the MEP discipline was split still carries the old value 'mep'. While such an issue is open in the form,
+// the discipline list gets a matching "MEP (ძველი)" choice, so saving doesn't silently change it; otherwise that choice is removed.
+function setLegacyDiscOption(disc) {
+  const sel = document.getElementById('fDisc');
+  const old = sel.querySelector('option[value="mep"]');
+  if (disc !== 'mep') { if (old) old.remove(); return; }
+  if (!old) { const o = document.createElement('option'); o.value = 'mep'; o.textContent = 'MEP (ძველი)'; sel.insertBefore(o, sel.querySelector('option[value="other"]')); }
 }
 // Opens the form filled with an existing issue.
 function openEdit(id) {
@@ -4347,6 +4412,7 @@ function openEdit(id) {
   fNumEl.readOnly = false; fNumEl.style.background = 'white'; fNumEl.style.cursor = 'text';
   fNumEl.value = issue.seqMajor != null ? (issue.seqMinor ? `${issue.seqMajor}.${issue.seqMinor}` : String(issue.seqMajor)) : '';
   document.getElementById('fDate').value = issue.date||'';
+  setLegacyDiscOption(issue.disc);
   document.getElementById('fDisc').value = issue.disc;
   document.getElementById('fPriority').checked = !!issue.priority;
   document.getElementById('fDeadline').value = issue.deadline || '';
@@ -5112,7 +5178,10 @@ async function openProjectModal(pid) {
   document.getElementById('pMepReviewer').value = pd.mepReviewer != null ? pd.mepReviewer : 'გია, იური';
   const contractors = pd.contractors || {};
   document.getElementById('cArch').value = contractors.arch||'';
-  document.getElementById('cMep').value = contractors.mep||'';
+  document.getElementById('cMp').value = contractors.mp||'';
+  document.getElementById('cElec').value = contractors.elec||'';
+  document.getElementById('cMepOld').value = contractors.mep||'';
+  document.getElementById('cMepOldRow').style.display = contractors.mep ? 'block' : 'none'; // the old single MEP contractor, only while a project still has one
   document.getElementById('cStruct').value = contractors.struct||'';
   pendingExtraContractors = (contractors.extra||[]).map(e => ({...e}));
   renderExtraContractors();
@@ -5248,7 +5317,9 @@ async function syncPublicProject(pid) {
       contractors: {
         arch: p.contractors?.arch || '',
         struct: p.contractors?.struct || '',
-        mep: p.contractors?.mep || '',
+        mp: p.contractors?.mp || '',
+        elec: p.contractors?.elec || '',
+        mep: p.contractors?.mep || '', // old single MEP contractor
       },
       updatedAt: serverTimestamp(),
     });
@@ -5270,7 +5341,9 @@ async function saveProjectData(pid) {
   const memberIds = Object.keys(newMembers);
   const contractors = {
     arch: document.getElementById('cArch').value.trim(),
-    mep: document.getElementById('cMep').value.trim(),
+    mp: document.getElementById('cMp').value.trim(),
+    elec: document.getElementById('cElec').value.trim(),
+    mep: document.getElementById('cMepOld').value.trim(), // the old single MEP contractor (emptied once moved)
     struct: document.getElementById('cStruct').value.trim(),
     extra: pendingExtraContractors.filter(e => (e.name||'').trim()).map(e => ({label:(e.label||'').trim()||'სხვა', name:e.name.trim()}))
   };
