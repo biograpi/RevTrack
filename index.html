@@ -686,8 +686,24 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
           <label>PM-ის სახელი (თუ დარეგისტრირებული არაა)</label>
           <input id="pPmName" placeholder="სახელი გვარი">
         </div>
-        <div class="field form-full">
-          <label>MEP რევიზორი</label>
+        <div class="field">
+          <label>MP რევიზორი</label>
+          <select id="pMpReviewerUser"><option value="">— თავად ჩავწერ —</option></select>
+        </div>
+        <div class="field">
+          <label>MP რევიზორის სახელი (თუ დარეგისტრირებული არაა)</label>
+          <input id="pMpReviewerName" placeholder="სახელი გვარი">
+        </div>
+        <div class="field">
+          <label>Electrical რევიზორი</label>
+          <select id="pElecReviewerUser"><option value="">— თავად ჩავწერ —</option></select>
+        </div>
+        <div class="field">
+          <label>Electrical რევიზორის სახელი (თუ დარეგისტრირებული არაა)</label>
+          <input id="pElecReviewerName" placeholder="სახელი გვარი">
+        </div>
+        <div class="field form-full" id="pMepReviewerOldRow" style="display:none">
+          <label>MEP რევიზორი (ძველი) <span style="font-weight:400;color:var(--ink-mid)">— გადაიტანე MP ან Electrical რევიზორში და გაასუფთავე</span></label>
           <input id="pMepReviewer" placeholder="გია, იური">
         </div>
       </div>
@@ -873,6 +889,12 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"MP რევიზორი": "MP reviewer",
+"MP რევიზორის სახელი (თუ დარეგისტრირებული არაა)": "MP reviewer's name (if not registered)",
+"Electrical რევიზორი": "Electrical reviewer",
+"Electrical რევიზორის სახელი (თუ დარეგისტრირებული არაა)": "Electrical reviewer's name (if not registered)",
+"MEP რევიზორი (ძველი)": "MEP reviewer (old)",
+"— გადაიტანე MP ან Electrical რევიზორში და გაასუფთავე": "— move it to the MP or Electrical reviewer, then clear this",
 "MEP საკითხების გახსნის უფლება": "Permission to open MEP issues",
 "DM საკითხების გახსნის უფლება": "Permission to open DM issues",
 "— MP არ არის": "— No MP",
@@ -1669,6 +1691,19 @@ function firstNameOnly(fullName) { return (fullName||'').trim().split(/\s+/)[0] 
 // How many distinct nodes will the busiest column need? Used to size the
 // diagram's height so nothing gets cramped, regardless of how many
 // reviewers/managers/contractors/PMs actually exist in the data.
+// The MEP reviewers of a project, as names: mechanical & plumbing and electrical — each picked from the registered users
+// (mpReviewerUid / elecReviewerUid) or typed by hand (…ReviewerName) — plus the OLD single "MEP reviewer" text (mepReviewer; a
+// project made before the split has only that). A reviewer that isn't set falls back to the old text; with nothing at all there is
+// no reviewer. (A project that never had the field at all shows the former default "გია, იური", as before.)
+function projectMepReviewers(p) {
+  const pick = kind => {
+    const uid = p[kind + 'ReviewerUid'], typed = (p[kind + 'ReviewerName'] || '').trim();
+    return uid ? ((allUsers[uid] && (allUsers[uid].name || allUsers[uid].email)) || typed) : typed;
+  };
+  const legacy = p.mepReviewer == null ? 'გია, იური' : String(p.mepReviewer).trim();
+  const mp = pick('mp'), elec = pick('elec');
+  return { mp, elec, legacy, mpFinal: mp || legacy, elecFinal: elec || legacy };
+}
 // The contractors a project has in the "MEP part" of the diagram: mechanical & plumbing and electrical (a placeholder when one
 // is missing), or — for a project that still only has the old single MEP contractor — just that one. `on` = the ticked boxes.
 // Returns [{ name, kind }] with kind 'mp' | 'elec' | 'mep' (the old one).
@@ -1875,20 +1910,22 @@ function renderReviewerManagerChart(projects, opts) {
         pushLink(preContractorId, structId, value, p.id, preContractorColor, structColor, projectColor);
         if (afterId) pushLink(structId, afterId, value, p.id, structColor, afterColor, projectColor);
       }
-      // Mechanical & plumbing and electrical (or the old single MEP contractor) — one node each. The MEP reviewer
-      // (Gia/Iuri) reviews their work specifically: connected FROM those nodes, not from the project/DM directly.
-      let mepReviewerPmLinked = false;
+      // Mechanical & plumbing and electrical (or the old single MEP contractor) — one node each. The MEP reviewers
+      // review their work specifically: connected FROM those nodes, not from the project/DM directly.
+      const mepReviewers = projectMepReviewers(p), reviewerLinkedToPm = new Set();
       for (const m of sankeyMepContractors(p, sankeyDisciplines)) {
         const mepColor = m.kind === 'elec' ? colorFor(elecColorByName, m.name, SANKEY_ELEC_PALETTE) : colorFor(mepColorByName, m.name, SANKEY_MEP_PALETTE);
         const mepId = addNode(`c:${m.name}`, m.name, mepColor);
         pushLink(preContractorId, mepId, value, p.id, preContractorColor, mepColor, projectColor);
         if (afterId) pushLink(mepId, afterId, value, p.id, mepColor, afterColor, projectColor);
-        if (sankeyShowReviewer) {
-          const mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
+        // Each MEP contractor is reviewed by its own reviewer (mechanical & plumbing / electrical); a contractor without one has no
+        // reviewer node.
+        const mepReviewerName = m.kind === 'mp' ? mepReviewers.mpFinal : (m.kind === 'elec' ? mepReviewers.elecFinal : mepReviewers.legacy);
+        if (sankeyShowReviewer && mepReviewerName) {
           const mepReviewerColor = colorFor(reviewerColorByName, mepReviewerName, SANKEY_REVIEWER_PALETTE);
           const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor);
           pushLink(mepId, mepReviewerId, value, p.id, mepColor, mepReviewerColor, projectColor);
-          if (pmId && !mepReviewerPmLinked) { pushLink(mepReviewerId, pmId, value, p.id, mepReviewerColor, pmColor, projectColor); mepReviewerPmLinked = true; }
+          if (pmId && !reviewerLinkedToPm.has(mepReviewerId)) { pushLink(mepReviewerId, pmId, value, p.id, mepReviewerColor, pmColor, projectColor); reviewerLinkedToPm.add(mepReviewerId); }
         }
       }
     } else if (afterId) {
@@ -2132,7 +2169,9 @@ window.downloadSankeyAsHtml = function() {
     mp: (p.contractors?.mp||'').trim(),
     elec: (p.contractors?.elec||'').trim(),
     mepOld: (p.contractors?.mep||'').trim(), // the old single MEP contractor of a project not yet moved over
-    mepReviewer: (p.mepReviewer || '').trim() || 'გია, იური',
+    mpReviewer: projectMepReviewers(p).mpFinal,
+    elecReviewer: projectMepReviewers(p).elecFinal,
+    mepReviewerOld: projectMepReviewers(p).legacy,
   }));
   const dataJson = JSON.stringify(dataSnapshot);
   const todayStr = todayDotted();
@@ -2260,18 +2299,18 @@ function render() {
         if (showElec) mepList.push({ name: p.elec || '— Electrical არ არის', kind: 'elec' });
         if (p.mepOld && (showMp || showElec)) mepList.push({ name: p.mepOld, kind: 'mep' });
       }
-      var mepReviewerPmLinked = false;
+      var reviewerLinkedToPm = {};
       mepList.forEach(function(m) {
         var mepColor = m.kind === 'elec' ? colorFor(elecColors, m.name, ELEC_PALETTE) : colorFor(mepColors, m.name, MEP_PALETTE);
         var mepId = addNode('c:' + m.name, m.name, mepColor);
         links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
         if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
-        if (showReviewer) {
-          var mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
+        var mepReviewerName = m.kind === 'mp' ? p.mpReviewer : (m.kind === 'elec' ? p.elecReviewer : p.mepReviewerOld);
+        if (showReviewer && mepReviewerName) {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
           var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
-          if (pmId && !mepReviewerPmLinked) { links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor }); mepReviewerPmLinked = true; }
+          if (pmId && !reviewerLinkedToPm[mepReviewerId]) { links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor }); reviewerLinkedToPm[mepReviewerId] = true; }
         }
       });
     } else if (afterId) {
@@ -2691,7 +2730,7 @@ window.showProjectSections = async function(pid) {
       <div class="project-card-body">
         <div class="project-card-name">${esc(p.name)}</div>
         <div class="section-label">MEP რევიზია</div>
-        <div class="project-card-creator">MEP რევიზორი: ${esc((p.mepReviewer || '').trim() || 'გია, იური')}</div>
+        ${(() => { const rv = projectMepReviewers(p); const lines = []; if (rv.mp) lines.push('MP რევიზორი: ' + rv.mp); if (rv.elec) lines.push('Electrical რევიზორი: ' + rv.elec); if (!lines.length && rv.legacy) lines.push('MEP რევიზორი: ' + rv.legacy); return lines.map(t => `<div class="project-card-creator">${esc(t)}</div>`).join(''); })()}
       </div>
     </div>
     <div class="project-card project-card-filled${hasIfc?'':' project-card-disabled'}" ${cardStyle} ${hasIfc?`onclick="openIfcViewer('${pid}')"`:''}>
@@ -5196,7 +5235,25 @@ async function openProjectModal(pid) {
     document.getElementById('pPmName').disabled = !!e.target.value;
     if (e.target.value) document.getElementById('pPmName').value = '';
   };
-  document.getElementById('pMepReviewer').value = pd.mepReviewer != null ? pd.mepReviewer : 'გია, იური';
+  // MP and Electrical reviewers: pick one of the registered users, or type a name (the same way as the PM above).
+  // The old single "MEP reviewer" text stays in its own row while a project still has one.
+  const reviewerCandidates = Object.values(allUsers).filter(u => u.approved && u.role !== 'contractor' && u.role !== 'admin')
+    .sort((a, b) => (b.canOpenMepIssues ? 1 : 0) - (a.canOpenMepIssues ? 1 : 0) || (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+  const fillReviewerPicker = (kind, selectId, nameId) => {
+    const uid = pd[kind + 'ReviewerUid'] || '', typed = pd[kind + 'ReviewerName'] || '';
+    const known = reviewerCandidates.some(u => u.id === uid); // a chosen user who is no longer in the list is shown as a typed name
+    const select = document.getElementById(selectId), input = document.getElementById(nameId);
+    select.innerHTML = '<option value="">— თავად ჩავწერ —</option>' +
+      reviewerCandidates.map(u => `<option value="${u.id}" ${known && u.id===uid?'selected':''}>${esc(u.name||u.email)}${u.canOpenMepIssues?' · MEP':''}</option>`).join('');
+    input.value = known ? '' : typed;
+    input.disabled = known;
+    select.onchange = e => { input.disabled = !!e.target.value; if (e.target.value) input.value = ''; };
+  };
+  fillReviewerPicker('mp', 'pMpReviewerUser', 'pMpReviewerName');
+  fillReviewerPicker('elec', 'pElecReviewerUser', 'pElecReviewerName');
+  const oldMepReviewer = pd.mepReviewer != null ? pd.mepReviewer : (pid ? 'გია, იური' : '');
+  document.getElementById('pMepReviewer').value = oldMepReviewer;
+  document.getElementById('pMepReviewerOldRow').style.display = oldMepReviewer ? 'block' : 'none';
   const contractors = pd.contractors || {};
   document.getElementById('cArch').value = contractors.arch||'';
   document.getElementById('cMp').value = contractors.mp||'';
@@ -5334,7 +5391,9 @@ async function syncPublicProject(pid) {
       createdByName: p.createdByName || 'ადმინი',
       managerName: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
       pmName: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
-      mepReviewer: (p.mepReviewer || '').trim() || 'გია, იური',
+      mepReviewer: projectMepReviewers(p).legacy, // the old single MEP reviewer text
+      mpReviewer: projectMepReviewers(p).mp,
+      elecReviewer: projectMepReviewers(p).elec,
       contractors: {
         arch: p.contractors?.arch || '',
         struct: p.contractors?.struct || '',
@@ -5372,13 +5431,19 @@ async function saveProjectData(pid) {
   const pmName = pmUid ? (allUsers[pmUid]?.name || allUsers[pmUid]?.email || '') : document.getElementById('pPmName').value.trim();
   const gbaRaw = document.getElementById('pGba').value.trim();
   const gba = gbaRaw === '' ? 1000 : Number(gbaRaw);
-  const mepReviewerRaw = document.getElementById('pMepReviewer').value.trim();
+  // MP / Electrical reviewer: the chosen registered user (uid + their name) or the typed name.
+  const reviewerFields = (kind, selectId, nameId) => {
+    const uid = document.getElementById(selectId).value || null;
+    return { [kind + 'ReviewerUid']: uid, [kind + 'ReviewerName']: uid ? (allUsers[uid]?.name || allUsers[uid]?.email || '') : document.getElementById(nameId).value.trim() };
+  };
   const data = { name, code, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors,
     color: pendingColorCleared ? null : document.getElementById('pColor').value,
     managerUid: document.getElementById('pManager').value || null,
     gba: Number.isFinite(gba) && gba >= 0 ? gba : 1000,
     pmUid, pmName,
-    mepReviewer: mepReviewerRaw || 'გია, იური',
+    ...reviewerFields('mp', 'pMpReviewerUser', 'pMpReviewerName'),
+    ...reviewerFields('elec', 'pElecReviewerUser', 'pElecReviewerName'),
+    mepReviewer: document.getElementById('pMepReviewer').value.trim(), // the old single MEP reviewer text (emptied once moved)
     updatedAt: serverTimestamp() };
   try {
     if (pid) {
@@ -5501,7 +5566,7 @@ document.getElementById('saveNewProj').addEventListener('click', async () => {
   try {
     const ref = await addDoc(collection(db,'projects'), {
       name, code, desc: document.getElementById('npDesc').value.trim(),
-      members: {}, memberIds: [], gba: 1000, mepReviewer: 'გია, იური',
+      members: {}, memberIds: [], gba: 1000, mepReviewer: '',
       createdAt:serverTimestamp(), createdBy:currentUser.uid,
       createdByName: currentUserName
     });

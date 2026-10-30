@@ -37,7 +37,9 @@ onSnapshot(collection(db, 'publicProjects'), (snap) => {
       mp: ((p.contractors && p.contractors.mp) || '').trim(),
       elec: ((p.contractors && p.contractors.elec) || '').trim(),
       mepOld: ((p.contractors && p.contractors.mep) || '').trim(), // the old single MEP contractor of a project not yet moved over
-      mepReviewer: p.mepReviewer || 'გია, იური',
+      mepReviewerOld: p.mepReviewer == null ? 'გია, იური' : String(p.mepReviewer).trim(), // the old single MEP reviewer text
+      mpReviewer: (p.mpReviewer || '').trim() || (p.mepReviewer == null ? 'გია, იური' : String(p.mepReviewer).trim()),
+      elecReviewer: (p.elecReviewer || '').trim() || (p.mepReviewer == null ? 'გია, იური' : String(p.mepReviewer).trim()),
     };
   });
   document.getElementById('loadingMsg').style.display = 'none';
@@ -166,18 +168,19 @@ window.renderChart = function() {
         if (showElec) mepList.push({ name: p.elec || '— Electrical არ არის', kind: 'elec' });
         if (p.mepOld && (showMp || showElec)) mepList.push({ name: p.mepOld, kind: 'mep' });
       }
-      var mepReviewerPmLinked = false;
+      var reviewerLinkedToPm = {};
       mepList.forEach(function(m) {
         var mepColor = m.kind === 'elec' ? colorFor(elecColors, m.name, ELEC_PALETTE) : colorFor(mepColors, m.name, MEP_PALETTE);
         var mepId = addNode('c:' + m.name, m.name, mepColor);
         links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
         if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
-        if (showReviewer) {
-          var mepReviewerName = (p.mepReviewer || '').trim() || 'გია, იური';
+        // each MEP contractor is reviewed by its own reviewer; a contractor without one has no reviewer node
+        var mepReviewerName = m.kind === 'mp' ? p.mpReviewer : (m.kind === 'elec' ? p.elecReviewer : p.mepReviewerOld);
+        if (showReviewer && mepReviewerName) {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
           var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
-          if (pmId && !mepReviewerPmLinked) { links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor }); mepReviewerPmLinked = true; }
+          if (pmId && !reviewerLinkedToPm[mepReviewerId]) { links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor }); reviewerLinkedToPm[mepReviewerId] = true; }
         }
       });
     } else if (afterId) {
