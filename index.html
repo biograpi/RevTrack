@@ -4303,17 +4303,18 @@ function applyStatusOptionState(issue) {
 // ── CONTRACTORS / RESPONSIBLE PARTY ──
 // The choices of the "Responsible" dropdown: the project's architect / mechanical & plumbing / electrical / structural
 // contractors (and the old single MEP one, while a project still has it), any extra contractors and its design
-// managers. `disc` = the discipline each one implies (used to keep both fields in sync).
+// managers. `discs` = the disciplines each one fits (used to keep both fields in sync): one for the named contractors; the old
+// single MEP contractor did all of MEP, so it fits mechanical & plumbing, electrical and the old MEP discipline alike.
 function contractorOptions() {
   const c = (currentProjectData && currentProjectData.contractors) || {};
   const opts = [];
-  if (c.arch) opts.push({value:c.arch, label:'არქიტექტორი — '+c.arch, disc:'arch'});
-  if (c.mp) opts.push({value:c.mp, label:'Mechanical & Plumbing — '+c.mp, disc:'mp'});
-  if (c.elec) opts.push({value:c.elec, label:'Electrical — '+c.elec, disc:'elec'});
-  if (c.mep) opts.push({value:c.mep, label:'MEP (ძველი) — '+c.mep, disc:'mep'});
-  if (c.struct) opts.push({value:c.struct, label:'კონსტრუქტორი — '+c.struct, disc:'struct'});
-  (c.extra||[]).forEach(e => { if (e && e.name) opts.push({value:e.name, label:(e.label||'სხვა')+' — '+e.name, disc:null}); });
-  currentProjectDesignManagers.forEach(dm => { opts.push({value:dm.name, label:'დიზაინ მენეჯერი — '+dm.name, disc:null}); });
+  if (c.arch) opts.push({value:c.arch, label:'არქიტექტორი — '+c.arch, discs:['arch']});
+  if (c.mp) opts.push({value:c.mp, label:'Mechanical & Plumbing — '+c.mp, discs:['mp']});
+  if (c.elec) opts.push({value:c.elec, label:'Electrical — '+c.elec, discs:['elec']});
+  if (c.mep) opts.push({value:c.mep, label:'MEP (ძველი) — '+c.mep, discs:['mp','elec','mep']});
+  if (c.struct) opts.push({value:c.struct, label:'კონსტრუქტორი — '+c.struct, discs:['struct']});
+  (c.extra||[]).forEach(e => { if (e && e.name) opts.push({value:e.name, label:(e.label||'სხვა')+' — '+e.name, discs:[]}); });
+  currentProjectDesignManagers.forEach(dm => { opts.push({value:dm.name, label:'დიზაინ მენეჯერი — '+dm.name, discs:[]}); });
   return opts;
 }
 // Fills the Responsible dropdown and selects `selected`. A value that is no longer in the project's list is kept and marked "(old entry)".
@@ -4346,23 +4347,25 @@ function setPersonField(selected) {
     renderPersonSelect(selected);
   }
 }
-// Choosing a discipline suggests the matching contractor as Responsible...
+// Choosing a discipline suggests the matching contractor as Responsible (if the one already selected fits that discipline too —
+// e.g. one company doing both mechanical and electrical — it stays)...
 document.getElementById('fDisc').addEventListener('change', () => {
   if (currentSection === 'internal') return; // free-text field in the internal section — no contractor auto-suggest
-  const c = (currentProjectData && currentProjectData.contractors) || {};
-  const suggestion = ({arch:c.arch, mp:c.mp, elec:c.elec, mep:c.mep, struct:c.struct})[document.getElementById('fDisc').value];
-  if (suggestion) {
-    renderPersonSelect(suggestion);
-  }
+  const disc = document.getElementById('fDisc').value;
+  const fitting = contractorOptions().filter(o => o.discs.includes(disc));
+  if (!fitting.length) return;
+  if (fitting.some(o => o.value === document.getElementById('fPerson').value)) return;
+  renderPersonSelect(fitting[0].value);
 });
-// ...and choosing a contractor sets the matching discipline.
+// ...and choosing a contractor sets the matching discipline (kept if it already fits; only disciplines that exist in the list count).
 document.getElementById('fPerson').addEventListener('change', () => {
   if (currentSection === 'internal') return; // fPerson isn't used in this section
-  const opts = contractorOptions();
-  const selectedOpt = opts.find(o => o.value === document.getElementById('fPerson').value);
-  if (selectedOpt && selectedOpt.disc) {
-    document.getElementById('fDisc').value = selectedOpt.disc;
-  }
+  const person = document.getElementById('fPerson').value;
+  const discSelect = document.getElementById('fDisc');
+  const available = new Set([...discSelect.options].map(o => o.value));
+  const fitting = [...new Set(contractorOptions().filter(o => o.value === person).flatMap(o => o.discs))].filter(d => available.has(d));
+  if (!fitting.length || fitting.includes(discSelect.value)) return;
+  discSelect.value = fitting[0];
 });
 document.getElementById('fPriority').addEventListener('change', e => {
   document.getElementById('fPriorityLabel').textContent = e.target.checked ? 'პრიორიტეტული' : 'ჩვეულებრივი';
