@@ -873,6 +873,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"MEP საკითხების გახსნის უფლება": "Permission to open MEP issues",
+"DM საკითხების გახსნის უფლება": "Permission to open DM issues",
 "— MP არ არის": "— No MP",
 "— Electrical არ არის": "— No Electrical",
 "MEP (ძველი)": "MEP (old)",
@@ -1374,6 +1376,10 @@ let currentUserName = ''; // real name from Firestore users/{uid}.name — Auth 
 let currentUserLabel = ''; // optional status label (DM/PM/TT...), only meaningful for User-role accounts
 let currentUserCanOpenDmIssues = false; // User-role accounts can be individually granted DM issue-creation
 function canOpenDmAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenDmIssues === true; }
+let currentUserCanOpenMepIssues = false; // ...and, separately, issue-creation in the MEP review section
+function canOpenMepAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenMepIssues === true; }
+// A User-role account's individually granted rights: may it open issues in this section? (DM: 'internal', MEP: 'mep')
+function canOpenInSectionAsUser(section) { return (section === 'internal' && canOpenDmAsUser()) || (section === 'mep' && canOpenMepAsUser()); }
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
 // Role used for permission checks while a project is open. Right now it always equals currentGlobalRole (see openProject).
 let currentRole = 'viewer';
@@ -1617,6 +1623,7 @@ onAuthStateChanged(auth, async user => {
     name = d.name || name;
     label = d.statusLabel || '';
     currentUserCanOpenDmIssues = d.canOpenDmIssues === true;
+    currentUserCanOpenMepIssues = d.canOpenMepIssues === true;
   } else {
     showToast('მომხმარებელი ვერ მოიძებნა — გაიარეთ რეგისტრაცია'); await signOut(auth); return;
   }
@@ -3879,9 +3886,10 @@ async function openProject(pid, section) {
   const myRole = currentGlobalRole;
   currentRole = myRole;
 
-  // Review and MEP sections: only reviewer/admin may open issues. DM (internal) section: also design
-  // managers, and "User" accounts that were individually granted DM permission.
-  const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&currentSection==='internal')||(currentSection==='internal'&&canOpenDmAsUser());
+  // Review section: only reviewer/admin may open issues. DM (internal) section: also design managers, and "User"
+  // accounts individually granted the DM permission. MEP section: reviewer/admin, and "User" accounts individually
+  // granted the MEP permission.
+  const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&currentSection==='internal')||canOpenInSectionAsUser(currentSection);
   const canComment = true; // any real (registered, approved) role can comment
   const isMyOwnProject = currentProjectData.createdBy === currentUser.uid;
   const canManageProject = myRole==='admin'||(myRole==='reviewer'&&isMyOwnProject);
@@ -4119,10 +4127,10 @@ function render() {
     tbody.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p style="font-size:15px;font-weight:500;color:var(--ink-mid)">საკითხები არ მოიძებნა</p></div>`;
     return;
   }
-  const canCreateHere = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||(currentSection==='internal'&&canOpenDmAsUser());
+  const canCreateHere = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||canOpenInSectionAsUser(currentSection);
   const canEditIssue = issue => isAdminLike() || issue.createdBy===currentUser?.uid;
-  const canDeleteIssue = issue => isAdminLike() || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'||canOpenDmAsUser()));
-  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||(currentSection==='internal'&&canOpenDmAsUser());
+  const canDeleteIssue = issue => isAdminLike() || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'||canOpenDmAsUser()||canOpenMepAsUser()));
+  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||canOpenInSectionAsUser(currentSection);
   const showUnread = UNREAD_ROLES.includes(currentRole);
   const ph = icon => `<button class="icon-btn" style="visibility:hidden;pointer-events:none" tabindex="-1">${icon}</button>`;
   const todayStr = new Date().toISOString().slice(0,10);
@@ -4765,7 +4773,7 @@ async function openDetail(id) {
   document.getElementById('detailNextBtn').disabled = navIndex === -1 || navIndex >= navList.length-1;
   const canEdit = isAdminLike() || issue.createdBy===currentUser?.uid;
   const canComment = true;
-  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||(currentSection==='internal'&&canOpenDmAsUser());
+  const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||canOpenInSectionAsUser(currentSection);
   document.getElementById('detailDupBtn').style.display = canDuplicate?'flex':'none';
   const canDuplicateToReview = currentRole==='admin'||currentRole==='reviewer';
   document.getElementById('detailDupToReviewBtn').style.display = (canDuplicateToReview && currentSection==='internal')?'flex':'none';
@@ -5091,6 +5099,12 @@ function renderUsersPanel() {
           <input type="checkbox" ${u.canOpenDmIssues?'checked':''} onchange="toggleUserDmPermission('${u.id}',this.checked)">
           DM საკითხების გახსნის უფლება
         </label>
+      </div>
+      <div class="user-label-row">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+          <input type="checkbox" ${u.canOpenMepIssues?'checked':''} onchange="toggleUserMepPermission('${u.id}',this.checked)">
+          MEP საკითხების გახსნის უფლება
+        </label>
       </div>`:''}
     </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">მომხმარებელი არ არის</div>';
 }
@@ -5110,6 +5124,13 @@ window.toggleUserDmPermission = async (uid, checked) => {
   try {
     await updateDoc(doc(db,'users',uid), {canOpenDmIssues: checked});
     if (allUsers[uid]) allUsers[uid].canOpenDmIssues = checked;
+  } catch(e) { alert('შეცდომა: '+e.message); renderUsersPanel(); }
+};
+// The same for the MEP review section (users/{uid}.canOpenMepIssues). The two permissions are independent.
+window.toggleUserMepPermission = async (uid, checked) => {
+  try {
+    await updateDoc(doc(db,'users',uid), {canOpenMepIssues: checked});
+    if (allUsers[uid]) allUsers[uid].canOpenMepIssues = checked;
   } catch(e) { alert('შეცდომა: '+e.message); renderUsersPanel(); }
 };
 window.approveUser = async uid => {
