@@ -34,7 +34,7 @@ jobs:
           COUNT=$(git rev-list --count HEAD)
           echo "Commits in the repository: $COUNT"
           sed -i "s/__BUILD__/${COUNT}/g" index.html
-          grep -n "const APP_BUILD" index.html
+          grep -n "const APP_BUILD" index.html || echo "(this index.html has no build placeholder yet - nothing to replace)"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
