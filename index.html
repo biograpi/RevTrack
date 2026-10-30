@@ -4318,17 +4318,19 @@ function contractorOptions() {
   return opts;
 }
 // Fills the Responsible dropdown and selects `selected`. A value that is no longer in the project's list is kept and marked "(old entry)".
-function renderPersonSelect(selected) {
+// When the same name appears more than once in the list (one company doing both mechanical & plumbing and electrical), the choice that
+// fits the current discipline is the one shown as selected.
+function renderPersonSelect(selected, preferDisc = document.getElementById('fDisc').value) {
   const sel = document.getElementById('fPerson');
   const opts = contractorOptions();
+  const same = opts.filter(o => o.value === selected);
+  const shown = same.find(o => o.discs.includes(preferDisc)) || same[0]; // the one choice to show as selected
   let html = '<option value="">— არჩევა —</option>';
-  let matched = false;
   opts.forEach(o => {
-    if (o.value === selected) matched = true;
-    html += `<option value="${esc(o.value)}" ${o.value===selected?'selected':''}>${esc(o.label)}</option>`;
+    html += `<option value="${esc(o.value)}" data-discs="${o.discs.join(',')}" ${o === shown ? 'selected' : ''}>${esc(o.label)}</option>`;
   });
-  if (selected && !matched) {
-    html += `<option value="${esc(selected)}" selected>${esc(selected)} (ძველი ჩანაწერი)</option>`;
+  if (selected && !shown) {
+    html += `<option value="${esc(selected)}" data-discs="" selected>${esc(selected)} (ძველი ჩანაწერი)</option>`;
   }
   sel.innerHTML = html;
 }
@@ -4348,22 +4350,22 @@ function setPersonField(selected) {
   }
 }
 // Choosing a discipline suggests the matching contractor as Responsible (if the one already selected fits that discipline too —
-// e.g. one company doing both mechanical and electrical — it stays)...
+// e.g. one company doing both mechanical and electrical — that company stays, shown under the choice that matches the discipline)...
 document.getElementById('fDisc').addEventListener('change', () => {
   if (currentSection === 'internal') return; // free-text field in the internal section — no contractor auto-suggest
   const disc = document.getElementById('fDisc').value;
   const fitting = contractorOptions().filter(o => o.discs.includes(disc));
   if (!fitting.length) return;
-  if (fitting.some(o => o.value === document.getElementById('fPerson').value)) return;
-  renderPersonSelect(fitting[0].value);
+  const current = document.getElementById('fPerson').value;
+  renderPersonSelect((fitting.find(o => o.value === current) || fitting[0]).value, disc);
 });
-// ...and choosing a contractor sets the matching discipline (kept if it already fits; only disciplines that exist in the list count).
+// ...and choosing a contractor sets the discipline of THAT choice (kept if it already fits; only disciplines that exist in the list count).
 document.getElementById('fPerson').addEventListener('change', () => {
   if (currentSection === 'internal') return; // fPerson isn't used in this section
-  const person = document.getElementById('fPerson').value;
+  const chosen = document.getElementById('fPerson').selectedOptions[0];
   const discSelect = document.getElementById('fDisc');
   const available = new Set([...discSelect.options].map(o => o.value));
-  const fitting = [...new Set(contractorOptions().filter(o => o.value === person).flatMap(o => o.discs))].filter(d => available.has(d));
+  const fitting = ((chosen && chosen.dataset.discs) || '').split(',').filter(d => d && available.has(d));
   if (!fitting.length || fitting.includes(discSelect.value)) return;
   discSelect.value = fitting[0];
 });
