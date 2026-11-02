@@ -294,6 +294,24 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .photo-thumb .photo-spin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .btn-add-link:hover{background:var(--accent);color:white}
 .modal-footer{padding:13px 20px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:10px}
+/* weekly site reports */
+.rp-row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--rule)}
+.rp-row:last-child{border-bottom:none}
+.rp-num{font-weight:600;color:var(--accent);min-width:54px;font-size:14px}
+.rp-meta{flex:1;min-width:0;font-size:13px;color:var(--ink-mid)}
+.rp-meta small{display:block;font-size:11.5px;color:var(--ink-light);margin-top:2px}
+.rp-info{background:var(--bg);border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--ink-mid);line-height:1.6;margin-bottom:6px}
+.rp-section{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin:18px 0 8px}
+.rp-photo{display:grid;grid-template-columns:120px 1fr 28px;gap:10px;align-items:start;margin-bottom:10px}
+.rp-photo-box{width:120px;height:90px;border:1px dashed var(--ink-light);border-radius:var(--r);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;color:var(--ink-light);font-size:12px;text-align:center;line-height:1.3;padding:4px}
+.rp-photo-box img{width:100%;height:100%;object-fit:cover;display:block}
+.rp-photo textarea{min-height:90px;resize:vertical}
+.rp-x{width:26px;height:26px;border-radius:50%;border:1px solid var(--rule);background:white;color:var(--ink-light);cursor:pointer;font-size:13px;line-height:1}
+.rp-x:hover{border-color:var(--accent);color:var(--accent)}
+.rp-work{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rp-work b{min-width:22px;font-size:12px;color:var(--ink-light);text-align:right}
+.rp-work input{flex:1}
+@media (max-width:560px){.rp-photo{grid-template-columns:96px 1fr 26px}.rp-photo-box{width:96px;height:76px}}
 
 /* ── DETAIL ── */
 .detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;margin-bottom:15px}
@@ -417,6 +435,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
     <div style="display:none;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;flex-wrap:wrap" id="sankeyControlsRow">
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyDm" checked onchange="toggleSankeyManagerType()"> დიზაინ მენეჯერები</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyPm" onchange="toggleSankeyManagerType()"> პროექტ მენეჯერები</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeySite" onchange="toggleSankeyManagerType()"> საიტ მენეჯერები</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyArch" checked onchange="toggleSankeyDiscipline()"> არქიტექტორი</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyStruct" checked onchange="toggleSankeyDiscipline()"> კონსტრუქტორი</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyMp" checked onchange="toggleSankeyDiscipline()"> MP</label>
@@ -613,6 +632,43 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   </div>
 </div>
 
+<!-- Weekly site reports: the list of a project's reports -->
+<div class="modal-overlay" id="reportsModal">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header"><h2 id="reportsTitle">📝 რეპორტი</h2><button class="modal-close" onclick="cm('reportsModal')">✕</button></div>
+    <div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <span><span id="reportsCount" style="font-size:12px;color:var(--ink-light)"></span><span id="reportsHint" style="display:block;font-size:11.5px;color:var(--ink-light);margin-top:3px"></span></span>
+      <button class="btn-primary" id="btnNewReport" style="display:none" onclick="openReportForm()">+ ახალი ოქმი</button>
+    </div>
+    <div class="modal-body" id="reportsList" style="max-height:62vh;overflow-y:auto">იტვირთება...</div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cm('reportsModal')">დახურვა</button></div>
+  </div>
+</div>
+<!-- Weekly site reports: the form of one report -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header"><h2 id="reportFormTitle">ახალი ოქმი</h2><button class="modal-close" onclick="closeReportForm()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>ოქმის №</label><input type="number" id="rNumber" min="1" step="1" placeholder="მაგ. 55"></div>
+        <div class="field"><label>თარიღი</label><input id="rDate" disabled></div>
+        <div class="field form-full"><label>მოამზადა</label><input id="rAuthor" disabled></div>
+      </div>
+      <div class="rp-info" id="rInfoPreview"></div>
+      <button type="button" class="btn-secondary" style="font-size:12px;padding:5px 10px" onclick="refreshReportInfo()">↻ ობიექტის ინფორმაციის განახლება პროექტიდან</button>
+      <div class="rp-section">ფოტომასალა</div>
+      <div id="rPhotos"></div>
+      <button type="button" class="btn-secondary" id="btnAddReportPhoto" onclick="addReportPhotoSlot()">+ ფოტოს დამატება</button>
+      <input type="file" id="rPhotoInput" accept="image/*" multiple style="display:none">
+      <div class="rp-section">ობიექტზე მიმდინარე და დასრულებული სამუშაოები</div>
+      <div id="rWorks"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeReportForm()">გაუქმება</button>
+      <button class="btn-primary" id="btnSaveReport" onclick="saveReport()">შენახვა</button>
+    </div>
+  </div>
+</div>
 <!-- Global Users (admin) -->
 <div class="modal-overlay" id="usersModal">
   <div class="modal" style="max-width:720px">
@@ -671,13 +727,14 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
             <button type="button" class="btn-secondary" id="btnClearColor" style="padding:8px 12px;font-size:12px">ნაგულისხმევზე დაბრუნება</button>
           </div>
         </div>
+        <div class="field form-full"><label>მისამართი</label><input id="pAddress" placeholder="ობიექტის მისამართი (ჩანს ოქმებში)"></div>
         <div class="field form-full"><label>აღწერა</label><input id="pDesc" placeholder="მოკლე აღწერა"></div>
         <div class="field">
           <label>GBA (მთლიანი სამშენებლო ფართობი, მ²)</label>
           <input type="number" id="pGba" min="0" step="1" placeholder="1000">
         </div>
         <div class="field form-full">
-          <label>პროექტის მენეჯერი (საინფორმაციო — უფლებებზე გავლენას არ ახდენს)</label>
+          <label>დიზაინ მენეჯერი (საინფორმაციო — უფლებებზე გავლენას არ ახდენს)</label>
           <select id="pManager"><option value="">— არჩეული არ არის —</option></select>
         </div>
         <div class="field">
@@ -687,6 +744,14 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <div class="field">
           <label>PM-ის სახელი (თუ დარეგისტრირებული არაა)</label>
           <input id="pPmName" placeholder="სახელი გვარი">
+        </div>
+        <div class="field">
+          <label>საიტ მენეჯერი (წერს ამ პროექტის ოქმებს)</label>
+          <select id="pSiteUser"><option value="">— თავად ჩავწერ —</option></select>
+        </div>
+        <div class="field">
+          <label>საიტ მენეჯერის სახელი (თუ დარეგისტრირებული არაა)</label>
+          <input id="pSiteName" placeholder="სახელი გვარი">
         </div>
         <div class="field">
           <label>MP რევიზორი</label>
@@ -891,6 +956,46 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს (მითითებულია პროექტის მართვაში)": "Only this project's site manager can write a new report (set in the project settings)",
+"საიტ მენეჯერი": "Site manager",
+"საიტ მენეჯერი (წერს ამ პროექტის ოქმებს)": "Site manager (writes this project's reports)",
+"საიტ მენეჯერის სახელი (თუ დარეგისტრირებული არაა)": "Site manager's name (if not registered)",
+"საიტ მენეჯერები": "Site managers",
+"📝 რეპორტი": "📝 Report",
+"+ ახალი ოქმი": "+ New report",
+"ახალი ოქმი": "New report",
+"ოქმის №": "Report no.",
+"მოამზადა": "Prepared by",
+"↻ ობიექტის ინფორმაციის განახლება პროექტიდან": "↻ Refresh the object details from the project",
+"ფოტომასალა": "Photos",
+"+ ფოტოს დამატება": "+ Add a photo",
+"ობიექტზე მიმდინარე და დასრულებული სამუშაოები": "Works in progress and completed on site",
+"მისამართი": "Address",
+"მაგ. 55": "e.g. 55",
+"ობიექტის მისამართი (ჩანს ოქმებში)": "The object's address (shown in the reports)",
+"რეპორტი": "Report",
+"ყოველკვირეული ოქმები": "Weekly reports",
+"ოქმი ჯერ არ არის": "No reports yet",
+"ობიექტი:": "Object:",
+"მისამართი:": "Address:",
+"კონტრაქტორები:": "Contractors:",
+"დამატებითი ინფორმაცია:": "Additional information:",
+"ფოტოს არჩევა": "Choose a photo",
+"ფოტოს აღწერა (სავალდებულოა)": "Photo description (required)",
+"გასუფთავება": "Clear",
+"+ სტრიქონის დამატება": "+ Add a line",
+"შესრულებული სამუშაოები": "Completed works",
+"მიმდინარე სამუშაოები": "Works in progress",
+"დაგეგმილი სამუშაოები": "Planned works",
+"ოქმი შენახულია": "Report saved",
+"ჩაწერე ოქმის ნომერი": "Enter the report number",
+"ყველა ფოტოს უნდა ჰქონდეს აღწერა": "Every photo needs a description",
+"აღწერა არის, მაგრამ ფოტო არ არის არჩეული. აირჩიე ფოტო ან გაასუფთავე აღწერა": "There is a description but no photo is chosen. Choose a photo or clear the description",
+"ფოტოების ატვირთვა ჯერ არ დასრულებულა, მოიცადე": "Photo uploads have not finished yet, please wait",
+"ფოტოების ატვირთვა ჯერ არ დასრულებულა. მაინც დავხურო?": "Photo uploads have not finished yet. Close anyway?",
+"PDF მზადდება...": "Preparing the PDF...",
+"PDF-ის შექმნა ვერ მოხერხდა": "Could not create the PDF",
+"PDF-ის შექმნა ვერ მოხერხდა (ფონტის ფაილები ვერ ჩაიტვირთა)": "Could not create the PDF (the font files could not be loaded)",
 "ძებნით ან ფილტრით არავინ მოიძებნა": "No one matches the search or filter",
 "🔍 ძებნა: სახელი, მეილი, ლეიბლი": "🔍 Search: name, email, label",
 "ტექნიკური კითხვების შემთხვევაში დაუკავშირდით:": "For technical questions, please contact:",
@@ -1136,7 +1241,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 "აღწერა": "Description",
 "მოკლე აღწერა": "Short description",
 "GBA (მთლიანი სამშენებლო ფართობი, მ²)": "GBA (gross building area, m²)",
-"პროექტის მენეჯერი (საინფორმაციო — უფლებებზე გავლენას არ ახდენს)": "Project manager (informational — doesn't affect permissions)",
+"დიზაინ მენეჯერი (საინფორმაციო — უფლებებზე გავლენას არ ახდენს)": "Design manager (informational — doesn't affect permissions)",
 "— არჩეული არ არის —": "— None selected —",
 "პროექტის მენეჯერი (PM)": "Project manager (PM)",
 "— თავად ჩავწერ —": "— I'll type it —",
@@ -1186,6 +1291,15 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^📝 რეპორტი — ([\s\S]*)$/, function (m) { return '📝 Report — ' + translit(m[1]); }],
+    [/^სულ ოქმი: (\d+)$/, function (m) { return 'Reports: ' + m[1]; }],
+    [/^(\d+) ფოტო · (\d+) შესრულებული · (\d+) მიმდინარე · (\d+) დაგეგმილი$/, function (m) { return m[1] + ' photos · ' + m[2] + ' done · ' + m[3] + ' in progress · ' + m[4] + ' planned'; }],
+    [/^ოქმის რედაქტირება #(\d+)$/, function (m) { return 'Edit report #' + m[1]; }],
+    [/^ერთ ოქმში მაქსიმუმ (\d+) ფოტოა$/, function (m) { return 'A report can hold at most ' + m[1] + ' photos'; }],
+    [/^ოქმი №(\d+) უკვე არსებობს ამ პროექტში\. მაინც შევინახო\?$/, function (m) { return 'Report no. ' + m[1] + ' already exists in this project. Save anyway?'; }],
+    [/^წავშალო ოქმი #(\d+)\? მისი ფოტოებიც წაიშლება\.$/, function (m) { return 'Delete report #' + m[1] + '? Its photos will be deleted too.'; }],
+    [/^შეცდომა შენახვისას: ([\s\S]*)$/, function (m) { return 'Error while saving: ' + m[1]; }],
+    [/^შეცდომა წაშლისას: ([\s\S]*)$/, function (m) { return 'Error while deleting: ' + m[1]; }],
     [/^ვოლპეიპერი მზადაა: (\d+) პროექტი$/, function (m) { return 'Wallpaper ready: ' + plural(m[1], 'project', 'projects'); }],
     [/^მუშავდება\.\.\. (\d+) \/ (\d+) პროექტი$/, function (m) { return 'Working... ' + m[1] + ' / ' + m[2] + ' ' + (m[2] === '1' ? 'project' : 'projects'); }],
     [/^ვოლპეიპერი მზადაა: (\d+) ხაზი \(სულ (\d+)-დან\)\. პროექტები: ([\s\S]*)$/, function (m) { return 'Wallpaper ready: ' + m[1] + ' lines (of ' + m[2] + '). Projects: ' + translit(m[3].replace(/\(ნაწილობრივ\)/g, '(partly)')); }],
@@ -1412,6 +1526,12 @@ function canOpenDmAsUser() { return currentGlobalRole === 'viewer' && currentUse
 let currentUserCanOpenMepIssues = false; // ...and, separately, issue-creation in the MEP review section
 function canOpenMepAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenMepIssues === true; }
 // A User-role account's individually granted rights: may it open issues in this section? (DM: 'internal', MEP: 'mep')
+// The weekly site reports ("ოქმები") of a project are written by an admin (the super reviewer included) and by that project's
+// SITE MANAGER — the registered user chosen in the project's "site manager" field (siteMgrUid). `project` = the project's data.
+const isSiteManagerOf = project => !!project && !!project.siteMgrUid && project.siteMgrUid === currentUser?.uid && currentGlobalRole !== 'contractor';
+const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project);
+const canEditReport = (r, project) => isAdminLike() || (isSiteManagerOf(project) && r.authorId === currentUser?.uid);   // the site manager: only their own reports
+const canReadReports = () => currentGlobalRole !== 'contractor' || isAdminLike(); // everybody but contractors
 function canOpenInSectionAsUser(section) { return (section === 'internal' && canOpenDmAsUser()) || (section === 'mep' && canOpenMepAsUser()); }
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
 // Role used for permission checks while a project is open. Right now it always equals currentGlobalRole (see openProject).
@@ -1702,6 +1822,10 @@ function firstNameOnly(fullName) { return (fullName||'').trim().split(/\s+/)[0] 
 // How many distinct nodes will the busiest column need? Used to size the
 // diagram's height so nothing gets cramped, regardless of how many
 // reviewers/managers/contractors/PMs actually exist in the data.
+// The site manager of a project as a name: the chosen registered user's current name, or the typed name ('' when none).
+function projectSiteManager(p) {
+  return p.siteMgrUid ? (allUsers[p.siteMgrUid]?.name || allUsers[p.siteMgrUid]?.email || (p.siteMgrName || '').trim() || 'უცნობი') : (p.siteMgrName || '').trim();
+}
 // The MEP reviewers of a project, as names: mechanical & plumbing and electrical — each picked from the registered users
 // (mpReviewerUid / elecReviewerUid) or typed by hand (…ReviewerName) — plus the OLD single "MEP reviewer" text (mepReviewer; a
 // project made before the split has only that). A reviewer that isn't set falls back to the old text; with nothing at all there is
@@ -1729,7 +1853,7 @@ function sankeyMepContractors(p, on) {
   return list;
 }
 function computeMaxColumnNodeCount(projects) {
-  const managers = new Set(), reviewers = new Set(), pms = new Set(), contractors = new Set();
+  const managers = new Set(), reviewers = new Set(), pms = new Set(), sites = new Set(), contractors = new Set();
   projects.forEach(p => {
     if (sankeyShowReviewer) reviewers.add(p.createdByName || 'ადმინი');
     if (sankeyManagerTypes.dm) {
@@ -1738,11 +1862,12 @@ function computeMaxColumnNodeCount(projects) {
     if (sankeyManagerTypes.pm) {
       pms.add(p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'));
     }
+    if (sankeyManagerTypes.site) sites.add(projectSiteManager(p) || '— არავინ');
     if (sankeyDisciplines.arch) contractors.add((p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის');
     if (sankeyDisciplines.struct) contractors.add((p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის');
     sankeyMepContractors(p, sankeyDisciplines).forEach(m => contractors.add(m.name));
   });
-  return Math.max(projects.length, managers.size, reviewers.size, pms.size, contractors.size);
+  return Math.max(projects.length, managers.size, reviewers.size, pms.size, sites.size, contractors.size);
 }
 // "ნინო ორმოცაძე" -> "ნინო ო." — distinguishes two people sharing a first name.
 function nameWithLastInitial(fullName) {
@@ -1757,9 +1882,10 @@ const SANKEY_PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#1
 const SANKEY_ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
 const SANKEY_STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
 const SANKEY_MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
+const SANKEY_SITE_PALETTE = ['#64748b','#475569','#94a3b8','#334155','#78716c','#57534e','#a8a29e'];
 const SANKEY_ELEC_PALETTE = ['#14b8a6','#0d9488','#2dd4bf','#0f766e','#5eead4','#10b981','#34d399'];
 let sankeySizeMode = 'gba'; // always GBA on the live app now — the issues/GBA toggle was removed
-let sankeyManagerTypes = { dm: true, pm: false }; // which manager column(s) are included
+let sankeyManagerTypes = { dm: true, pm: false, site: false }; // which manager column(s) are included (design managers, project managers, site managers)
 let sankeyShowReviewer = true; // whether the reviewer column is shown
 let sankeyDisciplines = { arch: true, struct: true, mp: true, elec: true }; // which contractor disciplines are included
 let lastChartProjects = null; // cached for re-render when the size toggle changes, without refetching
@@ -1773,6 +1899,7 @@ function syncSankeyChecks() {
 window.toggleSankeyManagerType = function() {
   sankeyManagerTypes.dm = document.getElementById('chkSankeyDm').checked;
   sankeyManagerTypes.pm = document.getElementById('chkSankeyPm').checked;
+  sankeyManagerTypes.site = document.getElementById('chkSankeySite').checked;
   syncSankeyChecks();
   if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
 };
@@ -1814,6 +1941,7 @@ function renderReviewerManagerChart(projects, opts) {
     document.getElementById('sankeyControlsRow').style.display = 'flex';
     document.getElementById('chkSankeyDm').checked = sankeyManagerTypes.dm;
     document.getElementById('chkSankeyPm').checked = sankeyManagerTypes.pm;
+    document.getElementById('chkSankeySite').checked = sankeyManagerTypes.site;
     document.getElementById('chkSankeyArch').checked = sankeyDisciplines.arch;
     document.getElementById('chkSankeyStruct').checked = sankeyDisciplines.struct;
     document.getElementById('chkSankeyMp').checked = sankeyDisciplines.mp;
@@ -1838,7 +1966,7 @@ function renderReviewerManagerChart(projects, opts) {
   // label shown is always the clean name, without the prefix).
   const nodesById = new Map(); // id -> {id, name, color}
   // Node ids carry a column prefix so names can't collide across columns: p: project, m: design manager,
-  // c: contractor, r: reviewer, pm: project manager. The label shown is the clean name.
+  // c: contractor, r: reviewer, pm: project manager, sm: site manager. The label shown is the clean name.
   function addNode(id, name, color) {
     if (!nodesById.has(id)) nodesById.set(id, { id, name, color });
     return id;
@@ -1846,6 +1974,7 @@ function renderReviewerManagerChart(projects, opts) {
   const reviewerColorByName = new Map();
   const managerColorByName = new Map();
   const pmColorByName = new Map();
+  const siteColorByName = new Map();
   // Gives each distinct name a stable colour from its column's palette (first come, first served).
   function colorFor(map, name, palette) {
     if (!map.has(name)) map.set(name, palette[map.size % palette.length]);
@@ -1895,10 +2024,19 @@ function renderReviewerManagerChart(projects, opts) {
       pmColor = colorFor(pmColorByName, pmFullName, SANKEY_PM_PALETTE);
       pmId = addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor);
     }
+    // The site manager is the last column, after the project managers. It follows the PM when the PM column is shown, otherwise it
+    // takes the PM's place (reviewers / contractors lead straight to it).
+    let siteId = null, siteColor = null;
+    if (sankeyManagerTypes.site) {
+      const siteFullName = projectSiteManager(p) || '— არავინ';
+      siteColor = colorFor(siteColorByName, siteFullName, SANKEY_SITE_PALETTE);
+      siteId = addNode(`sm:${siteFullName}`, nameWithLastInitial(siteFullName), siteColor);
+    }
+    const tailId = pmId || siteId, tailColor = pmId ? pmColor : siteColor;   // where the reviewers lead: the PM, or the site manager if there is no PM column
     // What contractors (or the direct link) should point to: the reviewer
-    // if it's shown, otherwise PM directly, otherwise nothing further.
-    const afterId = sankeyShowReviewer ? reviewerId : pmId;
-    const afterColor = sankeyShowReviewer ? reviewerColor : pmColor;
+    // if it's shown, otherwise the last manager column (PM, else site manager), otherwise nothing further.
+    const afterId = sankeyShowReviewer ? reviewerId : tailId;
+    const afterColor = sankeyShowReviewer ? reviewerColor : tailColor;
 
     if (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mp || sankeyDisciplines.elec) {
       // One combined column, up to three parallel nodes — architect,
@@ -1936,16 +2074,17 @@ function renderReviewerManagerChart(projects, opts) {
           const mepReviewerColor = colorFor(reviewerColorByName, mepReviewerName, SANKEY_REVIEWER_PALETTE);
           const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor);
           pushLink(mepId, mepReviewerId, value, p.id, mepColor, mepReviewerColor, projectColor);
-          if (pmId && !reviewerLinkedToPm.has(mepReviewerId)) { pushLink(mepReviewerId, pmId, value, p.id, mepReviewerColor, pmColor, projectColor); reviewerLinkedToPm.add(mepReviewerId); }
+          if (tailId && !reviewerLinkedToPm.has(mepReviewerId)) { pushLink(mepReviewerId, tailId, value, p.id, mepReviewerColor, tailColor, projectColor); reviewerLinkedToPm.add(mepReviewerId); }
         }
       }
     } else if (afterId) {
       pushLink(preContractorId, afterId, value, p.id, preContractorColor, afterColor, projectColor);
     }
 
-    if (sankeyShowReviewer && pmId) {
-      pushLink(reviewerId, pmId, value, p.id, reviewerColor, pmColor, projectColor);
+    if (sankeyShowReviewer && tailId) {
+      pushLink(reviewerId, tailId, value, p.id, reviewerColor, tailColor, projectColor);
     }
+    if (pmId && siteId) pushLink(pmId, siteId, value, p.id, pmColor, siteColor, projectColor);
   });
 
   const svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
@@ -2140,21 +2279,25 @@ function renderReviewerManagerChart(projects, opts) {
   const showDm = sankeyManagerTypes.dm;
   const showPm = sankeyManagerTypes.pm;
   const showContractors = sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mp || sankeyDisciplines.elec;
-  const dmIsLast = showDm && !showContractors && !sankeyShowReviewer && !showPm;
+  const showSite = sankeyManagerTypes.site;
+  const dmIsLast = showDm && !showContractors && !sankeyShowReviewer && !showPm && !showSite;
   if (showDm) {
     headerStyle(svg.append('text').attr('x', dmIsLast ? width - mg.right : colCenterX('m:')).attr('text-anchor', dmIsLast ? 'end' : 'middle')).text(tr('დიზაინ მენეჯერი'));
   }
   if (showContractors) {
     const activeDisciplines = [sankeyDisciplines.arch && 'არქიტექტორი', sankeyDisciplines.struct && 'კონსტრუქტორი', sankeyDisciplines.mp && 'MP', sankeyDisciplines.elec && 'Electrical'].filter(Boolean);
-    const contractorIsLast = !sankeyShowReviewer && !showPm;
+    const contractorIsLast = !sankeyShowReviewer && !showPm && !showSite;
     const label = activeDisciplines.length === 1 ? activeDisciplines[0] : 'კონტრაქტორი';
     headerStyle(svg.append('text').attr('x', contractorIsLast ? width - mg.right : colCenterX('c:')).attr('text-anchor', contractorIsLast ? 'end' : 'middle')).text(tr(label));
   }
   if (sankeyShowReviewer) {
-    headerStyle(svg.append('text').attr('x', showPm ? colCenterX('r:') : width - mg.right).attr('text-anchor', showPm ? 'middle' : 'end')).text(tr('რევიზორი'));
+    headerStyle(svg.append('text').attr('x', (showPm || showSite) ? colCenterX('r:') : width - mg.right).attr('text-anchor', (showPm || showSite) ? 'middle' : 'end')).text(tr('რევიზორი'));
   }
   if (showPm) {
-    headerStyle(svg.append('text').attr('x', width - mg.right).attr('text-anchor', 'end')).text(tr('პროექტის მენეჯერი'));
+    headerStyle(svg.append('text').attr('x', showSite ? colCenterX('pm:') : width - mg.right).attr('text-anchor', showSite ? 'middle' : 'end')).text(tr('პროექტის მენეჯერი'));
+  }
+  if (showSite) {
+    headerStyle(svg.append('text').attr('x', width - mg.right).attr('text-anchor', 'end')).text(tr('საიტ მენეჯერი'));
   }
   } // end of the column headers
 }
@@ -2175,6 +2318,7 @@ window.downloadSankeyAsHtml = function() {
     reviewer: p.createdByName || 'ადმინი',
     manager: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
     pm: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
+    site: projectSiteManager(p) || '— არავინ',
     arch: (p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის',
     struct: (p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის',
     mp: (p.contractors?.mp||'').trim(),
@@ -2214,6 +2358,7 @@ window.downloadSankeyAsHtml = function() {
 <div class="controls">
   <label><input type="checkbox" id="chkDm" checked> დიზაინ მენეჯერები</label>
   <label><input type="checkbox" id="chkPm" checked> პროექტ მენეჯერები</label>
+  <label><input type="checkbox" id="chkSite"> საიტ მენეჯერები</label>
   <label><input type="checkbox" id="chkArch"> არქიტექტორი</label>
   <label><input type="checkbox" id="chkStruct"> კონსტრუქტორი</label>
   <label><input type="checkbox" id="chkMp"> MP</label>
@@ -2226,6 +2371,7 @@ var PROJECTS = ${dataJson};
 var REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
 var MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
 var PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#a3e635'];
+var SITE_PALETTE = ['#64748b','#475569','#94a3b8','#334155','#78716c','#57534e','#a8a29e'];
 var ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
 var STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
 var MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
@@ -2245,6 +2391,7 @@ function colorFor(map, name, palette) {
 function render() {
   var showDm = document.getElementById('chkDm').checked;
   var showPm = document.getElementById('chkPm').checked;
+  var showSite = document.getElementById('chkSite').checked;
   var showArch = document.getElementById('chkArch').checked;
   var showStruct = document.getElementById('chkStruct').checked;
   var showMp = document.getElementById('chkMp').checked;
@@ -2256,7 +2403,7 @@ function render() {
   svgEl.innerHTML = '';
   var width = svgEl.parentElement.clientWidth || 900;
 
-  var reviewerColors = {}, managerColors = {}, pmColors = {}, archColors = {}, structColors = {}, mepColors = {}, elecColors = {};
+  var reviewerColors = {}, managerColors = {}, pmColors = {}, siteColors = {}, archColors = {}, structColors = {}, mepColors = {}, elecColors = {};
   var nodesById = {};
   function addNode(id, name, color) {
     if (!nodesById[id]) nodesById[id] = { id: id, name: name, color: color };
@@ -2286,8 +2433,15 @@ function render() {
       pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
       pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor);
     }
-    var afterId = showReviewer ? reviewerId : pmId;
-    var afterColor = showReviewer ? reviewerColor : pmColor;
+    // the site manager: the last column, after the project managers (it takes the PM's place when the PM column is off)
+    var siteId = null, siteColor = null;
+    if (showSite) {
+      siteColor = colorFor(siteColors, p.site, SITE_PALETTE);
+      siteId = addNode('sm:' + p.site, withInitial(p.site), siteColor);
+    }
+    var tailId = pmId || siteId, tailColor = pmId ? pmColor : siteColor;
+    var afterId = showReviewer ? reviewerId : tailId;
+    var afterColor = showReviewer ? reviewerColor : tailColor;
 
     if (showContractors) {
       if (showArch) {
@@ -2321,16 +2475,17 @@ function render() {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
           var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
-          if (pmId && !reviewerLinkedToPm[mepReviewerId]) { links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor }); reviewerLinkedToPm[mepReviewerId] = true; }
+          if (tailId && !reviewerLinkedToPm[mepReviewerId]) { links.push({ source: mepReviewerId, target: tailId, value: value, pid: p.id, c1: mepReviewerColor, c2: tailColor }); reviewerLinkedToPm[mepReviewerId] = true; }
         }
       });
     } else if (afterId) {
       links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
     }
 
-    if (showReviewer && pmId) {
-      links.push({ source: reviewerId, target: pmId, value: value, pid: p.id, c1: reviewerColor, c2: pmColor });
+    if (showReviewer && tailId) {
+      links.push({ source: reviewerId, target: tailId, value: value, pid: p.id, c1: reviewerColor, c2: tailColor });
     }
+    if (pmId && siteId) links.push({ source: pmId, target: siteId, value: value, pid: p.id, c1: pmColor, c2: siteColor });
   });
 
   // Height sized to the busiest column, same spirit as the live app.
@@ -2455,19 +2610,21 @@ function render() {
       .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(text);
   }
   header(1, 'start', 'პროექტი');
-  var dmIsLast = showDm && !showContractors && !showReviewer && !showPm;
+  var showSite2 = document.getElementById('chkSite').checked;
+  var dmIsLast = showDm && !showContractors && !showReviewer && !showPm && !showSite2;
   if (showDm) header(dmIsLast ? width - 1 : colCenterX('m:'), dmIsLast ? 'end' : 'middle', 'დიზაინ მენეჯერი');
   if (showContractors) {
     var activeDisciplines = [showArch && 'არქიტექტორი', showStruct && 'კონსტრუქტორი', showMp && 'MP', showElec && 'Electrical'].filter(Boolean);
-    var contractorIsLast = !showReviewer && !showPm;
+    var contractorIsLast = !showReviewer && !showPm && !showSite2;
     var label = activeDisciplines.length === 1 ? activeDisciplines[0] : 'კონტრაქტორი';
     header(contractorIsLast ? width - 1 : colCenterX('c:'), contractorIsLast ? 'end' : 'middle', label);
   }
-  if (showReviewer) header(showPm ? colCenterX('r:') : width - 1, showPm ? 'middle' : 'end', 'რევიზორი');
-  if (showPm) header(width - 1, 'end', 'პროექტის მენეჯერი');
+  if (showReviewer) header((showPm || showSite2) ? colCenterX('r:') : width - 1, (showPm || showSite2) ? 'middle' : 'end', 'რევიზორი');
+  if (showPm) header(showSite2 ? colCenterX('pm:') : width - 1, showSite2 ? 'middle' : 'end', 'პროექტის მენეჯერი');
+  if (showSite2) header(width - 1, 'end', 'საიტ მენეჯერი');
 }
 
-['chkDm','chkPm','chkArch','chkStruct','chkMp','chkElec','chkReviewer'].forEach(function(id) {
+['chkDm','chkPm','chkSite','chkArch','chkStruct','chkMp','chkElec','chkReviewer'].forEach(function(id) {
   document.getElementById(id).addEventListener('change', render);
 });
 window.addEventListener('resize', render);
@@ -2755,8 +2912,17 @@ window.showProjectSections = async function(pid) {
         `}
       </div>
     </div>
+    ${canReadReports() ? `<div class="project-card project-card-filled" ${cardStyle} onclick="openReports('${pid}')">
+      <div class="project-card-count" id="pcount-reports"></div>
+      <div class="project-card-body">
+        <div class="project-card-name">${esc(p.name)}</div>
+        <div class="section-label">რეპორტი</div>
+        <div class="project-card-creator">ყოველკვირეული ოქმები</div>
+      </div>
+    </div>` : ''}
   `;
   grid.style.display = 'grid';
+  if (canReadReports()) getCountFromServer(collection(db,'projects',pid,'reports')).then(c => { const el = document.getElementById('pcount-reports'); if (el) el.textContent = c.data().count; }).catch(() => { const el = document.getElementById('pcount-reports'); if (el) el.textContent = '0'; });
 
   ['review','internal','mep'].forEach(async sec => {
     const el = document.getElementById(`pcount-${sec}`);
@@ -5095,6 +5261,390 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
 });
 
 
+// ── WEEKLY SITE REPORTS ("ოქმები") ──
+// A fifth section of every project, next to the review / DM / MEP sections but of its own kind: each report is one document
+// projects/{pid}/reports/{rid} = { number, date, authorId, authorName, info (the object's name and address, copied from the project), photos [{url, path,
+// caption}], completed / ongoing / planned [text] }. Site managers (User accounts with the "write reports" right) and admins write them;
+// everybody but contractors reads them. A report can be downloaded as an A4 PDF (renderReportPdf, further below).
+const REPORT_SLOTS = 3, REPORT_MAX_PHOTOS = 12;            // photo places that are always there / the most photos in one report
+const REPORT_GROUPS = [['completed', 'შესრულებული სამუშაოები'], ['ongoing', 'მიმდინარე სამუშაოები'], ['planned', 'დაგეგმილი სამუშაოები']];
+const REPORT_LOGO = null;                                  // the company logo for the PDF: a PNG as a data URL; null = a "LOGO" placeholder
+let reportsProjectId = null, reportsProject = null, reportsList = [];   // the project whose reports are open
+let editingReport = null, reportStorageId = null, reportInfoDraft = null;
+let reportSlots = [], reportWorks = { completed: [''], ongoing: [''], planned: [''] }, reportPickIndex = 0;
+let reportUploads = 0, reportPhotosToDelete = [], reportUploadedThisSession = [];
+const reportDate = iso => String(iso || '').replace(/-/g, '.');
+
+// The object's details as they stand in the project now: the name and the address (the only ones the report shows).
+function reportInfoFromProject(p) {
+  return { projectName: p.name || '', address: (p.address || '').trim() };
+}
+
+// Opens a project's list of reports (from the project card).
+window.openReports = async pid => {
+  reportsProjectId = pid; reportsList = [];
+  const list = document.getElementById('reportsList');
+  list.textContent = 'იტვირთება...';
+  document.getElementById('reportsCount').textContent = '';
+  document.getElementById('btnNewReport').style.display = 'none';   // shown below once we know whether this person may write here
+  document.getElementById('reportsHint').textContent = '';
+  om('reportsModal');
+  try {
+    const pd = await getDoc(doc(db, 'projects', pid));
+    reportsProject = pd.exists() ? pd.data() : {};
+    document.getElementById('reportsTitle').textContent = '📝 რეპორტი — ' + (reportsProject.name || '');
+    const mayWrite = canWriteReportsOn(reportsProject);
+    document.getElementById('btnNewReport').style.display = mayWrite ? '' : 'none';
+    document.getElementById('reportsHint').textContent = mayWrite ? '' : 'ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს (მითითებულია პროექტის მართვაში)';
+    await loadReports();
+  } catch (e) { list.textContent = 'შეცდომა: ' + e.message; }
+};
+async function loadReports() {
+  const snap = await getDocs(query(collection(db, 'projects', reportsProjectId, 'reports'), orderBy('number', 'desc')));
+  reportsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderReportsList();
+  const card = document.getElementById('pcount-reports'); if (card) card.textContent = reportsList.length;
+}
+function renderReportsList() {
+  document.getElementById('reportsCount').textContent = `სულ ოქმი: ${reportsList.length}`;
+  document.getElementById('reportsList').innerHTML = reportsList.length ? reportsList.map(r => `
+    <div class="rp-row">
+      <div class="rp-num">#${esc(r.number)}</div>
+      <div class="rp-meta">${esc(reportDate(r.date))} · ${esc(r.authorName || '')}
+        <small>${(r.photos || []).length} ფოტო · ${(r.completed || []).length} შესრულებული · ${(r.ongoing || []).length} მიმდინარე · ${(r.planned || []).length} დაგეგმილი</small>
+      </div>
+      <button class="btn-secondary" style="padding:5px 10px;font-size:12px" onclick="downloadReportPdf('${r.id}')">⬇ PDF</button>
+      ${canEditReport(r, reportsProject) ? `<button class="icon-btn" title="რედაქტირება" onclick="openReportForm('${r.id}')">${ICON_EDIT}</button>
+        <button class="icon-btn del" title="წაშლა" onclick="deleteReport('${r.id}')">${ICON_DELETE}</button>` : ''}
+    </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">ოქმი ჯერ არ არის</div>';
+}
+
+// The form. A new report starts with three empty photo places, one empty line in each list, the next number in line (the very first
+// report: the number is typed by hand, e.g. 55) and the object's details copied from the project.
+window.openReportForm = id => {
+  if (!canWriteReportsOn(reportsProject)) return;
+  editingReport = id ? reportsList.find(r => r.id === id) : null;
+  if (id && (!editingReport || !canEditReport(editingReport, reportsProject))) return;
+  reportStorageId = editingReport ? editingReport.id : doc(collection(db, 'projects', reportsProjectId, 'reports')).id; // names the photo folder before the first save
+  reportInfoDraft = (editingReport && editingReport.info) || reportInfoFromProject(reportsProject || {});
+  reportPhotosToDelete = []; reportUploadedThisSession = []; reportUploads = 0;
+  reportSlots = ((editingReport && editingReport.photos) || []).map(ph => ({ url: ph.url, path: ph.path || '', caption: ph.caption || '', busy: false }));
+  while (reportSlots.length < REPORT_SLOTS) reportSlots.push({ url: '', path: '', caption: '', busy: false });
+  const list = k => { const a = ((editingReport && editingReport[k]) || []).slice(); return a.length ? a : ['']; };
+  reportWorks = { completed: list('completed'), ongoing: list('ongoing'), planned: list('planned') };
+  const nextNumber = reportsList.length ? Math.max(...reportsList.map(r => Number(r.number) || 0)) + 1 : '';
+  document.getElementById('rNumber').value = editingReport ? editingReport.number : nextNumber;
+  document.getElementById('rDate').value = reportDate(editingReport ? editingReport.date : todayDotted().replace(/\./g, '-'));
+  document.getElementById('rAuthor').value = editingReport ? (editingReport.authorName || '') : currentUserName;
+  document.getElementById('reportFormTitle').textContent = editingReport ? `ოქმის რედაქტირება #${editingReport.number}` : 'ახალი ოქმი';
+  renderReportInfo(); renderReportPhotos(); renderReportWorks();
+  om('reportModal');
+};
+function renderReportInfo() {
+  const i = reportInfoDraft;
+  document.getElementById('rInfoPreview').innerHTML = `<b>ობიექტი:</b> ${esc(i.projectName)}<br><b>მისამართი:</b> ${esc(i.address || '—')}`;
+}
+window.refreshReportInfo = () => { reportInfoDraft = reportInfoFromProject(reportsProject || {}); renderReportInfo(); };
+
+// Photos: each place = a picture and its description. The first three always exist, more can be added (up to REPORT_MAX_PHOTOS).
+function renderReportPhotos() {
+  document.getElementById('rPhotos').innerHTML = reportSlots.map((s, i) => `
+    <div class="rp-photo">
+      <div class="rp-photo-box" onclick="pickReportPhoto(${i})">${s.busy ? '<span class="spinner-dark"></span>' : (s.url ? `<img src="${esc(s.url)}" alt="">` : '📷<br>ფოტოს არჩევა')}</div>
+      <textarea placeholder="ფოტოს აღწერა (სავალდებულოა)" oninput="setReportCaption(${i}, this.value)">${esc(s.caption)}</textarea>
+      <button type="button" class="rp-x" title="${i < REPORT_SLOTS ? 'გასუფთავება' : 'წაშლა'}" onclick="removeReportPhoto(${i})">✕</button>
+    </div>`).join('');
+  document.getElementById('btnAddReportPhoto').style.display = reportSlots.length < REPORT_MAX_PHOTOS ? '' : 'none';
+}
+window.setReportCaption = (i, v) => { if (reportSlots[i]) reportSlots[i].caption = v; };
+window.pickReportPhoto = i => { reportPickIndex = i; const input = document.getElementById('rPhotoInput'); input.value = ''; input.click(); };
+window.addReportPhotoSlot = () => {
+  if (reportSlots.length >= REPORT_MAX_PHOTOS) return;
+  reportSlots.push({ url: '', path: '', caption: '', busy: false });
+  renderReportPhotos();
+  pickReportPhoto(reportSlots.length - 1);
+};
+window.removeReportPhoto = i => {
+  const s = reportSlots[i]; if (!s) return;
+  if (s.path) reportPhotosToDelete.push(s.path);        // removed from Storage when the report is saved
+  if (i < REPORT_SLOTS) reportSlots[i] = { url: '', path: '', caption: '', busy: false }; else reportSlots.splice(i, 1);
+  renderReportPhotos();
+};
+// Several files may be chosen at once: the first goes to the place that was clicked, the others to the next empty places (new ones are added).
+document.getElementById('rPhotoInput').addEventListener('change', async e => {
+  const files = [...e.target.files].filter(f => f.type && f.type.startsWith('image/'));
+  const targets = [];
+  files.forEach((f, k) => {
+    let idx = k === 0 ? reportPickIndex : reportSlots.findIndex((s, j) => j > reportPickIndex && !s.url && !s.busy && !targets.some(t => t.slot === s));
+    if (idx < 0 || (k > 0 && idx === reportPickIndex)) { if (reportSlots.length >= REPORT_MAX_PHOTOS) return; reportSlots.push({ url: '', path: '', caption: '', busy: false }); idx = reportSlots.length - 1; }
+    targets.push({ slot: reportSlots[idx], file: f });
+  });
+  if (files.length > targets.length) alert(`ერთ ოქმში მაქსიმუმ ${REPORT_MAX_PHOTOS} ფოტოა`);
+  targets.forEach(t => { t.slot.busy = true; });
+  renderReportPhotos();
+  for (const t of targets) await uploadReportPhoto(t.slot, t.file);   // one after another (phone photos are big)
+});
+async function uploadReportPhoto(slot, file) {
+  reportUploads++;
+  try {
+    const blob = await compressImage(file, 2000, 0.85);
+    const path = `projects/${reportsProjectId}/reports/${reportStorageId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const ref = storageRef(storage, path);
+    await uploadBytes(ref, blob, { contentType: 'image/jpeg' });
+    const url = await getDownloadURL(ref);
+    if (slot.path) reportPhotosToDelete.push(slot.path);   // this place held another picture: that one goes when the report is saved
+    slot.url = url; slot.path = path; reportUploadedThisSession.push(path);
+  } catch (e) {
+    alert(e && e.code === 'storage/quota-exceeded' ? 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.' : 'სურათის ატვირთვის შეცდომა: ' + (e && e.message));
+  } finally {
+    slot.busy = false; reportUploads--;
+    renderReportPhotos();
+  }
+}
+
+// The three lists of works (completed / in progress / planned): numbered lines, add / remove, Enter adds the next line.
+function renderReportWorks() {
+  document.getElementById('rWorks').innerHTML = REPORT_GROUPS.map(([key, title]) => `
+    <div style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">${title}</div>
+      ${reportWorks[key].map((t, i) => `<div class="rp-work"><b>${i + 1}.</b>
+        <input data-key="${key}" data-i="${i}" value="${esc(t)}" oninput="setReportWork('${key}', ${i}, this.value)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); addReportWork('${key}', ${i}); }">
+        <button type="button" class="rp-x" title="წაშლა" onclick="removeReportWork('${key}', ${i})">✕</button></div>`).join('')}
+      <button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="addReportWork('${key}')">+ სტრიქონის დამატება</button>
+    </div>`).join('');
+}
+window.setReportWork = (key, i, v) => { reportWorks[key][i] = v; };
+window.addReportWork = (key, after) => {
+  const at = after == null ? reportWorks[key].length : after + 1;
+  reportWorks[key].splice(at, 0, '');
+  renderReportWorks();
+  const input = document.querySelector(`#rWorks input[data-key="${key}"][data-i="${at}"]`); if (input) input.focus();
+};
+window.removeReportWork = (key, i) => {
+  if (reportWorks[key].length > 1) reportWorks[key].splice(i, 1); else reportWorks[key] = [''];
+  renderReportWorks();
+};
+
+// Deletes files from Storage, ignoring errors (a leftover picture is harmless).
+async function deleteReportFiles(paths) {
+  for (const path of paths) { try { await deleteObject(storageRef(storage, path)); } catch (e) { /* already gone, or not ours to delete */ } }
+}
+window.closeReportForm = () => {
+  if (reportUploads && !confirm('ფოტოების ატვირთვა ჯერ არ დასრულებულა. მაინც დავხურო?')) return;
+  deleteReportFiles(reportUploadedThisSession);   // pictures uploaded in this session but never saved
+  reportUploadedThisSession = []; reportPhotosToDelete = [];
+  cm('reportModal');
+};
+window.saveReport = async () => {
+  if (reportUploads) { alert('ფოტოების ატვირთვა ჯერ არ დასრულებულა, მოიცადე'); return; }
+  const number = parseInt(document.getElementById('rNumber').value, 10);
+  if (!Number.isInteger(number) || number < 1) { alert('ჩაწერე ოქმის ნომერი'); document.getElementById('rNumber').focus(); return; }
+  const withPhoto = reportSlots.filter(s => s.url);
+  if (withPhoto.some(s => !s.caption.trim())) { alert('ყველა ფოტოს უნდა ჰქონდეს აღწერა'); return; }
+  if (reportSlots.some(s => !s.url && s.caption.trim())) { alert('აღწერა არის, მაგრამ ფოტო არ არის არჩეული. აირჩიე ფოტო ან გაასუფთავე აღწერა'); return; }
+  if (reportsList.some(r => r.id !== (editingReport && editingReport.id) && Number(r.number) === number) && !confirm(`ოქმი №${number} უკვე არსებობს ამ პროექტში. მაინც შევინახო?`)) return;
+  const clean = k => reportWorks[k].map(t => String(t || '').trim()).filter(Boolean);
+  const data = {
+    number, info: reportInfoDraft,
+    photos: withPhoto.map(s => ({ url: s.url, path: s.path, caption: s.caption.trim() })),
+    completed: clean('completed'), ongoing: clean('ongoing'), planned: clean('planned'),
+    updatedAt: serverTimestamp(),
+  };
+  const btn = document.getElementById('btnSaveReport'); btn.disabled = true; btn.textContent = 'ინახება...';
+  try {
+    const ref = doc(db, 'projects', reportsProjectId, 'reports', reportStorageId);
+    if (editingReport) await updateDoc(ref, data);
+    else await setDoc(ref, { ...data, date: todayDotted().replace(/\./g, '-'), authorId: currentUser.uid, authorName: currentUserName, createdAt: serverTimestamp() });
+    const gone = reportPhotosToDelete.filter(path => !data.photos.some(ph => ph.path === path));
+    reportPhotosToDelete = []; reportUploadedThisSession = [];
+    deleteReportFiles(gone);
+    cm('reportModal');
+    showToast('ოქმი შენახულია');
+    await loadReports();
+  } catch (e) { alert('შეცდომა შენახვისას: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'შენახვა'; }
+};
+window.deleteReport = async id => {
+  const r = reportsList.find(x => x.id === id);
+  if (!r || !canEditReport(r, reportsProject)) return;
+  if (!confirm(`წავშალო ოქმი #${r.number}? მისი ფოტოებიც წაიშლება.`)) return;
+  try {
+    await deleteDoc(doc(db, 'projects', reportsProjectId, 'reports', id));
+    deleteReportFiles((r.photos || []).map(ph => ph.path).filter(Boolean));
+    await loadReports();
+  } catch (e) { alert('შეცდომა წაშლისას: ' + e.message); }
+};
+
+// ── Report → PDF: the pieces are fetched here (the fonts from the fonts folder next to this page, the photos from Storage) and
+// handed to renderReportPdf, which draws the A4 pages. ──
+let reportFontsCache = null;
+const bufferToBase64 = buf => { const bytes = new Uint8Array(buf); let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); };
+async function loadReportFonts() {
+  if (!reportFontsCache) {
+    const get = async name => { const resp = await fetch('fonts/' + name); if (!resp.ok) throw new Error(`${name}: ${resp.status}`); return bufferToBase64(await resp.arrayBuffer()); };
+    reportFontsCache = { regular: await get('NotoSansGeorgian-Regular.ttf'), bold: await get('NotoSansGeorgian-Bold.ttf') };
+  }
+  return reportFontsCache;
+}
+async function loadReportPhoto(ph) {   // → { caption, dataUrl, width, height }; dataUrl is null when the picture can't be fetched
+  try {
+    const resp = await fetch(ph.url); if (!resp.ok) throw new Error(resp.status);
+    const blob = await resp.blob();
+    const dataUrl = await new Promise((resolve, reject) => { const fr = new FileReader(); fr.onload = () => resolve(fr.result); fr.onerror = reject; fr.readAsDataURL(blob); });
+    const size = await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight }); img.onerror = reject; img.src = dataUrl; });
+    return { caption: ph.caption, dataUrl, width: size.w, height: size.h };
+  } catch (e) { return { caption: ph.caption, dataUrl: null }; }
+}
+window.downloadReportPdf = async id => {
+  const r = reportsList.find(x => x.id === id); if (!r) return;
+  showToast('PDF მზადდება...');
+  try {
+    const fonts = await loadReportFonts();
+    const photos = []; for (const ph of (r.photos || [])) photos.push(await loadReportPhoto(ph));
+    const report = { number: r.number, date: r.date, authorName: r.authorName, info: r.info || reportInfoFromProject(reportsProject || {}), photos, completed: r.completed, ongoing: r.ongoing, planned: r.planned };
+    const pdf = renderReportPdf(window.jspdf.jsPDF, report, { fontRegular: fonts.regular, fontBold: fonts.bold, logo: REPORT_LOGO, downloadedOn: todayDotted() });
+    const code = String((reportsProject && reportsProject.code) || 'RevTrack').replace(/[^\w-]+/g, '_');
+    pdf.save(`${code}-report-${r.number}.pdf`);
+  } catch (e) {
+    console.error('report pdf failed:', e);
+    showToast('PDF-ის შექმნა ვერ მოხერხდა' + (/fonts|NotoSans/.test(String(e && e.message)) ? ' (ფონტის ფაილები ვერ ჩაიტვირთა)' : ''));
+  }
+};
+
+// ── WEEKLY SITE REPORT → A4 PDF ──
+// renderReportPdf(JsPDF, report, assets) draws the report with the PDF library and returns the document. It does not touch the
+// page: everything it needs is passed in, so it can also be run (and looked at) outside the browser.
+//   report = { number, date: 'YYYY-MM-DD', authorName,
+//              info: { projectName, address },
+//              photos: [{ caption, dataUrl, width, height }]  (dataUrl = JPEG; width/height = its pixel size; no dataUrl = failed to load),
+//              completed: [text], ongoing: [text], planned: [text] }
+//   assets = { fontRegular, fontBold  (the font files as base64),  logo (a data URL or null → a "LOGO" placeholder),  downloadedOn: 'YYYY.MM.DD' }
+const REPORT_TITLE = 'ობიექტზე სამუშაოთა მიმდინარეობის გეგმიური ოქმი';
+function renderReportPdf(JsPDF, report, assets) {
+  const doc = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+  doc.addFileToVFS('NotoSansGeorgian-Regular.ttf', assets.fontRegular); doc.addFont('NotoSansGeorgian-Regular.ttf', 'NSG', 'normal');
+  doc.addFileToVFS('NotoSansGeorgian-Bold.ttf', assets.fontBold); doc.addFont('NotoSansGeorgian-Bold.ttf', 'NSG', 'bold');
+
+  // page geometry (mm) and colours
+  const W = 210, ML = 15, MR = 15, CW = W - ML - MR;         // content width 180
+  const TOP = 34, BOTTOM = 280;                               // content area; the header sits above TOP, the footer below BOTTOM
+  const INK = [33, 37, 41], GRAY = [107, 114, 128], ACCENT = [31, 58, 95], PANEL = [243, 244, 246], RULE = [209, 213, 219];
+  const font = (style, size, color = INK) => { doc.setFont('NSG', style); doc.setFontSize(size); doc.setTextColor(...color); };
+  const lineH = size => size * 0.3528 * 1.45;                  // line height for a font size in pt
+  const wrap = (text, width, style, size) => { font(style, size); return doc.splitTextToSize(String(text == null ? '' : text), width); };
+  const dateText = iso => String(iso || '').replace(/-/g, '.');
+
+  let y = TOP;
+  const newPage = () => { doc.addPage(); y = TOP; };
+  const ensure = h => { if (y + h > BOTTOM) newPage(); };
+
+  // ── title ──
+  const title = `${REPORT_TITLE} #${report.number}`;
+  const titleLines = wrap(title, CW, 'bold', 15);
+  y += 5;
+  font('bold', 15, ACCENT);
+  titleLines.forEach(t => { doc.text(t, W / 2, y, { align: 'center' }); y += lineH(15); });
+  y += 4;
+
+  // ── information about the object: a two-column table, a thin rule under each row ──
+  const info = report.info || {};
+  const LABEL_W = 44, VALUE_X = ML + LABEL_W + 3, VALUE_W = CW - LABEL_W - 3;
+  const infoRow = (label, valueLines) => {
+    const lh = lineH(10), labelLines = wrap(label, LABEL_W, 'bold', 9);
+    const rows = Math.max(valueLines.length, labelLines.length);
+    y += 1.6;
+    for (let i = 0; i < rows; i++) {
+      ensure(lh + 0.5);
+      if (labelLines[i]) { font('bold', 9, GRAY); doc.text(labelLines[i], ML, y + 3.6); }
+      if (valueLines[i] != null) { font('normal', 10, INK); doc.text(valueLines[i], VALUE_X, y + 3.6); }
+      y += lh;
+    }
+    y += 1.6;
+    doc.setDrawColor(...RULE); doc.setLineWidth(0.2); doc.line(ML, y, W - MR, y);
+  };
+  doc.setDrawColor(...RULE); doc.setLineWidth(0.2); doc.line(ML, y, W - MR, y);
+  infoRow('ობიექტი', wrap(info.projectName || '—', VALUE_W, 'normal', 10));
+  infoRow('მისამართი', wrap(info.address || '—', VALUE_W, 'normal', 10));
+  infoRow('თარიღი', [dateText(report.date) || '—']);
+  infoRow('მოამზადა', wrap(report.authorName || '—', VALUE_W, 'normal', 10));
+  y += 7;
+
+  // ── section heading: an accent bar and the text, kept together with what follows ──
+  const heading = (text, needBelow) => {
+    ensure(9 + needBelow);
+    doc.setFillColor(...ACCENT); doc.rect(ML, y, 1.6, 6, 'F');
+    font('bold', 12, ACCENT); doc.text(text, ML + 4.5, y + 4.7);
+    y += 10;
+  };
+
+  // ── photos: one per page, as wide as the content area (a very tall picture is reduced only as far as needed to fit the page),
+  // numbered, with its description underneath. The first photo may sit on the first page, below the information, if it fits there. ──
+  const photos = report.photos || [];
+  if (photos.length) {
+    const CAP_SIZE = 10, CAP_LH = lineH(CAP_SIZE);
+    photos.forEach((p, i) => {
+      const cap = wrap(`${i + 1}. ${p.caption || ''}`, CW, 'normal', CAP_SIZE), capH = cap.length * CAP_LH + 3;
+      const headH = i === 0 ? 10 : 0;                                   // the heading goes with the first photo
+      const ok = p.dataUrl && p.width && p.height;
+      const ratio = ok ? p.height / p.width : 0.62;                     // a photo that could not be loaded gets a landscape-shaped frame
+      const fullH = CW * ratio;                                         // its height at the full width
+      // Does it fit, at full width, below what is already on this page? If not, a fresh page.
+      if (i > 0 || y + headH + fullH + capH > BOTTOM) { if (y > TOP + 0.1) newPage(); }
+      if (i === 0) heading('ფოტომასალა', 0);
+      const maxH = BOTTOM - y - capH - 2;
+      const scale = Math.min(1, maxH / fullH), ih = fullH * scale, iw = CW * scale;
+      const x = ML + (CW - iw) / 2;
+      if (ok) doc.addImage(p.dataUrl, 'JPEG', x, y, iw, ih, undefined, 'FAST');
+      else {
+        doc.setFillColor(...PANEL); doc.setDrawColor(...RULE); doc.setLineWidth(0.2); doc.rect(x, y, iw, ih, 'FD');
+        font('normal', 10, GRAY); doc.text('ფოტო ვერ ჩაიტვირთა', x + iw / 2, y + ih / 2, { align: 'center' });
+      }
+      font('normal', CAP_SIZE, INK);
+      cap.forEach((t, j) => doc.text(t, ML, y + ih + 5 + j * CAP_LH));
+      y += ih + capH + 4;
+    });
+    newPage();                                                          // the lists of works start on a fresh page
+  }
+
+  // ── works: completed / in progress / planned, each a numbered list ──
+  heading('ობიექტზე მიმდინარე და დასრულებული სამუშაოები', 24);
+  const groups = [['შესრულებული სამუშაოები:', report.completed], ['მიმდინარე სამუშაოები:', report.ongoing], ['დაგეგმილი სამუშაოები:', report.planned]];
+  groups.forEach(([name, items]) => {
+    const list = (items || []).filter(t => String(t || '').trim());
+    ensure(7 + 8);
+    font('bold', 10.5, INK); doc.text(name, ML, y + 4); y += 7.5;
+    if (!list.length) { font('normal', 10, GRAY); doc.text('—', ML + 4, y + 3.6); y += 7; }
+    list.forEach((t, k) => {
+      const lines = wrap(t, CW - 10, 'normal', 10), lh = lineH(10);
+      ensure(lines.length * lh);
+      font('normal', 10, GRAY); doc.text(`${k + 1}.`, ML + 3, y + 3.6);
+      font('normal', 10, INK); lines.forEach((l, j) => { if (j && y + lh > BOTTOM) newPage(); doc.text(l, ML + 10, y + 3.6); y += lh; });
+      y += 1.4;
+    });
+    y += 4;
+  });
+
+  // ── on every page: the header (logo, report number, object) and the footer (where it came from, page x / y) ──
+  const pages = doc.getNumberOfPages();
+  const shortName = wrap(info.projectName || '', 95, 'normal', 8)[0] || '';
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    if (assets.logo) { doc.addImage(assets.logo, 'PNG', ML, 9, 36, 13, undefined, 'FAST'); }
+    else {  // placeholder until the real logo file is added
+      doc.setFillColor(...PANEL); doc.setDrawColor(...GRAY); doc.setLineWidth(0.3); doc.setLineDashPattern([1.5, 1.2], 0); doc.roundedRect(ML, 9, 36, 13, 1.5, 1.5, 'FD'); doc.setLineDashPattern([], 0);
+      font('bold', 10, GRAY); doc.text('LOGO', ML + 18, 17.2, { align: 'center' });
+    }
+    font('bold', 9.5, ACCENT); doc.text(`ოქმი #${report.number}`, W - MR, 13.5, { align: 'right' });
+    font('normal', 8, GRAY); doc.text(shortName, W - MR, 18, { align: 'right' });
+    doc.setDrawColor(...RULE); doc.setLineWidth(0.3); doc.line(ML, 25, W - MR, 25);
+    doc.line(ML, 285, W - MR, 285);
+    font('normal', 8, GRAY);
+    doc.text(`downloaded from RevTrack ${assets.downloadedOn || ''}`.trim(), ML, 290);
+    doc.text(`გვერდი ${p} / ${pages}`, W - MR, 290, { align: 'right' });
+  }
+  return doc;
+}
+
 // ── GLOBAL USERS (admin) ──
 // Loads every user (for names, the users panel, and the pending-approval badge).
 async function loadAllUsers() {
@@ -5245,6 +5795,7 @@ async function openProjectModal(pid) {
   document.getElementById('pName').value = pd.name||'';
   document.getElementById('pCode').value = pd.code||'';
   document.getElementById('pDesc').value = pd.desc||'';
+  document.getElementById('pAddress').value = pd.address||'';
   document.getElementById('pColor').value = pd.color || '#1a1120';
   pendingColorCleared = false;
   const managers = Object.values(allUsers).filter(u => u.role==='design_manager' && u.approved);
@@ -5259,6 +5810,18 @@ async function openProjectModal(pid) {
   document.getElementById('pPmUser').onchange = e => {
     document.getElementById('pPmName').disabled = !!e.target.value;
     if (e.target.value) document.getElementById('pPmName').value = '';
+  };
+  // Site manager: pick one of the registered users — only a registered user can write this project's reports — or type a name.
+  const sitePool = Object.values(allUsers).filter(u => u.approved && u.role !== 'contractor' && u.role !== 'admin')
+    .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+  const siteKnown = sitePool.some(u => u.id === (pd.siteMgrUid || '')); // a chosen user who is no longer in the list is shown as a typed name
+  document.getElementById('pSiteUser').innerHTML = '<option value="">— თავად ჩავწერ —</option>' +
+    sitePool.map(u => `<option value="${u.id}" ${siteKnown && u.id===pd.siteMgrUid?'selected':''}>${esc(u.name||u.email)}</option>`).join('');
+  document.getElementById('pSiteName').value = siteKnown ? '' : (pd.siteMgrName || '');
+  document.getElementById('pSiteName').disabled = siteKnown;
+  document.getElementById('pSiteUser').onchange = e => {
+    document.getElementById('pSiteName').disabled = !!e.target.value;
+    if (e.target.value) document.getElementById('pSiteName').value = '';
   };
   // MP and Electrical reviewers: pick one of the registered users, or type a name (the same way as the PM above).
   // The old single "MEP reviewer" text stays in its own row while a project still has one.
@@ -5416,6 +5979,7 @@ async function syncPublicProject(pid) {
       createdByName: p.createdByName || 'ადმინი',
       managerName: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
       pmName: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
+      siteManagerName: projectSiteManager(p),
       mepReviewer: projectMepReviewers(p).legacy, // the old single MEP reviewer text
       mpReviewer: projectMepReviewers(p).mp,
       elecReviewer: projectMepReviewers(p).elec,
@@ -5454,6 +6018,8 @@ async function saveProjectData(pid) {
   };
   const pmUid = document.getElementById('pPmUser').value || null;
   const pmName = pmUid ? (allUsers[pmUid]?.name || allUsers[pmUid]?.email || '') : document.getElementById('pPmName').value.trim();
+  const siteMgrUid = document.getElementById('pSiteUser').value || null;
+  const siteMgrName = siteMgrUid ? (allUsers[siteMgrUid]?.name || allUsers[siteMgrUid]?.email || '') : document.getElementById('pSiteName').value.trim();
   const gbaRaw = document.getElementById('pGba').value.trim();
   const gba = gbaRaw === '' ? 1000 : Number(gbaRaw);
   // MP / Electrical reviewer: the chosen registered user (uid + their name) or the typed name.
@@ -5461,11 +6027,12 @@ async function saveProjectData(pid) {
     const uid = document.getElementById(selectId).value || null;
     return { [kind + 'ReviewerUid']: uid, [kind + 'ReviewerName']: uid ? (allUsers[uid]?.name || allUsers[uid]?.email || '') : document.getElementById(nameId).value.trim() };
   };
-  const data = { name, code, desc: document.getElementById('pDesc').value.trim(), members: newMembers, memberIds, contractors,
+  const data = { name, code, desc: document.getElementById('pDesc').value.trim(), address: document.getElementById('pAddress').value.trim(), members: newMembers, memberIds, contractors,
     color: pendingColorCleared ? null : document.getElementById('pColor').value,
     managerUid: document.getElementById('pManager').value || null,
     gba: Number.isFinite(gba) && gba >= 0 ? gba : 1000,
     pmUid, pmName,
+    siteMgrUid, siteMgrName,
     ...reviewerFields('mp', 'pMpReviewerUser', 'pMpReviewerName'),
     ...reviewerFields('elec', 'pElecReviewerUser', 'pElecReviewerName'),
     mepReviewer: document.getElementById('pMepReviewer').value.trim(), // the old single MEP reviewer text (emptied once moved)
