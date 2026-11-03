@@ -294,6 +294,22 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .photo-thumb .photo-spin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .btn-add-link:hover{background:var(--accent);color:white}
 .modal-footer{padding:13px 20px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:10px}
+/* weekly site reports: the list screen (same look as the issue list) */
+.report-grid-row{display:grid;grid-template-columns:150px 130px 100px minmax(140px,1fr) 150px;align-items:center;gap:10px;padding:0 8px;min-height:44px}
+.report-grid-row>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reports-scroll{overflow-x:auto}
+.reports-scroll .issue-header-row,.reports-scroll #reportsTbody{min-width:720px}
+.issue-row.rp-weekly{background:#e4f1fb}
+.issue-row.rp-weekly:hover{background:#d3e8f7}
+.issue-row.rp-daily{background:#fdf5d4}
+.issue-row.rp-daily:hover{background:#faeeb8}
+.rp-actions{display:flex;gap:6px;justify-content:flex-end;overflow:visible!important}
+.rp-view p{margin:0 0 4px}
+.rp-view .rp-vphoto{margin:0 0 18px}
+.rp-view .rp-vphoto img{width:100%;max-height:70vh;object-fit:contain;background:var(--bg);border:1px solid var(--rule);border-radius:var(--r);display:block;cursor:zoom-in}
+.rp-view .rp-vphoto div{font-size:13px;margin-top:6px;color:var(--ink)}
+.rp-view h3{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin:18px 0 8px}
+.rp-view ol{margin:0 0 6px 20px;padding:0;font-size:13.5px;line-height:1.6}
 /* weekly site reports */
 .rp-row{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--rule)}
 .rp-row:last-child{border-bottom:none}
@@ -547,6 +563,67 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 </div>
 </div>
 
+<!-- ══ WEEKLY SITE REPORTS: the list screen ══ -->
+<div id="reportsScreen" style="display:none">
+<header>
+  <div class="header-left">
+    <span class="header-logo" id="btnReportsBackLogo">RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></span>
+    <span class="header-sep">/</span>
+    <span class="project-name-hdr" id="reportsHdrProject">პროექტი</span>
+    <button class="btn-hdr" id="btnReportsBack" style="margin-left:10px">← უკან დაბრუნება</button>
+  </div>
+  <div class="header-right">
+    <span class="user-chip">
+      <span id="reportsHdrUser"></span>
+      <span class="role-badge" id="reportsHdrRole"></span>
+    </span>
+    <button class="btn-hdr" type="button" data-lang-toggle data-no-i18n>English</button>
+    <button class="btn-hdr" id="btnReportsLogout">გამოსვლა</button>
+  </div>
+</header>
+<div class="toolbar">
+  <div class="filter-group">
+    <input type="search" class="search-box" id="reportsSearch" placeholder="🔍  ძებნა" autocomplete="off">
+    <select class="fsel" id="reportsTypeFilter">
+      <option value="">ყველა ტიპი</option>
+      <option value="weekly">ყოველკვირეული</option>
+      <option value="daily">ყოველდღიური</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button class="btn-primary" id="btnNewReport" style="display:none" onclick="openReportForm(null, 'weekly')">+ ყოველკვირეული ოქმი</button>
+    <button class="btn-primary" id="btnNewDailyReport" style="display:none" onclick="openReportForm(null, 'daily')">+ ყოველდღიური ოქმი</button>
+    <div class="stats-row"><span class="stat-chip closed" id="reportsCount">0</span></div>
+  </div>
+</div>
+<div class="issues-wrap">
+  <div id="reportsHint" style="font-size:12px;color:var(--ink-light);padding:10px 4px 0"></div>
+  <div class="reports-scroll">
+    <div class="issue-header-row report-grid-row">
+      <div data-col="number" id="rpHeadNumber">#</div>
+      <div>ოქმის ტიპი</div>
+      <div>თარიღი</div>
+      <div>მოამზადა</div>
+      <div></div>
+    </div>
+    <div id="reportsTbody"></div>
+  </div>
+</div>
+</div>
+
+<!-- Weekly site reports: reading one report -->
+<div class="modal-overlay" id="reportViewModal">
+  <div class="modal" style="max-width:820px">
+    <div class="modal-header"><h2 id="reportViewTitle"></h2><button class="modal-close" onclick="cm('reportViewModal')">✕</button></div>
+    <div class="modal-body rp-view" id="reportViewBody"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btnReportViewPdf">⬇ PDF</button>
+      <button class="btn-secondary" id="btnReportViewEdit" style="display:none">✎ რედაქტირება</button>
+      <button class="btn-secondary" onclick="cm('reportViewModal')">დახურვა</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODALS ══ -->
 
 <!-- Issue -->
@@ -632,28 +709,19 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   </div>
 </div>
 
-<!-- Weekly site reports: the list of a project's reports -->
-<div class="modal-overlay" id="reportsModal">
-  <div class="modal" style="max-width:760px">
-    <div class="modal-header"><h2 id="reportsTitle">📝 რეპორტი</h2><button class="modal-close" onclick="cm('reportsModal')">✕</button></div>
-    <div style="padding:14px 20px 0;display:flex;justify-content:space-between;align-items:center;gap:10px">
-      <span><span id="reportsCount" style="font-size:12px;color:var(--ink-light)"></span><span id="reportsHint" style="display:block;font-size:11.5px;color:var(--ink-light);margin-top:3px"></span></span>
-      <button class="btn-primary" id="btnNewReport" style="display:none" onclick="openReportForm()">+ ახალი ოქმი</button>
-    </div>
-    <div class="modal-body" id="reportsList" style="max-height:62vh;overflow-y:auto">იტვირთება...</div>
-    <div class="modal-footer"><button class="btn-secondary" onclick="cm('reportsModal')">დახურვა</button></div>
-  </div>
-</div>
 <!-- Weekly site reports: the form of one report -->
 <div class="modal-overlay" id="reportModal">
   <div class="modal" style="max-width:760px">
     <div class="modal-header"><h2 id="reportFormTitle">ახალი ოქმი</h2><button class="modal-close" onclick="closeReportForm()">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="field"><label>ოქმის №</label><input type="number" id="rNumber" min="1" step="1" placeholder="მაგ. 55"></div>
+        <div class="field"><label>ოქმის №</label><input type="number" id="rNumber" min="1" step="1" placeholder="მაგ. 55" oninput="updateReportCodePreview()">
+          <div class="auth-hint" id="rCodePreview"></div>
+        </div>
         <div class="field"><label>თარიღი</label><input id="rDate" disabled></div>
         <div class="field form-full"><label>მოამზადა</label><input id="rAuthor" disabled></div>
       </div>
+      <div class="auth-hint" id="rDailyNote" style="display:none;margin-bottom:8px">ყოველდღიურ ოქმში არაფერია სავალდებულო</div>
       <div class="rp-info" id="rInfoPreview"></div>
       <button type="button" class="btn-secondary" style="font-size:12px;padding:5px 10px" onclick="refreshReportInfo()">↻ ობიექტის ინფორმაციის განახლება პროექტიდან</button>
       <div class="rp-section">ფოტომასალა</div>
@@ -748,6 +816,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <div class="field">
           <label>საიტ მენეჯერი (წერს ამ პროექტის ოქმებს)</label>
           <select id="pSiteUser"><option value="">— თავად ჩავწერ —</option></select>
+          <div class="auth-hint">სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“</div>
         </div>
         <div class="field">
           <label>საიტ მენეჯერის სახელი (თუ დარეგისტრირებული არაა)</label>
@@ -956,6 +1025,24 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"+ ყოველკვირეული ოქმი": "+ Weekly report",
+"+ ყოველდღიური ოქმი": "+ Daily report",
+"ოქმის ტიპი": "Report type",
+"ყოველკვირეული": "Weekly",
+"ყოველდღიური": "Daily",
+"ყველა ტიპი": "All types",
+"ტიპი:": "Type:",
+"ახალი ყოველკვირეული ოქმი": "New weekly report",
+"ახალი ყოველდღიური ოქმი": "New daily report",
+"ყოველდღიურ ოქმში არაფერია სავალდებულო": "Nothing is required in a daily report",
+"აღწერა არის, მაგრამ ფოტო არ არის არჩეული. ასეთი აღწერა არ შეინახება. მაინც შევინახო?": "There is a description but no photo is chosen. Such a description will not be saved. Save anyway?",
+"საიტ მენეჯერი (წერს ოქმებს)": "Site manager (writes reports)",
+"სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“": "Only a User marked as \"Site manager\" in the users list appears here",
+"✎ რედაქტირება": "✎ Edit",
+"შესრულებული": "Completed",
+"მიმდინარე": "In progress",
+"დაგეგმილი": "Planned",
+"ძებნით არაფერი მოიძებნა": "Nothing matches the search",
 "ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს (მითითებულია პროექტის მართვაში)": "Only this project's site manager can write a new report (set in the project settings)",
 "საიტ მენეჯერი": "Site manager",
 "საიტ მენეჯერი (წერს ამ პროექტის ოქმებს)": "Site manager (writes this project's reports)",
@@ -1291,13 +1378,17 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^კოდი: ([A-Za-z#0-9-]+)$/, function (m) { return 'Code: ' + m[1]; }],
+    [/^([\s\S]*) \(არ არის მონიშნული საიტ მენეჯერად\)$/, function (m) { return m[1] + ' (not marked as a site manager)'; }],
+    [/^ოქმი ([A-Za-z#0-9-]+)$/, function (m) { return 'Report ' + m[1]; }],
+    [/^სულ ოქმი: (\d+) \(ნაჩვენებია: (\d+)\)$/, function (m) { return 'Reports: ' + m[1] + ' (shown: ' + m[2] + ')'; }],
     [/^📝 რეპორტი — ([\s\S]*)$/, function (m) { return '📝 Report — ' + translit(m[1]); }],
     [/^სულ ოქმი: (\d+)$/, function (m) { return 'Reports: ' + m[1]; }],
     [/^(\d+) ფოტო · (\d+) შესრულებული · (\d+) მიმდინარე · (\d+) დაგეგმილი$/, function (m) { return m[1] + ' photos · ' + m[2] + ' done · ' + m[3] + ' in progress · ' + m[4] + ' planned'; }],
-    [/^ოქმის რედაქტირება #(\d+)$/, function (m) { return 'Edit report #' + m[1]; }],
+    [/^ოქმის რედაქტირება ([A-Za-z#0-9-]+)$/, function (m) { return 'Edit report ' + m[1]; }],
     [/^ერთ ოქმში მაქსიმუმ (\d+) ფოტოა$/, function (m) { return 'A report can hold at most ' + m[1] + ' photos'; }],
-    [/^ოქმი №(\d+) უკვე არსებობს ამ პროექტში\. მაინც შევინახო\?$/, function (m) { return 'Report no. ' + m[1] + ' already exists in this project. Save anyway?'; }],
-    [/^წავშალო ოქმი #(\d+)\? მისი ფოტოებიც წაიშლება\.$/, function (m) { return 'Delete report #' + m[1] + '? Its photos will be deleted too.'; }],
+    [/^ოქმი ([A-Za-z#0-9-]+) უკვე არსებობს ამ პროექტში\. მაინც შევინახო\?$/, function (m) { return 'Report ' + m[1] + ' already exists in this project. Save anyway?'; }],
+    [/^წავშალო ოქმი ([A-Za-z#0-9-]+)\? მისი ფოტოებიც წაიშლება\.$/, function (m) { return 'Delete report ' + m[1] + '? Its photos will be deleted too.'; }],
     [/^შეცდომა შენახვისას: ([\s\S]*)$/, function (m) { return 'Error while saving: ' + m[1]; }],
     [/^შეცდომა წაშლისას: ([\s\S]*)$/, function (m) { return 'Error while deleting: ' + m[1]; }],
     [/^ვოლპეიპერი მზადაა: (\d+) პროექტი$/, function (m) { return 'Wallpaper ready: ' + plural(m[1], 'project', 'projects'); }],
@@ -1527,8 +1618,10 @@ let currentUserCanOpenMepIssues = false; // ...and, separately, issue-creation i
 function canOpenMepAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenMepIssues === true; }
 // A User-role account's individually granted rights: may it open issues in this section? (DM: 'internal', MEP: 'mep')
 // The weekly site reports ("ოქმები") of a project are written by an admin (the super reviewer included) and by that project's
-// SITE MANAGER — the registered user chosen in the project's "site manager" field (siteMgrUid). `project` = the project's data.
-const isSiteManagerOf = project => !!project && !!project.siteMgrUid && project.siteMgrUid === currentUser?.uid && currentGlobalRole !== 'contractor';
+// SITE MANAGER: a User account an admin has marked as a site manager (users/{uid}.siteManager — the tick-box in the users list) AND
+// who is chosen in the project's "site manager" field (siteMgrUid). `project` = the project's data.
+let currentUserIsSiteManager = false;
+const isSiteManagerOf = project => !!project && !!project.siteMgrUid && project.siteMgrUid === currentUser?.uid && currentGlobalRole === 'viewer' && currentUserIsSiteManager === true;
 const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project);
 const canEditReport = (r, project) => isAdminLike() || (isSiteManagerOf(project) && r.authorId === currentUser?.uid);   // the site manager: only their own reports
 const canReadReports = () => currentGlobalRole !== 'contractor' || isAdminLike(); // everybody but contractors
@@ -1777,6 +1870,7 @@ onAuthStateChanged(auth, async user => {
     label = d.statusLabel || '';
     currentUserCanOpenDmIssues = d.canOpenDmIssues === true;
     currentUserCanOpenMepIssues = d.canOpenMepIssues === true;
+    currentUserIsSiteManager = d.siteManager === true;
   } else {
     showToast('მომხმარებელი ვერ მოიძებნა — გაიარეთ რეგისტრაცია'); await signOut(auth); return;
   }
@@ -1801,6 +1895,7 @@ function showAuth() {
   document.getElementById('authScreen').style.display = 'flex';
   document.getElementById('projectsScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('reportsScreen').style.display = 'none';
 }
 
 // ── SHOW PROJECTS ──
@@ -2783,6 +2878,7 @@ async function showProjects() {
   document.getElementById('activityChartWrap').style.display = 'none';
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('reportsScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
   document.getElementById('projScreenUser').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
   document.getElementById('btnGlobalUsers').style.display = isAdminLike() ? 'flex' : 'none';
@@ -4113,6 +4209,7 @@ async function openProject(pid, section) {
 
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'none';
+  document.getElementById('reportsScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('hdrProjectName').textContent = (currentProjectData.name||'პროექტი') + ' — ' + SECTION_LABEL[currentSection];
   document.getElementById('hdrUserName').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
@@ -5263,14 +5360,23 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
 
 // ── WEEKLY SITE REPORTS ("ოქმები") ──
 // A fifth section of every project, next to the review / DM / MEP sections but of its own kind: each report is one document
-// projects/{pid}/reports/{rid} = { number, date, authorId, authorName, info (the object's name and address, copied from the project), photos [{url, path,
+// projects/{pid}/reports/{rid} = { type ('weekly' | 'daily'; missing = weekly), number, date, authorId, authorName, info (the object's name and address, copied from the project), photos [{url, path,
 // caption}], completed / ongoing / planned [text] }. Site managers (User accounts with the "write reports" right) and admins write them;
 // everybody but contractors reads them. A report can be downloaded as an A4 PDF (renderReportPdf, further below).
 const REPORT_SLOTS = 3, REPORT_MAX_PHOTOS = 12;            // photo places that are always there / the most photos in one report
 const REPORT_GROUPS = [['completed', 'შესრულებული სამუშაოები'], ['ongoing', 'მიმდინარე სამუშაოები'], ['planned', 'დაგეგმილი სამუშაოები']];
+// Two kinds of report, numbered separately: weekly (with a PDF) and daily (no PDF; nothing in the form is required).
+// A report's code: the project's code, the kind and a 3-digit number — MZK-R-057 (weekly), MZK-dR-002 (daily); without a project code: R-057 / dR-002.
+// A report saved before the kinds existed has no `type` and counts as weekly.
+const reportKind = r => (r && r.type === 'daily') ? 'daily' : 'weekly';
+const REPORT_KIND_LABEL = { weekly: 'ყოველკვირეული', daily: 'ყოველდღიური' };
+function reportCode(project, r) {
+  const prefix = String((project && project.code) || '').trim();
+  return [prefix, reportKind(r) === 'daily' ? 'dR' : 'R', String(r.number == null ? '' : r.number).padStart(3, '0')].filter(Boolean).join('-');
+}
 const REPORT_LOGO = null;                                  // the company logo for the PDF: a PNG as a data URL; null = a "LOGO" placeholder
 let reportsProjectId = null, reportsProject = null, reportsList = [];   // the project whose reports are open
-let editingReport = null, reportStorageId = null, reportInfoDraft = null;
+let editingReport = null, reportStorageId = null, reportInfoDraft = null, reportFormType = 'weekly';
 let reportSlots = [], reportWorks = { completed: [''], ongoing: [''], planned: [''] }, reportPickIndex = 0;
 let reportUploads = 0, reportPhotosToDelete = [], reportUploadedThisSession = [];
 const reportDate = iso => String(iso || '').replace(/-/g, '.');
@@ -5280,51 +5386,109 @@ function reportInfoFromProject(p) {
   return { projectName: p.name || '', address: (p.address || '').trim() };
 }
 
-// Opens a project's list of reports (from the project card).
+// ── The reports screen: the same look as an issue list — the header, a search box, a "+ new report" button and the list of the
+// project's reports (newest first; the "#" heading flips the order). A click on a row opens the report for reading, so anybody who
+// may see the section can look through the old reports; the buttons on a row download the PDF or (for who may) edit / delete. ──
+let reportsSortDesc = true, reportViewId = null;
 window.openReports = async pid => {
-  reportsProjectId = pid; reportsList = [];
-  const list = document.getElementById('reportsList');
-  list.textContent = 'იტვირთება...';
-  document.getElementById('reportsCount').textContent = '';
-  document.getElementById('btnNewReport').style.display = 'none';   // shown below once we know whether this person may write here
+  reportsProjectId = pid; reportsList = []; reportsProject = null;
+  document.getElementById('reportsSearch').value = '';
+  document.getElementById('reportsTypeFilter').value = '';
+  document.getElementById('btnNewReport').style.display = 'none';   // the two "new report" buttons are shown below once we know whether this person may write here
+  document.getElementById('btnNewDailyReport').style.display = 'none';
   document.getElementById('reportsHint').textContent = '';
-  om('reportsModal');
+  document.getElementById('reportsCount').textContent = '';
+  document.getElementById('reportsTbody').textContent = 'იტვირთება...';
+  document.getElementById('reportsHdrUser').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
+  const badge = document.getElementById('reportsHdrRole'); badge.textContent = roleL[currentGlobalRole] || currentGlobalRole; badge.className = 'role-badge role-' + currentGlobalRole;
+  document.getElementById('projectsScreen').style.display = 'none';
+  document.getElementById('reportsScreen').style.display = 'block';
+  window.scrollTo(0, 0);
   try {
     const pd = await getDoc(doc(db, 'projects', pid));
     reportsProject = pd.exists() ? pd.data() : {};
-    document.getElementById('reportsTitle').textContent = '📝 რეპორტი — ' + (reportsProject.name || '');
+    document.getElementById('reportsHdrProject').textContent = (reportsProject.name || 'პროექტი') + ' — რეპორტი';
     const mayWrite = canWriteReportsOn(reportsProject);
     document.getElementById('btnNewReport').style.display = mayWrite ? '' : 'none';
+    document.getElementById('btnNewDailyReport').style.display = mayWrite ? '' : 'none';
     document.getElementById('reportsHint').textContent = mayWrite ? '' : 'ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს (მითითებულია პროექტის მართვაში)';
     await loadReports();
-  } catch (e) { list.textContent = 'შეცდომა: ' + e.message; }
+  } catch (e) { document.getElementById('reportsTbody').textContent = 'შეცდომა: ' + e.message; }
 };
+// From the reports back to the project's section cards.
+function goBackFromReports() {
+  const pid = reportsProjectId;
+  reportsProjectId = null;
+  document.getElementById('reportsScreen').style.display = 'none';
+  document.getElementById('projectsScreen').style.display = 'block';
+  showProjectSections(pid);
+}
+document.getElementById('btnReportsBack').addEventListener('click', goBackFromReports);
+document.getElementById('btnReportsBackLogo').addEventListener('click', goBackFromReports);
+document.getElementById('btnReportsLogout').addEventListener('click', () => signOut(auth));
 async function loadReports() {
   const snap = await getDocs(query(collection(db, 'projects', reportsProjectId, 'reports'), orderBy('number', 'desc')));
   reportsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderReportsList();
-  const card = document.getElementById('pcount-reports'); if (card) card.textContent = reportsList.length;
+}
+// The reports that match the search box (every typed word must appear in the code, kind, date, author, photo descriptions or works) and the
+// chosen kind, newest first (by date, then by number) or the other way round.
+function filteredReports() {
+  const words = document.getElementById('reportsSearch').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const kind = document.getElementById('reportsTypeFilter').value;
+  const text = r => [reportCode(reportsProject, r), REPORT_KIND_LABEL[reportKind(r)], reportDate(r.date), r.authorName, ...(r.photos || []).map(ph => ph.caption), ...(r.completed || []), ...(r.ongoing || []), ...(r.planned || [])].join(' ').toLowerCase();
+  const order = (a, b) => String(a.date || '').localeCompare(String(b.date || '')) || ((a.number || 0) - (b.number || 0));
+  return reportsList.filter(r => (!kind || reportKind(r) === kind) && words.every(w => text(r).includes(w))).sort((a, b) => reportsSortDesc ? order(b, a) : order(a, b));
 }
 function renderReportsList() {
-  document.getElementById('reportsCount').textContent = `სულ ოქმი: ${reportsList.length}`;
-  document.getElementById('reportsList').innerHTML = reportsList.length ? reportsList.map(r => `
-    <div class="rp-row">
-      <div class="rp-num">#${esc(r.number)}</div>
-      <div class="rp-meta">${esc(reportDate(r.date))} · ${esc(r.authorName || '')}
-        <small>${(r.photos || []).length} ფოტო · ${(r.completed || []).length} შესრულებული · ${(r.ongoing || []).length} მიმდინარე · ${(r.planned || []).length} დაგეგმილი</small>
+  const rows = filteredReports();
+  document.getElementById('reportsCount').textContent = `სულ ოქმი: ${reportsList.length}` + (rows.length !== reportsList.length ? ` (ნაჩვენებია: ${rows.length})` : '');
+  const head = document.getElementById('rpHeadNumber'); head.classList.toggle('sort-desc', reportsSortDesc); head.classList.toggle('sort-asc', !reportsSortDesc);
+  document.getElementById('reportsTbody').innerHTML = rows.length ? rows.map(r => `
+    <div class="issue-row report-grid-row rp-${reportKind(r)}" onclick="openReportView('${r.id}')">
+      <div class="issue-num-cell">${esc(reportCode(reportsProject, r))}</div>
+      <div>${REPORT_KIND_LABEL[reportKind(r)]}</div>
+      <div class="issue-date-cell">${esc(reportDate(r.date))}</div>
+      <div class="issue-title-cell">${esc(r.authorName || '')}</div>
+      <div class="rp-actions">
+        ${reportKind(r) === 'weekly' ? `<button class="btn-secondary" style="padding:4px 9px;font-size:11.5px" onclick="event.stopPropagation(); downloadReportPdf('${r.id}')">⬇ PDF</button>` : ''}
+        ${canEditReport(r, reportsProject) ? `<button class="icon-btn" title="რედაქტირება" onclick="event.stopPropagation(); openReportForm('${r.id}')">${ICON_EDIT}</button>
+          <button class="icon-btn del" title="წაშლა" onclick="event.stopPropagation(); deleteReport('${r.id}')">${ICON_DELETE}</button>` : ''}
       </div>
-      <button class="btn-secondary" style="padding:5px 10px;font-size:12px" onclick="downloadReportPdf('${r.id}')">⬇ PDF</button>
-      ${canEditReport(r, reportsProject) ? `<button class="icon-btn" title="რედაქტირება" onclick="openReportForm('${r.id}')">${ICON_EDIT}</button>
-        <button class="icon-btn del" title="წაშლა" onclick="deleteReport('${r.id}')">${ICON_DELETE}</button>` : ''}
-    </div>`).join('') : '<div style="padding:20px;color:var(--ink-light);font-size:13px">ოქმი ჯერ არ არის</div>';
+    </div>`).join('') : `<div style="padding:20px;color:var(--ink-light);font-size:13px">${reportsList.length ? 'ძებნით არაფერი მოიძებნა' : 'ოქმი ჯერ არ არის'}</div>`;
 }
+document.getElementById('reportsSearch').addEventListener('input', renderReportsList);
+document.getElementById('reportsTypeFilter').addEventListener('change', renderReportsList);
+document.getElementById('rpHeadNumber').addEventListener('click', () => { reportsSortDesc = !reportsSortDesc; renderReportsList(); });
+
+// Reading one report (a click on a row): the details, the photos (click = enlarge) with their descriptions, and the three lists.
+window.openReportView = id => {
+  const r = reportsList.find(x => x.id === id); if (!r) return;
+  reportViewId = id;
+  const info = r.info || reportInfoFromProject(reportsProject || {});
+  const photos = r.photos || [];
+  const group = (title, items) => `<div style="font-weight:600;font-size:13px;margin:12px 0 4px">${title}</div>` +
+    ((items || []).length ? `<ol>${items.map(t => `<li>${esc(t)}</li>`).join('')}</ol>` : '<div style="color:var(--ink-light);margin-left:2px">—</div>');
+  document.getElementById('reportViewTitle').textContent = `ოქმი ${reportCode(reportsProject, r)}`;
+  document.getElementById('reportViewBody').innerHTML =
+    `<p><b>ტიპი:</b> ${REPORT_KIND_LABEL[reportKind(r)]}</p><p><b>ობიექტი:</b> ${esc(info.projectName)}</p><p><b>მისამართი:</b> ${esc(info.address || '—')}</p><p><b>თარიღი:</b> ${esc(reportDate(r.date))}</p><p><b>მოამზადა:</b> ${esc(r.authorName || '')}</p>` +
+    (photos.length ? `<h3>ფოტომასალა</h3>` + photos.map((ph, i) => `<div class="rp-vphoto"><img src="${esc(ph.url)}" alt="" onclick="openReportPhoto(${i})"><div>${i + 1}. ${esc(ph.caption || '')}</div></div>`).join('') : '') +
+    `<h3>ობიექტზე მიმდინარე და დასრულებული სამუშაოები</h3>` + REPORT_GROUPS.map(([key, title]) => group(title + ':', r[key])).join('');
+  document.getElementById('btnReportViewEdit').style.display = canEditReport(r, reportsProject) ? '' : 'none';
+  document.getElementById('btnReportViewPdf').style.display = reportKind(r) === 'weekly' ? '' : 'none';   // only the weekly report has a PDF
+  om('reportViewModal');
+};
+window.openReportPhoto = i => { const r = reportsList.find(x => x.id === reportViewId); if (r) openLightbox((r.photos || []).map(ph => ph.url), i); };
+document.getElementById('btnReportViewPdf').addEventListener('click', () => downloadReportPdf(reportViewId));
+document.getElementById('btnReportViewEdit').addEventListener('click', () => { cm('reportViewModal'); openReportForm(reportViewId); });
 
 // The form. A new report starts with three empty photo places, one empty line in each list, the next number in line (the very first
 // report: the number is typed by hand, e.g. 55) and the object's details copied from the project.
-window.openReportForm = id => {
+window.openReportForm = (id, type) => {
   if (!canWriteReportsOn(reportsProject)) return;
   editingReport = id ? reportsList.find(r => r.id === id) : null;
   if (id && (!editingReport || !canEditReport(editingReport, reportsProject))) return;
+  reportFormType = editingReport ? reportKind(editingReport) : (type === 'daily' ? 'daily' : 'weekly');   // a new report: the button that was pressed; an old one keeps its kind
   reportStorageId = editingReport ? editingReport.id : doc(collection(db, 'projects', reportsProjectId, 'reports')).id; // names the photo folder before the first save
   reportInfoDraft = (editingReport && editingReport.info) || reportInfoFromProject(reportsProject || {});
   reportPhotosToDelete = []; reportUploadedThisSession = []; reportUploads = 0;
@@ -5332,13 +5496,26 @@ window.openReportForm = id => {
   while (reportSlots.length < REPORT_SLOTS) reportSlots.push({ url: '', path: '', caption: '', busy: false });
   const list = k => { const a = ((editingReport && editingReport[k]) || []).slice(); return a.length ? a : ['']; };
   reportWorks = { completed: list('completed'), ongoing: list('ongoing'), planned: list('planned') };
-  const nextNumber = reportsList.length ? Math.max(...reportsList.map(r => Number(r.number) || 0)) + 1 : '';
-  document.getElementById('rNumber').value = editingReport ? editingReport.number : nextNumber;
+  // The numbers of the two kinds are counted separately: the next one is the last of THIS kind + 1 (the very first weekly report: typed by hand, e.g. 55).
+  const nextNumber = nextReportNumber(reportFormType);
+  document.getElementById('rNumber').value = editingReport ? editingReport.number : (nextNumber == null ? '' : nextNumber);
   document.getElementById('rDate').value = reportDate(editingReport ? editingReport.date : todayDotted().replace(/\./g, '-'));
   document.getElementById('rAuthor').value = editingReport ? (editingReport.authorName || '') : currentUserName;
-  document.getElementById('reportFormTitle').textContent = editingReport ? `ოქმის რედაქტირება #${editingReport.number}` : 'ახალი ოქმი';
+  document.getElementById('reportFormTitle').textContent = editingReport ? `ოქმის რედაქტირება ${reportCode(reportsProject, editingReport)}` : (reportFormType === 'daily' ? 'ახალი ყოველდღიური ოქმი' : 'ახალი ყოველკვირეული ოქმი');
+  document.getElementById('rDailyNote').style.display = reportFormType === 'daily' ? '' : 'none';
+  updateReportCodePreview();
   renderReportInfo(); renderReportPhotos(); renderReportWorks();
   om('reportModal');
+};
+// The next number for a kind: the last number of that kind + 1; with none yet, 1 for a daily report and nothing (typed by hand) for a weekly one.
+function nextReportNumber(kind) {
+  const nums = reportsList.filter(r => reportKind(r) === kind).map(r => Number(r.number) || 0);
+  return nums.length ? Math.max(...nums) + 1 : (kind === 'daily' ? 1 : null);
+}
+// Under the number field: the code the report will get, as the number is typed.
+window.updateReportCodePreview = () => {
+  const n = parseInt(document.getElementById('rNumber').value, 10);
+  document.getElementById('rCodePreview').textContent = Number.isInteger(n) && n > 0 ? `კოდი: ${reportCode(reportsProject, { type: reportFormType, number: n })}` : '';
 };
 function renderReportInfo() {
   const i = reportInfoDraft;
@@ -5437,15 +5614,24 @@ window.closeReportForm = () => {
 };
 window.saveReport = async () => {
   if (reportUploads) { alert('ფოტოების ატვირთვა ჯერ არ დასრულებულა, მოიცადე'); return; }
-  const number = parseInt(document.getElementById('rNumber').value, 10);
-  if (!Number.isInteger(number) || number < 1) { alert('ჩაწერე ოქმის ნომერი'); document.getElementById('rNumber').focus(); return; }
+  // A weekly report needs its number and a description for every photo. A daily report needs nothing: an empty number is filled in with the next one.
+  const daily = reportFormType === 'daily';
+  let number = parseInt(document.getElementById('rNumber').value, 10);
+  if (!Number.isInteger(number) || number < 1) {
+    if (!daily) { alert('ჩაწერე ოქმის ნომერი'); document.getElementById('rNumber').focus(); return; }
+    number = editingReport ? editingReport.number : nextReportNumber('daily');
+  }
   const withPhoto = reportSlots.filter(s => s.url);
-  if (withPhoto.some(s => !s.caption.trim())) { alert('ყველა ფოტოს უნდა ჰქონდეს აღწერა'); return; }
-  if (reportSlots.some(s => !s.url && s.caption.trim())) { alert('აღწერა არის, მაგრამ ფოტო არ არის არჩეული. აირჩიე ფოტო ან გაასუფთავე აღწერა'); return; }
-  if (reportsList.some(r => r.id !== (editingReport && editingReport.id) && Number(r.number) === number) && !confirm(`ოქმი №${number} უკვე არსებობს ამ პროექტში. მაინც შევინახო?`)) return;
+  if (!daily && withPhoto.some(s => !s.caption.trim())) { alert('ყველა ფოტოს უნდა ჰქონდეს აღწერა'); return; }
+  if (reportSlots.some(s => !s.url && s.caption.trim())) {
+    if (!daily) { alert('აღწერა არის, მაგრამ ფოტო არ არის არჩეული. აირჩიე ფოტო ან გაასუფთავე აღწერა'); return; }
+    if (!confirm('აღწერა არის, მაგრამ ფოტო არ არის არჩეული. ასეთი აღწერა არ შეინახება. მაინც შევინახო?')) return;
+  }
+  const code = reportCode(reportsProject, { type: reportFormType, number });
+  if (reportsList.some(r => r.id !== (editingReport && editingReport.id) && reportKind(r) === reportFormType && Number(r.number) === number) && !confirm(`ოქმი ${code} უკვე არსებობს ამ პროექტში. მაინც შევინახო?`)) return;
   const clean = k => reportWorks[k].map(t => String(t || '').trim()).filter(Boolean);
   const data = {
-    number, info: reportInfoDraft,
+    type: reportFormType, number, info: reportInfoDraft,
     photos: withPhoto.map(s => ({ url: s.url, path: s.path, caption: s.caption.trim() })),
     completed: clean('completed'), ongoing: clean('ongoing'), planned: clean('planned'),
     updatedAt: serverTimestamp(),
@@ -5467,7 +5653,7 @@ window.saveReport = async () => {
 window.deleteReport = async id => {
   const r = reportsList.find(x => x.id === id);
   if (!r || !canEditReport(r, reportsProject)) return;
-  if (!confirm(`წავშალო ოქმი #${r.number}? მისი ფოტოებიც წაიშლება.`)) return;
+  if (!confirm(`წავშალო ოქმი ${reportCode(reportsProject, r)}? მისი ფოტოებიც წაიშლება.`)) return;
   try {
     await deleteDoc(doc(db, 'projects', reportsProjectId, 'reports', id));
     deleteReportFiles((r.photos || []).map(ph => ph.path).filter(Boolean));
@@ -5496,15 +5682,14 @@ async function loadReportPhoto(ph) {   // → { caption, dataUrl, width, height 
   } catch (e) { return { caption: ph.caption, dataUrl: null }; }
 }
 window.downloadReportPdf = async id => {
-  const r = reportsList.find(x => x.id === id); if (!r) return;
+  const r = reportsList.find(x => x.id === id); if (!r || reportKind(r) !== 'weekly') return;   // a daily report has no PDF
   showToast('PDF მზადდება...');
   try {
     const fonts = await loadReportFonts();
     const photos = []; for (const ph of (r.photos || [])) photos.push(await loadReportPhoto(ph));
-    const report = { number: r.number, date: r.date, authorName: r.authorName, info: r.info || reportInfoFromProject(reportsProject || {}), photos, completed: r.completed, ongoing: r.ongoing, planned: r.planned };
+    const report = { code: reportCode(reportsProject, r), number: r.number, date: r.date, authorName: r.authorName, info: r.info || reportInfoFromProject(reportsProject || {}), photos, completed: r.completed, ongoing: r.ongoing, planned: r.planned };
     const pdf = renderReportPdf(window.jspdf.jsPDF, report, { fontRegular: fonts.regular, fontBold: fonts.bold, logo: REPORT_LOGO, downloadedOn: todayDotted() });
-    const code = String((reportsProject && reportsProject.code) || 'RevTrack').replace(/[^\w-]+/g, '_');
-    pdf.save(`${code}-report-${r.number}.pdf`);
+    pdf.save(`${reportCode(reportsProject, r).replace(/[^\w-]+/g, '_')}.pdf`);   // e.g. MZK-R-057.pdf
   } catch (e) {
     console.error('report pdf failed:', e);
     showToast('PDF-ის შექმნა ვერ მოხერხდა' + (/fonts|NotoSans/.test(String(e && e.message)) ? ' (ფონტის ფაილები ვერ ჩაიტვირთა)' : ''));
@@ -5514,7 +5699,7 @@ window.downloadReportPdf = async id => {
 // ── WEEKLY SITE REPORT → A4 PDF ──
 // renderReportPdf(JsPDF, report, assets) draws the report with the PDF library and returns the document. It does not touch the
 // page: everything it needs is passed in, so it can also be run (and looked at) outside the browser.
-//   report = { number, date: 'YYYY-MM-DD', authorName,
+//   report = { code ('MZK-R-057'; if missing, '#' + number is used), number, date: 'YYYY-MM-DD', authorName,
 //              info: { projectName, address },
 //              photos: [{ caption, dataUrl, width, height }]  (dataUrl = JPEG; width/height = its pixel size; no dataUrl = failed to load),
 //              completed: [text], ongoing: [text], planned: [text] }
@@ -5539,7 +5724,8 @@ function renderReportPdf(JsPDF, report, assets) {
   const ensure = h => { if (y + h > BOTTOM) newPage(); };
 
   // ── title ──
-  const title = `${REPORT_TITLE} #${report.number}`;
+  const code = report.code || ('#' + report.number);
+  const title = `${REPORT_TITLE} ${code}`;
   const titleLines = wrap(title, CW, 'bold', 15);
   y += 5;
   font('bold', 15, ACCENT);
@@ -5634,7 +5820,7 @@ function renderReportPdf(JsPDF, report, assets) {
       doc.setFillColor(...PANEL); doc.setDrawColor(...GRAY); doc.setLineWidth(0.3); doc.setLineDashPattern([1.5, 1.2], 0); doc.roundedRect(ML, 9, 36, 13, 1.5, 1.5, 'FD'); doc.setLineDashPattern([], 0);
       font('bold', 10, GRAY); doc.text('LOGO', ML + 18, 17.2, { align: 'center' });
     }
-    font('bold', 9.5, ACCENT); doc.text(`ოქმი #${report.number}`, W - MR, 13.5, { align: 'right' });
+    font('bold', 9.5, ACCENT); doc.text(`ოქმი ${code}`, W - MR, 13.5, { align: 'right' });
     font('normal', 8, GRAY); doc.text(shortName, W - MR, 18, { align: 'right' });
     doc.setDrawColor(...RULE); doc.setLineWidth(0.3); doc.line(ML, 25, W - MR, 25);
     doc.line(ML, 285, W - MR, 285);
@@ -5716,6 +5902,12 @@ function renderUsersPanel() {
           <input type="checkbox" ${u.canOpenMepIssues?'checked':''} onchange="toggleUserMepPermission('${u.id}',this.checked)">
           MEP საკითხების გახსნის უფლება
         </label>
+      </div>
+      <div class="user-label-row">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+          <input type="checkbox" ${u.siteManager?'checked':''} onchange="toggleUserSiteManager('${u.id}',this.checked)">
+          საიტ მენეჯერი (წერს ოქმებს)
+        </label>
       </div>`:''}
     </div>`).join('') : `<div style="padding:20px;color:var(--ink-light);font-size:13px">${allCount ? 'ძებნით ან ფილტრით არავინ მოიძებნა' : 'მომხმარებელი არ არის'}</div>`;
 }
@@ -5745,6 +5937,14 @@ window.toggleUserMepPermission = async (uid, checked) => {
   try {
     await updateDoc(doc(db,'users',uid), {canOpenMepIssues: checked});
     if (allUsers[uid]) allUsers[uid].canOpenMepIssues = checked;
+  } catch(e) { alert('შეცდომა: '+e.message); renderUsersPanel(); }
+};
+// Marks a User account as a site manager (users/{uid}.siteManager): it can then be chosen as a project's site manager and write that
+// project's weekly reports. Independent of the two issue-opening permissions above.
+window.toggleUserSiteManager = async (uid, checked) => {
+  try {
+    await updateDoc(doc(db,'users',uid), {siteManager: checked});
+    if (allUsers[uid]) allUsers[uid].siteManager = checked;
   } catch(e) { alert('შეცდომა: '+e.message); renderUsersPanel(); }
 };
 window.approveUser = async uid => {
@@ -5811,12 +6011,13 @@ async function openProjectModal(pid) {
     document.getElementById('pPmName').disabled = !!e.target.value;
     if (e.target.value) document.getElementById('pPmName').value = '';
   };
-  // Site manager: pick one of the registered users — only a registered user can write this project's reports — or type a name.
-  const sitePool = Object.values(allUsers).filter(u => u.approved && u.role !== 'contractor' && u.role !== 'admin')
+  // Site manager: pick one of the accounts marked as site managers in the users list (plus the one already chosen) — only such an account
+  // can write this project's reports — or type a name.
+  const sitePool = Object.values(allUsers).filter(u => u.approved && u.role !== 'contractor' && u.role !== 'admin' && (u.siteManager || u.id === pd.siteMgrUid))
     .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
   const siteKnown = sitePool.some(u => u.id === (pd.siteMgrUid || '')); // a chosen user who is no longer in the list is shown as a typed name
   document.getElementById('pSiteUser').innerHTML = '<option value="">— თავად ჩავწერ —</option>' +
-    sitePool.map(u => `<option value="${u.id}" ${siteKnown && u.id===pd.siteMgrUid?'selected':''}>${esc(u.name||u.email)}</option>`).join('');
+    sitePool.map(u => `<option value="${u.id}" ${siteKnown && u.id===pd.siteMgrUid?'selected':''}>${esc(u.name||u.email)}${u.siteManager?'':' (არ არის მონიშნული საიტ მენეჯერად)'}</option>`).join('');
   document.getElementById('pSiteName').value = siteKnown ? '' : (pd.siteMgrName || '');
   document.getElementById('pSiteName').disabled = siteKnown;
   document.getElementById('pSiteUser').onchange = e => {
