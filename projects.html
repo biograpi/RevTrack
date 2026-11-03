@@ -32,6 +32,7 @@ onSnapshot(collection(db, 'publicProjects'), (snap) => {
       reviewer: p.createdByName || 'ადმინი',
       manager: p.managerName || '— არავინ',
       pm: p.pmName || '— არავინ',
+      site: p.siteManagerName || '— არავინ',
       arch: (p.contractors && p.contractors.arch) || '— არქიტექტორი არ არის',
       struct: (p.contractors && p.contractors.struct) || '— კონსტრუქტორი არ არის',
       mp: ((p.contractors && p.contractors.mp) || '').trim(),
@@ -69,6 +70,7 @@ onSnapshot(collection(db, 'publicProjects'), (snap) => {
 <div class="controls">
   <label><input type="checkbox" id="chkDm" checked> დიზაინ მენეჯერები</label>
   <label><input type="checkbox" id="chkPm"> პროექტ მენეჯერები</label>
+  <label><input type="checkbox" id="chkSite"> საიტ მენეჯერები</label>
   <label><input type="checkbox" id="chkArch" checked> არქიტექტორი</label>
   <label><input type="checkbox" id="chkStruct" checked> კონსტრუქტორი</label>
   <label><input type="checkbox" id="chkMp" checked> MP</label>
@@ -83,6 +85,7 @@ document.getElementById('dateLabel').textContent = new Date().toISOString().slic
 var REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
 var MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
 var PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#a3e635'];
+var SITE_PALETTE = ['#64748b','#475569','#94a3b8','#334155','#78716c','#57534e','#a8a29e'];
 var ARCH_PALETTE = ['#f59e0b','#d97706','#fbbf24','#ea580c','#f97316','#eab308','#facc15'];
 var STRUCT_PALETTE = ['#a855f7','#7c3aed','#c084fc','#9333ea','#8b5cf6','#a78bfa','#7e22ce'];
 var MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#e11d48','#f43f5e'];
@@ -105,6 +108,7 @@ window.renderChart = function() {
 
   var showDm = document.getElementById('chkDm').checked;
   var showPm = document.getElementById('chkPm').checked;
+  var showSite = document.getElementById('chkSite').checked;
   var showArch = document.getElementById('chkArch').checked;
   var showStruct = document.getElementById('chkStruct').checked;
   var showMp = document.getElementById('chkMp').checked;
@@ -116,7 +120,7 @@ window.renderChart = function() {
   svgEl.innerHTML = '';
   var width = svgEl.parentElement.clientWidth || 900;
 
-  var reviewerColors = {}, managerColors = {}, pmColors = {}, archColors = {}, structColors = {}, mepColors = {}, elecColors = {};
+  var reviewerColors = {}, managerColors = {}, pmColors = {}, siteColors = {}, archColors = {}, structColors = {}, mepColors = {}, elecColors = {};
   var nodesById = {};
   function addNode(id, name, color) {
     if (!nodesById[id]) nodesById[id] = { id: id, name: name, color: color };
@@ -144,8 +148,15 @@ window.renderChart = function() {
       pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
       pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor);
     }
-    var afterId = showReviewer ? reviewerId : pmId;
-    var afterColor = showReviewer ? reviewerColor : pmColor;
+    // the site manager: the last column, after the project managers (it takes the PM's place when the PM column is off)
+    var siteId = null, siteColor = null;
+    if (showSite) {
+      siteColor = colorFor(siteColors, p.site, SITE_PALETTE);
+      siteId = addNode('sm:' + p.site, withInitial(p.site), siteColor);
+    }
+    var tailId = pmId || siteId, tailColor = pmId ? pmColor : siteColor;
+    var afterId = showReviewer ? reviewerId : tailId;
+    var afterColor = showReviewer ? reviewerColor : tailColor;
 
     if (showContractors) {
       if (showArch) {
@@ -180,16 +191,17 @@ window.renderChart = function() {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
           var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
-          if (pmId && !reviewerLinkedToPm[mepReviewerId]) { links.push({ source: mepReviewerId, target: pmId, value: value, pid: p.id, c1: mepReviewerColor, c2: pmColor }); reviewerLinkedToPm[mepReviewerId] = true; }
+          if (tailId && !reviewerLinkedToPm[mepReviewerId]) { links.push({ source: mepReviewerId, target: tailId, value: value, pid: p.id, c1: mepReviewerColor, c2: tailColor }); reviewerLinkedToPm[mepReviewerId] = true; }
         }
       });
     } else if (afterId) {
       links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
     }
 
-    if (showReviewer && pmId) {
-      links.push({ source: reviewerId, target: pmId, value: value, pid: p.id, c1: reviewerColor, c2: pmColor });
+    if (showReviewer && tailId) {
+      links.push({ source: reviewerId, target: tailId, value: value, pid: p.id, c1: reviewerColor, c2: tailColor });
     }
+    if (pmId && siteId) links.push({ source: pmId, target: siteId, value: value, pid: p.id, c1: pmColor, c2: siteColor });
   });
 
   var counts = {};
@@ -313,19 +325,21 @@ window.renderChart = function() {
       .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(text);
   }
   header(1, 'start', 'პროექტი');
-  var dmIsLast = showDm && !showContractors && !showReviewer && !showPm;
+  var showSite2 = document.getElementById('chkSite').checked;
+  var dmIsLast = showDm && !showContractors && !showReviewer && !showPm && !showSite2;
   if (showDm) header(dmIsLast ? width - 1 : colCenterX('m:'), dmIsLast ? 'end' : 'middle', 'დიზაინ მენეჯერი');
   if (showContractors) {
     var activeDisciplines = [showArch && 'არქიტექტორი', showStruct && 'კონსტრუქტორი', showMp && 'MP', showElec && 'Electrical'].filter(Boolean);
-    var contractorIsLast = !showReviewer && !showPm;
+    var contractorIsLast = !showReviewer && !showPm && !showSite2;
     var label = activeDisciplines.length === 1 ? activeDisciplines[0] : 'კონტრაქტორი';
     header(contractorIsLast ? width - 1 : colCenterX('c:'), contractorIsLast ? 'end' : 'middle', label);
   }
-  if (showReviewer) header(showPm ? colCenterX('r:') : width - 1, showPm ? 'middle' : 'end', 'რევიზორი');
-  if (showPm) header(width - 1, 'end', 'პროექტის მენეჯერი');
+  if (showReviewer) header((showPm || showSite2) ? colCenterX('r:') : width - 1, (showPm || showSite2) ? 'middle' : 'end', 'რევიზორი');
+  if (showPm) header(showSite2 ? colCenterX('pm:') : width - 1, showSite2 ? 'middle' : 'end', 'პროექტის მენეჯერი');
+  if (showSite2) header(width - 1, 'end', 'საიტ მენეჯერი');
 };
 
-['chkDm','chkPm','chkArch','chkStruct','chkMp','chkElec','chkReviewer'].forEach(function(id) {
+['chkDm','chkPm','chkSite','chkArch','chkStruct','chkMp','chkElec','chkReviewer'].forEach(function(id) {
   document.getElementById(id).addEventListener('change', window.renderChart);
 });
 window.addEventListener('resize', window.renderChart);
