@@ -327,6 +327,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .rp-work{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .rp-work b{min-width:22px;font-size:12px;color:var(--ink-light);text-align:right}
 .rp-work input{flex:1}
+/* a site-manager row in the project form (select + typing box + ✕): a grid with two equal-ish columns, so a long list of names cannot squeeze the typing box */
+.field .rp-work{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) 26px;gap:8px;align-items:center}
+.field .rp-work select,.field .rp-work input{width:100%;min-width:0}
+@media (max-width:560px){.field .rp-work{grid-template-columns:minmax(0,1fr) 26px}.field .rp-work select{grid-column:1/-1}}
 @media (max-width:560px){.rp-photo{grid-template-columns:96px 1fr 26px}.rp-photo-box{width:96px;height:76px}}
 
 /* ── DETAIL ── */
@@ -6006,7 +6010,12 @@ function renderSiteManagerRows() {
       <button type="button" class="rp-x" title="წაშლა" onclick="removeSiteManager(${i})">✕</button>
     </div>`).join('') || '<div class="auth-hint" style="margin-bottom:6px">საიტ მენეჯერი არ არის დამატებული</div>';
 }
-window.setSiteManagerUser = (i, uid) => { const r = pendingSiteManagers[i]; if (!r) return; r.uid = uid || ''; if (uid) r.name = ''; renderSiteManagerRows(); };
+window.setSiteManagerUser = (i, uid) => {
+  const r = pendingSiteManagers[i]; if (!r) return;
+  r.uid = uid || ''; if (uid) r.name = '';
+  renderSiteManagerRows();
+  if (!uid) { const box = document.querySelectorAll('#pSiteList .rp-work input')[i]; if (box) box.focus(); }   // "I'll type it myself": the cursor goes straight into the box
+};
 window.setSiteManagerName = (i, v) => { if (pendingSiteManagers[i]) pendingSiteManagers[i].name = v; };
 window.addSiteManager = () => { pendingSiteManagers.push({ uid: '', name: '' }); renderSiteManagerRows(); };
 window.removeSiteManager = i => { pendingSiteManagers.splice(i, 1); renderSiteManagerRows(); };
