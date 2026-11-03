@@ -32,7 +32,7 @@ onSnapshot(collection(db, 'publicProjects'), (snap) => {
       reviewer: p.createdByName || 'ადმინი',
       manager: p.managerName || '— არავინ',
       pm: p.pmName || '— არავინ',
-      site: p.siteManagerName || '— არავინ',
+      sites: (p.siteManagerNames && p.siteManagerNames.length) ? p.siteManagerNames : (p.siteManagerName ? [p.siteManagerName] : []),   // [] = none set; the diagram then shows "— არავინ"
       arch: (p.contractors && p.contractors.arch) || '— არქიტექტორი არ არის',
       struct: (p.contractors && p.contractors.struct) || '— კონსტრუქტორი არ არის',
       mp: ((p.contractors && p.contractors.mp) || '').trim(),
@@ -148,28 +148,31 @@ window.renderChart = function() {
       pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
       pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor);
     }
-    // the site manager: the last column, after the project managers (it takes the PM's place when the PM column is off)
-    var siteId = null, siteColor = null;
+    // the site managers: the last column, after the project managers (it takes the PM's place when the PM column is off). A project can have
+    // several: one node each, and the project's value is shared equally between them (one, or none = "— არავინ": exactly as before).
+    var siteTargets = [];
     if (showSite) {
-      siteColor = colorFor(siteColors, p.site, SITE_PALETTE);
-      siteId = addNode('sm:' + p.site, withInitial(p.site), siteColor);
+      (p.sites && p.sites.length ? p.sites : ['— არავინ']).forEach(function(siteName) {
+        var siteColor = colorFor(siteColors, siteName, SITE_PALETTE);
+        siteTargets.push({ id: addNode('sm:' + siteName, withInitial(siteName), siteColor), color: siteColor });
+      });
     }
-    var tailId = pmId || siteId, tailColor = pmId ? pmColor : siteColor;
-    var afterId = showReviewer ? reviewerId : tailId;
-    var afterColor = showReviewer ? reviewerColor : tailColor;
+    var tails = pmId ? [{ id: pmId, color: pmColor }] : siteTargets;
+    var after = showReviewer ? [{ id: reviewerId, color: reviewerColor }] : tails;
+    var linkTo = function(sourceId, sourceColor, targets) { targets.forEach(function(t) { links.push({ source: sourceId, target: t.id, value: value / targets.length, pid: p.id, c1: sourceColor, c2: t.color }); }); };
 
     if (showContractors) {
       if (showArch) {
         var archColor = colorFor(archColors, p.arch, ARCH_PALETTE);
         var archId = addNode('c:' + p.arch, p.arch, archColor);
         links.push({ source: preId, target: archId, value: value, pid: p.id, c1: preColor, c2: archColor });
-        if (afterId) links.push({ source: archId, target: afterId, value: value, pid: p.id, c1: archColor, c2: afterColor });
+        linkTo(archId, archColor, after);
       }
       if (showStruct) {
         var structColor = colorFor(structColors, p.struct, STRUCT_PALETTE);
         var structId = addNode('c:' + p.struct, p.struct, structColor);
         links.push({ source: preId, target: structId, value: value, pid: p.id, c1: preColor, c2: structColor });
-        if (afterId) links.push({ source: structId, target: afterId, value: value, pid: p.id, c1: structColor, c2: afterColor });
+        linkTo(structId, structColor, after);
       }
       // mechanical & plumbing and electrical (or the old single MEP contractor of a project not yet moved over)
       var mepList = [];
@@ -184,24 +187,24 @@ window.renderChart = function() {
         var mepColor = m.kind === 'elec' ? colorFor(elecColors, m.name, ELEC_PALETTE) : colorFor(mepColors, m.name, MEP_PALETTE);
         var mepId = addNode('c:' + m.name, m.name, mepColor);
         links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
-        if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
+        linkTo(mepId, mepColor, after);
         // each MEP contractor is reviewed by its own reviewer; a contractor without one has no reviewer node
         var mepReviewerName = m.kind === 'mp' ? p.mpReviewer : (m.kind === 'elec' ? p.elecReviewer : p.mepReviewerOld);
         if (showReviewer && mepReviewerName) {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
           var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
-          if (tailId && !reviewerLinkedToPm[mepReviewerId]) { links.push({ source: mepReviewerId, target: tailId, value: value, pid: p.id, c1: mepReviewerColor, c2: tailColor }); reviewerLinkedToPm[mepReviewerId] = true; }
+          if (tails.length && !reviewerLinkedToPm[mepReviewerId]) { linkTo(mepReviewerId, mepReviewerColor, tails); reviewerLinkedToPm[mepReviewerId] = true; }
         }
       });
-    } else if (afterId) {
-      links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
+    } else if (after.length) {
+      linkTo(preId, preColor, after);
     }
 
-    if (showReviewer && tailId) {
-      links.push({ source: reviewerId, target: tailId, value: value, pid: p.id, c1: reviewerColor, c2: tailColor });
+    if (showReviewer && tails.length) {
+      linkTo(reviewerId, reviewerColor, tails);
     }
-    if (pmId && siteId) links.push({ source: pmId, target: siteId, value: value, pid: p.id, c1: pmColor, c2: siteColor });
+    if (pmId && siteTargets.length) linkTo(pmId, pmColor, siteTargets);
   });
 
   var counts = {};

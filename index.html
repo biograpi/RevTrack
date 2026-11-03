@@ -722,6 +722,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
         <div class="field form-full"><label>მოამზადა</label><input id="rAuthor" disabled></div>
       </div>
       <div class="auth-hint" id="rDailyNote" style="display:none;margin-bottom:8px">ყოველდღიურ ოქმში არაფერია სავალდებულო</div>
+      <div class="auth-hint" id="rWindowNote" style="display:none;margin-bottom:8px">ოქმის შეცვლა და წაშლა შესაძლებელია მხოლოდ შექმნიდან 24 საათის განმავლობაში</div>
       <div class="rp-info" id="rInfoPreview"></div>
       <button type="button" class="btn-secondary" style="font-size:12px;padding:5px 10px" onclick="refreshReportInfo()">↻ ობიექტის ინფორმაციის განახლება პროექტიდან</button>
       <div class="rp-section">ფოტომასალა</div>
@@ -813,14 +814,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
           <label>PM-ის სახელი (თუ დარეგისტრირებული არაა)</label>
           <input id="pPmName" placeholder="სახელი გვარი">
         </div>
-        <div class="field">
-          <label>საიტ მენეჯერი (წერს ამ პროექტის ოქმებს)</label>
-          <select id="pSiteUser"><option value="">— თავად ჩავწერ —</option></select>
+        <div class="field form-full">
+          <label>საიტ მენეჯერები (წერს ამ პროექტის ოქმებს)</label>
+          <div id="pSiteList"></div>
+          <button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px;align-self:flex-start" onclick="addSiteManager()">+ საიტ მენეჯერის დამატება</button>
           <div class="auth-hint">სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“</div>
-        </div>
-        <div class="field">
-          <label>საიტ მენეჯერის სახელი (თუ დარეგისტრირებული არაა)</label>
-          <input id="pSiteName" placeholder="სახელი გვარი">
         </div>
         <div class="field">
           <label>MP რევიზორი</label>
@@ -1025,6 +1023,12 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"საიტ მენეჯერები (წერს ამ პროექტის ოქმებს)": "Site managers (write this project's reports)",
+"+ საიტ მენეჯერის დამატება": "+ Add a site manager",
+"საიტ მენეჯერი არ არის დამატებული": "No site manager added",
+"ოქმის შეცვლა და წაშლა შესაძლებელია მხოლოდ შექმნიდან 24 საათის განმავლობაში": "A report can be changed or deleted only during the first 24 hours after it was created",
+"ოქმის შეცვლის დრო (24 საათი) ამოიწურა": "The time to change this report (24 hours) has run out",
+"ოქმის წაშლის დრო (24 საათი) ამოიწურა": "The time to delete this report (24 hours) has run out",
 "ოქმი": "Report",
 "+ ყოველკვირეული ოქმი": "+ Weekly report",
 "+ ყოველდღიური ოქმი": "+ Daily report",
@@ -1046,8 +1050,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 "ძებნით არაფერი მოიძებნა": "Nothing matches the search",
 "ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს (მითითებულია პროექტის მართვაში)": "Only this project's site manager can write a new report (set in the project settings)",
 "საიტ მენეჯერი": "Site manager",
-"საიტ მენეჯერი (წერს ამ პროექტის ოქმებს)": "Site manager (writes this project's reports)",
-"საიტ მენეჯერის სახელი (თუ დარეგისტრირებული არაა)": "Site manager's name (if not registered)",
 "საიტ მენეჯერები": "Site managers",
 "📝 რეპორტი": "📝 Report",
 "+ ახალი ოქმი": "+ New report",
@@ -1378,6 +1380,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^საიტ მენეჯერები: ([\s\S]*)$/, function (m) { return 'Site Managers: ' + m[1]; }],
     [/^საიტ მენეჯერი: ([\s\S]*)$/, function (m) { return 'Site Manager: ' + m[1]; }],
     [/^(.+) \(ყოველკვირეული ოქმი\)$/, function (m) { return m[1] + ' (weekly report)'; }],
     [/^(.+) \(ყოველდღიური ოქმი\)$/, function (m) { return m[1] + ' (daily report)'; }],
@@ -1622,11 +1625,14 @@ function canOpenMepAsUser() { return currentGlobalRole === 'viewer' && currentUs
 // A User-role account's individually granted rights: may it open issues in this section? (DM: 'internal', MEP: 'mep')
 // The weekly site reports ("ოქმები") of a project are written by an admin (the super reviewer included) and by that project's
 // SITE MANAGER: a User account an admin has marked as a site manager (users/{uid}.siteManager — the tick-box in the users list) AND
-// who is chosen in the project's "site manager" field (siteMgrUid). `project` = the project's data.
+// who is one of the project's site managers (the list siteManagers / siteMgrUids). `project` = the project's data.
 let currentUserIsSiteManager = false;
-const isSiteManagerOf = project => !!project && !!project.siteMgrUid && project.siteMgrUid === currentUser?.uid && currentGlobalRole === 'viewer' && currentUserIsSiteManager === true;
+const isSiteManagerOf = project => !!project && !!currentUser && projectSiteManagerEntries(project).some(e => e.uid && e.uid === currentUser.uid) && currentGlobalRole === 'viewer' && currentUserIsSiteManager === true;
 const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project);
-const canEditReport = (r, project) => isAdminLike() || (isSiteManagerOf(project) && r.authorId === currentUser?.uid);   // the site manager: only their own reports
+// Changing or deleting a report: an admin always; the site manager only their OWN report and only during the first 24 hours after it was created.
+const REPORT_EDIT_WINDOW_MS = 24 * 3600 * 1000;
+const reportEditable = r => !(r && r.createdAt && r.createdAt.toDate) || (Date.now() - r.createdAt.toDate().getTime() <= REPORT_EDIT_WINDOW_MS);   // no time yet (just created, still being saved) counts as new
+const canEditReport = (r, project) => isAdminLike() || (isSiteManagerOf(project) && r.authorId === currentUser?.uid && reportEditable(r));
 const canReadReports = () => currentGlobalRole !== 'contractor' || isAdminLike(); // everybody but contractors
 function canOpenInSectionAsUser(section) { return (section === 'internal' && canOpenDmAsUser()) || (section === 'mep' && canOpenMepAsUser()); }
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
@@ -1920,9 +1926,17 @@ function firstNameOnly(fullName) { return (fullName||'').trim().split(/\s+/)[0] 
 // How many distinct nodes will the busiest column need? Used to size the
 // diagram's height so nothing gets cramped, regardless of how many
 // reviewers/managers/contractors/PMs actually exist in the data.
-// The site manager of a project as a name: the chosen registered user's current name, or the typed name ('' when none).
-function projectSiteManager(p) {
-  return p.siteMgrUid ? (allUsers[p.siteMgrUid]?.name || allUsers[p.siteMgrUid]?.email || (p.siteMgrName || '').trim() || 'უცნობი') : (p.siteMgrName || '').trim();
+// A project's site managers as entries [{ uid, name }]: the list saved with the project (siteManagers) or — for a project saved before there was a
+// list — the one site manager of the old fields (siteMgrUid / siteMgrName).
+function projectSiteManagerEntries(p) {
+  if (Array.isArray(p.siteManagers)) return p.siteManagers;
+  if (p.siteMgrUid || (p.siteMgrName || '').trim()) return [{ uid: p.siteMgrUid || null, name: (p.siteMgrName || '').trim() }];
+  return [];
+}
+// Their names as shown: a registered user by the current name, a typed one as typed; each name once. [] = none.
+function projectSiteManagers(p) {
+  const names = projectSiteManagerEntries(p).map(e => e.uid ? (allUsers[e.uid]?.name || allUsers[e.uid]?.email || (e.name || '').trim() || 'უცნობი') : (e.name || '').trim()).filter(Boolean);
+  return [...new Set(names)];
 }
 // The MEP reviewers of a project, as names: mechanical & plumbing and electrical — each picked from the registered users
 // (mpReviewerUid / elecReviewerUid) or typed by hand (…ReviewerName) — plus the OLD single "MEP reviewer" text (mepReviewer; a
@@ -1960,7 +1974,7 @@ function computeMaxColumnNodeCount(projects) {
     if (sankeyManagerTypes.pm) {
       pms.add(p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'));
     }
-    if (sankeyManagerTypes.site) sites.add(projectSiteManager(p) || '— არავინ');
+    if (sankeyManagerTypes.site) { const sm = projectSiteManagers(p); (sm.length ? sm : ['— არავინ']).forEach(n => sites.add(n)); }
     if (sankeyDisciplines.arch) contractors.add((p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის');
     if (sankeyDisciplines.struct) contractors.add((p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის');
     sankeyMepContractors(p, sankeyDisciplines).forEach(m => contractors.add(m.name));
@@ -2124,17 +2138,22 @@ function renderReviewerManagerChart(projects, opts) {
     }
     // The site manager is the last column, after the project managers. It follows the PM when the PM column is shown, otherwise it
     // takes the PM's place (reviewers / contractors lead straight to it).
-    let siteId = null, siteColor = null;
+    // A project can have several site managers: each one is a node of its own, and the project's value is split equally between them so that
+    // the width of the project does not grow (one site manager, or none = the "— არავინ" node: exactly as before).
+    const siteTargets = [];
     if (sankeyManagerTypes.site) {
-      const siteFullName = projectSiteManager(p) || '— არავინ';
-      siteColor = colorFor(siteColorByName, siteFullName, SANKEY_SITE_PALETTE);
-      siteId = addNode(`sm:${siteFullName}`, nameWithLastInitial(siteFullName), siteColor);
+      const siteNames = projectSiteManagers(p);
+      for (const siteFullName of (siteNames.length ? siteNames : ['— არავინ'])) {
+        const siteColor = colorFor(siteColorByName, siteFullName, SANKEY_SITE_PALETTE);
+        siteTargets.push({ id: addNode(`sm:${siteFullName}`, nameWithLastInitial(siteFullName), siteColor), color: siteColor });
+      }
     }
-    const tailId = pmId || siteId, tailColor = pmId ? pmColor : siteColor;   // where the reviewers lead: the PM, or the site manager if there is no PM column
+    const tails = pmId ? [{ id: pmId, color: pmColor }] : siteTargets;   // where the reviewers lead: the PM, or the site managers if there is no PM column
     // What contractors (or the direct link) should point to: the reviewer
-    // if it's shown, otherwise the last manager column (PM, else site manager), otherwise nothing further.
-    const afterId = sankeyShowReviewer ? reviewerId : tailId;
-    const afterColor = sankeyShowReviewer ? reviewerColor : tailColor;
+    // if it's shown, otherwise the last manager column (PM, else site managers), otherwise nothing further.
+    const after = sankeyShowReviewer ? [{ id: reviewerId, color: reviewerColor }] : tails;
+    // links from one node to the targets: with several, the value is shared equally
+    const linkTo = (sourceId, sourceColor, targets) => targets.forEach(t => pushLink(sourceId, t.id, value / targets.length, p.id, sourceColor, t.color, projectColor));
 
     if (sankeyDisciplines.arch || sankeyDisciplines.struct || sankeyDisciplines.mp || sankeyDisciplines.elec) {
       // One combined column, up to three parallel nodes — architect,
@@ -2148,14 +2167,14 @@ function renderReviewerManagerChart(projects, opts) {
         const archColor = colorFor(archColorByName, archName, SANKEY_ARCH_PALETTE);
         const archId = addNode(`c:${archName}`, archName, archColor);
         pushLink(preContractorId, archId, value, p.id, preContractorColor, archColor, projectColor);
-        if (afterId) pushLink(archId, afterId, value, p.id, archColor, afterColor, projectColor);
+        linkTo(archId, archColor, after);
       }
       if (sankeyDisciplines.struct) {
         const structName = (p.contractors?.struct || '').trim() || '— კონსტრუქტორი არ არის';
         const structColor = colorFor(structColorByName, structName, SANKEY_STRUCT_PALETTE);
         const structId = addNode(`c:${structName}`, structName, structColor);
         pushLink(preContractorId, structId, value, p.id, preContractorColor, structColor, projectColor);
-        if (afterId) pushLink(structId, afterId, value, p.id, structColor, afterColor, projectColor);
+        linkTo(structId, structColor, after);
       }
       // Mechanical & plumbing and electrical (or the old single MEP contractor) — one node each. The MEP reviewers
       // review their work specifically: connected FROM those nodes, not from the project/DM directly.
@@ -2164,7 +2183,7 @@ function renderReviewerManagerChart(projects, opts) {
         const mepColor = m.kind === 'elec' ? colorFor(elecColorByName, m.name, SANKEY_ELEC_PALETTE) : colorFor(mepColorByName, m.name, SANKEY_MEP_PALETTE);
         const mepId = addNode(`c:${m.name}`, m.name, mepColor);
         pushLink(preContractorId, mepId, value, p.id, preContractorColor, mepColor, projectColor);
-        if (afterId) pushLink(mepId, afterId, value, p.id, mepColor, afterColor, projectColor);
+        linkTo(mepId, mepColor, after);
         // Each MEP contractor is reviewed by its own reviewer (mechanical & plumbing / electrical); a contractor without one has no
         // reviewer node.
         const mepReviewerName = m.kind === 'mp' ? mepReviewers.mpFinal : (m.kind === 'elec' ? mepReviewers.elecFinal : mepReviewers.legacy);
@@ -2172,17 +2191,17 @@ function renderReviewerManagerChart(projects, opts) {
           const mepReviewerColor = colorFor(reviewerColorByName, mepReviewerName, SANKEY_REVIEWER_PALETTE);
           const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor);
           pushLink(mepId, mepReviewerId, value, p.id, mepColor, mepReviewerColor, projectColor);
-          if (tailId && !reviewerLinkedToPm.has(mepReviewerId)) { pushLink(mepReviewerId, tailId, value, p.id, mepReviewerColor, tailColor, projectColor); reviewerLinkedToPm.add(mepReviewerId); }
+          if (tails.length && !reviewerLinkedToPm.has(mepReviewerId)) { linkTo(mepReviewerId, mepReviewerColor, tails); reviewerLinkedToPm.add(mepReviewerId); }
         }
       }
-    } else if (afterId) {
-      pushLink(preContractorId, afterId, value, p.id, preContractorColor, afterColor, projectColor);
+    } else if (after.length) {
+      linkTo(preContractorId, preContractorColor, after);
     }
 
-    if (sankeyShowReviewer && tailId) {
-      pushLink(reviewerId, tailId, value, p.id, reviewerColor, tailColor, projectColor);
+    if (sankeyShowReviewer && tails.length) {
+      linkTo(reviewerId, reviewerColor, tails);
     }
-    if (pmId && siteId) pushLink(pmId, siteId, value, p.id, pmColor, siteColor, projectColor);
+    if (pmId && siteTargets.length) linkTo(pmId, pmColor, siteTargets);
   });
 
   const svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
@@ -2416,7 +2435,7 @@ window.downloadSankeyAsHtml = function() {
     reviewer: p.createdByName || 'ადმინი',
     manager: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
     pm: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
-    site: projectSiteManager(p) || '— არავინ',
+    sites: projectSiteManagers(p),   // [] = none set (the page shows "— არავინ")
     arch: (p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის',
     struct: (p.contractors?.struct||'').trim() || '— კონსტრუქტორი არ არის',
     mp: (p.contractors?.mp||'').trim(),
@@ -2531,28 +2550,31 @@ function render() {
       pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
       pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor);
     }
-    // the site manager: the last column, after the project managers (it takes the PM's place when the PM column is off)
-    var siteId = null, siteColor = null;
+    // the site managers: the last column, after the project managers (it takes the PM's place when the PM column is off). A project can have
+    // several: one node each, and the project's value is shared equally between them (one, or none = "— არავინ": exactly as before).
+    var siteTargets = [];
     if (showSite) {
-      siteColor = colorFor(siteColors, p.site, SITE_PALETTE);
-      siteId = addNode('sm:' + p.site, withInitial(p.site), siteColor);
+      (p.sites && p.sites.length ? p.sites : ['— არავინ']).forEach(function(siteName) {
+        var siteColor = colorFor(siteColors, siteName, SITE_PALETTE);
+        siteTargets.push({ id: addNode('sm:' + siteName, withInitial(siteName), siteColor), color: siteColor });
+      });
     }
-    var tailId = pmId || siteId, tailColor = pmId ? pmColor : siteColor;
-    var afterId = showReviewer ? reviewerId : tailId;
-    var afterColor = showReviewer ? reviewerColor : tailColor;
+    var tails = pmId ? [{ id: pmId, color: pmColor }] : siteTargets;
+    var after = showReviewer ? [{ id: reviewerId, color: reviewerColor }] : tails;
+    var linkTo = function(sourceId, sourceColor, targets) { targets.forEach(function(t) { links.push({ source: sourceId, target: t.id, value: value / targets.length, pid: p.id, c1: sourceColor, c2: t.color }); }); };
 
     if (showContractors) {
       if (showArch) {
         var archColor = colorFor(archColors, p.arch, ARCH_PALETTE);
         var archId = addNode('c:' + p.arch, p.arch, archColor);
         links.push({ source: preId, target: archId, value: value, pid: p.id, c1: preColor, c2: archColor });
-        if (afterId) links.push({ source: archId, target: afterId, value: value, pid: p.id, c1: archColor, c2: afterColor });
+        linkTo(archId, archColor, after);
       }
       if (showStruct) {
         var structColor = colorFor(structColors, p.struct, STRUCT_PALETTE);
         var structId = addNode('c:' + p.struct, p.struct, structColor);
         links.push({ source: preId, target: structId, value: value, pid: p.id, c1: preColor, c2: structColor });
-        if (afterId) links.push({ source: structId, target: afterId, value: value, pid: p.id, c1: structColor, c2: afterColor });
+        linkTo(structId, structColor, after);
       }
       // mechanical & plumbing and electrical (or the old single MEP contractor of a project not yet moved over)
       var mepList = [];
@@ -2567,23 +2589,23 @@ function render() {
         var mepColor = m.kind === 'elec' ? colorFor(elecColors, m.name, ELEC_PALETTE) : colorFor(mepColors, m.name, MEP_PALETTE);
         var mepId = addNode('c:' + m.name, m.name, mepColor);
         links.push({ source: preId, target: mepId, value: value, pid: p.id, c1: preColor, c2: mepColor });
-        if (afterId) links.push({ source: mepId, target: afterId, value: value, pid: p.id, c1: mepColor, c2: afterColor });
+        linkTo(mepId, mepColor, after);
         var mepReviewerName = m.kind === 'mp' ? p.mpReviewer : (m.kind === 'elec' ? p.elecReviewer : p.mepReviewerOld);
         if (showReviewer && mepReviewerName) {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
           var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
-          if (tailId && !reviewerLinkedToPm[mepReviewerId]) { links.push({ source: mepReviewerId, target: tailId, value: value, pid: p.id, c1: mepReviewerColor, c2: tailColor }); reviewerLinkedToPm[mepReviewerId] = true; }
+          if (tails.length && !reviewerLinkedToPm[mepReviewerId]) { linkTo(mepReviewerId, mepReviewerColor, tails); reviewerLinkedToPm[mepReviewerId] = true; }
         }
       });
-    } else if (afterId) {
-      links.push({ source: preId, target: afterId, value: value, pid: p.id, c1: preColor, c2: afterColor });
+    } else if (after.length) {
+      linkTo(preId, preColor, after);
     }
 
-    if (showReviewer && tailId) {
-      links.push({ source: reviewerId, target: tailId, value: value, pid: p.id, c1: reviewerColor, c2: tailColor });
+    if (showReviewer && tails.length) {
+      linkTo(reviewerId, reviewerColor, tails);
     }
-    if (pmId && siteId) links.push({ source: pmId, target: siteId, value: value, pid: p.id, c1: pmColor, c2: siteColor });
+    if (pmId && siteTargets.length) linkTo(pmId, pmColor, siteTargets);
   });
 
   // Height sized to the busiest column, same spirit as the live app.
@@ -3016,7 +3038,7 @@ window.showProjectSections = async function(pid) {
       <div class="project-card-body">
         <div class="project-card-name">${esc(p.name)}</div>
         <div class="section-label">რეპორტი</div>
-        <div class="project-card-creator">საიტ მენეჯერი: ${projectSiteManager(p) ? esc(projectSiteManager(p)) : '—'}</div>
+        <div class="project-card-creator">${projectSiteManagers(p).length > 1 ? 'საიტ მენეჯერები' : 'საიტ მენეჯერი'}: ${projectSiteManagers(p).length ? esc(projectSiteManagers(p).join(', ')) : '—'}</div>
       </div>
     </div>` : ''}
   `;
@@ -5544,6 +5566,7 @@ window.openReportForm = (id, type) => {
   document.getElementById('rAuthor').value = editingReport ? (editingReport.authorName || '') : currentUserName;
   document.getElementById('reportFormTitle').textContent = editingReport ? `ოქმის რედაქტირება ${reportCode(reportsProject, editingReport)}` : (reportFormType === 'daily' ? 'ახალი ყოველდღიური ოქმი' : 'ახალი ყოველკვირეული ოქმი');
   document.getElementById('rDailyNote').style.display = reportFormType === 'daily' ? '' : 'none';
+  document.getElementById('rWindowNote').style.display = isAdminLike() ? 'none' : '';   // an admin may change a report at any time
   updateReportCodePreview();
   renderReportInfo(); renderReportPhotos(); renderReportWorks();
   om('reportModal');
@@ -5688,7 +5711,7 @@ window.saveReport = async () => {
     cm('reportModal');
     showToast('ოქმი შენახულია');
     await loadReports();
-  } catch (e) { alert('შეცდომა შენახვისას: ' + e.message); }
+  } catch (e) { alert(e && e.code === 'permission-denied' && editingReport && !isAdminLike() ? 'ოქმის შეცვლის დრო (24 საათი) ამოიწურა' : 'შეცდომა შენახვისას: ' + e.message); }
   finally { btn.disabled = false; btn.textContent = 'შენახვა'; }
 };
 window.deleteReport = async id => {
@@ -5699,7 +5722,7 @@ window.deleteReport = async id => {
     await deleteDoc(doc(db, 'projects', reportsProjectId, 'reports', id));
     deleteReportFiles((r.photos || []).map(ph => ph.path).filter(Boolean));
     await loadReports();
-  } catch (e) { alert('შეცდომა წაშლისას: ' + e.message); }
+  } catch (e) { alert(e && e.code === 'permission-denied' && !isAdminLike() ? 'ოქმის წაშლის დრო (24 საათი) ამოიწურა' : 'შეცდომა წაშლისას: ' + e.message); }
 };
 
 // ── Report → PDF: the pieces are fetched here (the fonts from the fonts folder next to this page, the photos from Storage) and
@@ -5740,7 +5763,7 @@ window.downloadReportPdf = async id => {
 // ── WEEKLY SITE REPORT → A4 PDF ──
 // renderReportPdf(JsPDF, report, assets) draws the report with the PDF library and returns the document. It does not touch the
 // page: everything it needs is passed in, so it can also be run (and looked at) outside the browser.
-//   report = { code ('MZK-R-057'; if missing, '#' + number is used), number, date: 'YYYY-MM-DD', authorName,
+//   report = { code ('MZK-wR-057'; if missing, the number is used), number, date: 'YYYY-MM-DD', authorName,
 //              info: { projectName, address },
 //              photos: [{ caption, dataUrl, width, height }]  (dataUrl = JPEG; width/height = its pixel size; no dataUrl = failed to load),
 //              completed: [text], ongoing: [text], planned: [text] }
@@ -5764,9 +5787,9 @@ function renderReportPdf(JsPDF, report, assets) {
   const newPage = () => { doc.addPage(); y = TOP; };
   const ensure = h => { if (y + h > BOTTOM) newPage(); };
 
-  // ── title ──
-  const code = report.code || ('#' + report.number);
-  const title = `${REPORT_TITLE} ${code}`;
+  // ── title: just the name of the document (the report's code is in the header of every page) ──
+  const code = report.code || String(report.number);
+  const title = REPORT_TITLE;
   const titleLines = wrap(title, CW, 'bold', 15);
   y += 5;
   font('bold', 15, ACCENT);
@@ -5804,8 +5827,9 @@ function renderReportPdf(JsPDF, report, assets) {
     y += 10;
   };
 
-  // ── photos: one per page, as wide as the content area (a very tall picture is reduced only as far as needed to fit the page),
-  // numbered, with its description underneath. The first photo may sit on the first page, below the information, if it fits there. ──
+  // ── photos: each as wide as the content area (a very tall picture is reduced only as far as needed to fit a page), numbered, with its
+  // description underneath. A photo stays on the same page as the one before it ONLY if it fits there, below it, at the full width
+  // (in practice two wide 16:9 photos); otherwise it starts a page. The first photo may sit on the first page, below the information. ──
   const photos = report.photos || [];
   if (photos.length) {
     const CAP_SIZE = 10, CAP_LH = lineH(CAP_SIZE);
@@ -5816,7 +5840,7 @@ function renderReportPdf(JsPDF, report, assets) {
       const ratio = ok ? p.height / p.width : 0.62;                     // a photo that could not be loaded gets a landscape-shaped frame
       const fullH = CW * ratio;                                         // its height at the full width
       // Does it fit, at full width, below what is already on this page? If not, a fresh page.
-      if (i > 0 || y + headH + fullH + capH > BOTTOM) { if (y > TOP + 0.1) newPage(); }
+      if (y + headH + fullH + capH + 2 > BOTTOM) { if (y > TOP + 0.1) newPage(); }
       if (i === 0) heading('ფოტომასალა', 0);
       const maxH = BOTTOM - y - capH - 2;
       const scale = Math.min(1, maxH / fullH), ih = fullH * scale, iw = CW * scale;
@@ -5864,7 +5888,7 @@ function renderReportPdf(JsPDF, report, assets) {
       doc.setFillColor(...PANEL); doc.setDrawColor(...GRAY); doc.setLineWidth(0.3); doc.setLineDashPattern([1.5, 1.2], 0); doc.roundedRect(ML, 9, 36, 13, 1.5, 1.5, 'FD'); doc.setLineDashPattern([], 0);
       font('bold', 10, GRAY); doc.text('LOGO', ML + 18, 17.2, { align: 'center' });
     }
-    font('bold', 9.5, ACCENT); doc.text(`ოქმი ${code}`, W - MR, 13.5, { align: 'right' });
+    font('bold', 9.5, ACCENT); doc.text(`ოქმი #${code}`, W - MR, 13.5, { align: 'right' });
     font('normal', 8, GRAY); doc.text(shortName, W - MR, 18, { align: 'right' });
     doc.setDrawColor(...RULE); doc.setLineWidth(0.3); doc.line(ML, 25, W - MR, 25);
     doc.line(ML, 285, W - MR, 285);
@@ -5969,6 +5993,24 @@ window.updateUserLabel = async (uid, label) => {
   try { await updateDoc(doc(db,'users',uid), {statusLabel: label.trim()}); }
   catch(e) { alert('შეცდომა: '+e.message); }
 };
+// ── The site managers in the project form: rows, each a registered user marked as a site manager (one person once) or a typed name. ──
+let pendingSiteManagers = [];   // [{ uid ('' = typed), name }]
+function renderSiteManagerRows() {
+  const box = document.getElementById('pSiteList');
+  const chosen = pendingSiteManagers.map(r => r.uid).filter(Boolean);
+  const pool = Object.values(allUsers).filter(u => u.approved && u.role !== 'contractor' && u.role !== 'admin' && (u.siteManager || chosen.includes(u.id)))   // (a chosen one that lost the mark stays visible, flagged)
+    .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+  box.innerHTML = pendingSiteManagers.map((r, i) => `<div class="rp-work">
+      <select onchange="setSiteManagerUser(${i}, this.value)"><option value="">— თავად ჩავწერ —</option>${pool.filter(u => u.id === r.uid || !chosen.includes(u.id)).map(u => `<option value="${u.id}" ${u.id === r.uid ? 'selected' : ''}>${esc(u.name || u.email)}${u.siteManager ? '' : ' (არ არის მონიშნული საიტ მენეჯერად)'}</option>`).join('')}</select>
+      <input placeholder="სახელი გვარი" value="${esc(r.uid ? '' : r.name)}" ${r.uid ? 'disabled' : ''} oninput="setSiteManagerName(${i}, this.value)">
+      <button type="button" class="rp-x" title="წაშლა" onclick="removeSiteManager(${i})">✕</button>
+    </div>`).join('') || '<div class="auth-hint" style="margin-bottom:6px">საიტ მენეჯერი არ არის დამატებული</div>';
+}
+window.setSiteManagerUser = (i, uid) => { const r = pendingSiteManagers[i]; if (!r) return; r.uid = uid || ''; if (uid) r.name = ''; renderSiteManagerRows(); };
+window.setSiteManagerName = (i, v) => { if (pendingSiteManagers[i]) pendingSiteManagers[i].name = v; };
+window.addSiteManager = () => { pendingSiteManagers.push({ uid: '', name: '' }); renderSiteManagerRows(); };
+window.removeSiteManager = i => { pendingSiteManagers.splice(i, 1); renderSiteManagerRows(); };
+
 // Lets a "User"-role account open issues in the DM section (users/{uid}.canOpenDmIssues).
 window.toggleUserDmPermission = async (uid, checked) => {
   try {
@@ -6055,19 +6097,10 @@ async function openProjectModal(pid) {
     document.getElementById('pPmName').disabled = !!e.target.value;
     if (e.target.value) document.getElementById('pPmName').value = '';
   };
-  // Site manager: pick one of the accounts marked as site managers in the users list (plus the one already chosen) — only such an account
-  // can write this project's reports — or type a name.
-  const sitePool = Object.values(allUsers).filter(u => u.approved && u.role !== 'contractor' && u.role !== 'admin' && (u.siteManager || u.id === pd.siteMgrUid))
-    .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
-  const siteKnown = sitePool.some(u => u.id === (pd.siteMgrUid || '')); // a chosen user who is no longer in the list is shown as a typed name
-  document.getElementById('pSiteUser').innerHTML = '<option value="">— თავად ჩავწერ —</option>' +
-    sitePool.map(u => `<option value="${u.id}" ${siteKnown && u.id===pd.siteMgrUid?'selected':''}>${esc(u.name||u.email)}${u.siteManager?'':' (არ არის მონიშნული საიტ მენეჯერად)'}</option>`).join('');
-  document.getElementById('pSiteName').value = siteKnown ? '' : (pd.siteMgrName || '');
-  document.getElementById('pSiteName').disabled = siteKnown;
-  document.getElementById('pSiteUser').onchange = e => {
-    document.getElementById('pSiteName').disabled = !!e.target.value;
-    if (e.target.value) document.getElementById('pSiteName').value = '';
-  };
+  // Site managers: a list of rows, each a registered user (only accounts marked as site managers in the users list are offered) or a typed name.
+  // A registered entry whose user no longer exists is kept as a typed name.
+  pendingSiteManagers = projectSiteManagerEntries(pd).map(e => (e.uid && allUsers[e.uid]) ? { uid: e.uid, name: '' } : { uid: '', name: (e.name || '').trim() });
+  renderSiteManagerRows();
   // MP and Electrical reviewers: pick one of the registered users, or type a name (the same way as the PM above).
   // The old single "MEP reviewer" text stays in its own row while a project still has one.
   const reviewerCandidates = Object.values(allUsers).filter(u => u.approved && u.role !== 'contractor' && u.role !== 'admin')
@@ -6224,7 +6257,7 @@ async function syncPublicProject(pid) {
       createdByName: p.createdByName || 'ადმინი',
       managerName: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
       pmName: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
-      siteManagerName: projectSiteManager(p),
+      siteManagerNames: projectSiteManagers(p),   // the public page cannot look users up: it gets the names
       mepReviewer: projectMepReviewers(p).legacy, // the old single MEP reviewer text
       mpReviewer: projectMepReviewers(p).mp,
       elecReviewer: projectMepReviewers(p).elec,
@@ -6263,8 +6296,14 @@ async function saveProjectData(pid) {
   };
   const pmUid = document.getElementById('pPmUser').value || null;
   const pmName = pmUid ? (allUsers[pmUid]?.name || allUsers[pmUid]?.email || '') : document.getElementById('pPmName').value.trim();
-  const siteMgrUid = document.getElementById('pSiteUser').value || null;
-  const siteMgrName = siteMgrUid ? (allUsers[siteMgrUid]?.name || allUsers[siteMgrUid]?.email || '') : document.getElementById('pSiteName').value.trim();
+  // The site managers: the rows of the form; empty rows and a person listed twice are dropped. siteMgrUids (just the registered ones) is what the
+  // database rules look at; the old single fields are cleared (a project saved before the list had them).
+  const siteManagers = [], seenSiteUid = new Set(), seenSiteName = new Set();
+  for (const r of pendingSiteManagers) {
+    if (r.uid) { if (seenSiteUid.has(r.uid)) continue; seenSiteUid.add(r.uid); siteManagers.push({ uid: r.uid, name: allUsers[r.uid]?.name || allUsers[r.uid]?.email || '' }); }
+    else { const nm = (r.name || '').trim(); if (!nm || seenSiteName.has(nm)) continue; seenSiteName.add(nm); siteManagers.push({ uid: null, name: nm }); }
+  }
+  const siteMgrUids = siteManagers.filter(e => e.uid).map(e => e.uid);
   const gbaRaw = document.getElementById('pGba').value.trim();
   const gba = gbaRaw === '' ? 1000 : Number(gbaRaw);
   // MP / Electrical reviewer: the chosen registered user (uid + their name) or the typed name.
@@ -6277,7 +6316,7 @@ async function saveProjectData(pid) {
     managerUid: document.getElementById('pManager').value || null,
     gba: Number.isFinite(gba) && gba >= 0 ? gba : 1000,
     pmUid, pmName,
-    siteMgrUid, siteMgrName,
+    siteManagers, siteMgrUids, siteMgrUid: null, siteMgrName: '',
     ...reviewerFields('mp', 'pMpReviewerUser', 'pMpReviewerName'),
     ...reviewerFields('elec', 'pElecReviewerUser', 'pElecReviewerName'),
     mepReviewer: document.getElementById('pMepReviewer').value.trim(), // the old single MEP reviewer text (emptied once moved)
