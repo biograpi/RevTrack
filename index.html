@@ -450,8 +450,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
     <div style="display:none;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;flex-wrap:wrap" id="sankeyControlsRow">
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyDm" checked onchange="toggleSankeyManagerType()"> დიზაინ მენეჯერები</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyPm" onchange="toggleSankeyManagerType()"> პროექტ მენეჯერები</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeySite" onchange="toggleSankeyManagerType()"> საიტ მენეჯერები</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyPm" onchange="toggleSankeyManagerType()" checked> პროექტ მენეჯერები</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeySite" onchange="toggleSankeyManagerType()" checked> საიტ მენეჯერები</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyArch" checked onchange="toggleSankeyDiscipline()"> არქიტექტორი</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyStruct" checked onchange="toggleSankeyDiscipline()"> კონსტრუქტორი</label>
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyMp" checked onchange="toggleSankeyDiscipline()"> MP</label>
@@ -1025,6 +1025,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   document.documentElement.setAttribute('translate', 'no');
 
   var D = {
+"ოქმი": "Report",
 "+ ყოველკვირეული ოქმი": "+ Weekly report",
 "+ ყოველდღიური ოქმი": "+ Daily report",
 "ოქმის ტიპი": "Report type",
@@ -1061,7 +1062,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 "მაგ. 55": "e.g. 55",
 "ობიექტის მისამართი (ჩანს ოქმებში)": "The object's address (shown in the reports)",
 "რეპორტი": "Report",
-"ყოველკვირეული ოქმები": "Weekly reports",
 "ოქმი ჯერ არ არის": "No reports yet",
 "ობიექტი:": "Object:",
 "მისამართი:": "Address:",
@@ -1378,6 +1378,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^საიტ მენეჯერი: ([\s\S]*)$/, function (m) { return 'Site Manager: ' + m[1]; }],
+    [/^(.+) \(ყოველკვირეული ოქმი\)$/, function (m) { return m[1] + ' (weekly report)'; }],
+    [/^(.+) \(ყოველდღიური ოქმი\)$/, function (m) { return m[1] + ' (daily report)'; }],
     [/^კოდი: ([A-Za-z#0-9-]+)$/, function (m) { return 'Code: ' + m[1]; }],
     [/^([\s\S]*) \(არ არის მონიშნული საიტ მენეჯერად\)$/, function (m) { return m[1] + ' (not marked as a site manager)'; }],
     [/^ოქმი ([A-Za-z#0-9-]+)$/, function (m) { return 'Report ' + m[1]; }],
@@ -1980,7 +1983,7 @@ const SANKEY_MEP_PALETTE = ['#ec4899','#db2777','#f472b6','#be185d','#f9a8d4','#
 const SANKEY_SITE_PALETTE = ['#64748b','#475569','#94a3b8','#334155','#78716c','#57534e','#a8a29e'];
 const SANKEY_ELEC_PALETTE = ['#14b8a6','#0d9488','#2dd4bf','#0f766e','#5eead4','#10b981','#34d399'];
 let sankeySizeMode = 'gba'; // always GBA on the live app now — the issues/GBA toggle was removed
-let sankeyManagerTypes = { dm: true, pm: false, site: false }; // which manager column(s) are included (design managers, project managers, site managers)
+let sankeyManagerTypes = { dm: true, pm: true, site: true }; // which manager column(s) are included (design managers, project managers, site managers) — all on when the page opens
 let sankeyShowReviewer = true; // whether the reviewer column is shown
 let sankeyDisciplines = { arch: true, struct: true, mp: true, elec: true }; // which contractor disciplines are included
 let lastChartProjects = null; // cached for re-render when the size toggle changes, without refetching
@@ -2453,7 +2456,7 @@ window.downloadSankeyAsHtml = function() {
 <div class="controls">
   <label><input type="checkbox" id="chkDm" checked> დიზაინ მენეჯერები</label>
   <label><input type="checkbox" id="chkPm" checked> პროექტ მენეჯერები</label>
-  <label><input type="checkbox" id="chkSite"> საიტ მენეჯერები</label>
+  <label><input type="checkbox" id="chkSite" checked> საიტ მენეჯერები</label>
   <label><input type="checkbox" id="chkArch"> არქიტექტორი</label>
   <label><input type="checkbox" id="chkStruct"> კონსტრუქტორი</label>
   <label><input type="checkbox" id="chkMp"> MP</label>
@@ -3013,7 +3016,7 @@ window.showProjectSections = async function(pid) {
       <div class="project-card-body">
         <div class="project-card-name">${esc(p.name)}</div>
         <div class="section-label">რეპორტი</div>
-        <div class="project-card-creator">ყოველკვირეული ოქმები</div>
+        <div class="project-card-creator">საიტ მენეჯერი: ${projectSiteManager(p) ? esc(projectSiteManager(p)) : '—'}</div>
       </div>
     </div>` : ''}
   `;
@@ -3051,6 +3054,7 @@ function setupActivityChart(pid, reviewerName, managerName) {
   activityRowsScrollToEnd = true;
   document.getElementById('activityChartWrap').style.display = 'block';
   const chartIssues = {}; // compositeKey -> {id, section, disc, createdAt, createdByName}
+  const chartReports = {}; // report id -> { type, time, authorName } — filled only for those who may read reports
   let redrawToken = 0; // guards against an older, slower-finishing redraw overwriting a newer one
 
   async function redrawChart() {
@@ -3085,7 +3089,7 @@ function setupActivityChart(pid, reviewerName, managerName) {
     // overwrite the chart with stale data, so it stops here instead of drawing.
     if (myToken !== redrawToken) return;
     try {
-      renderActivityChart(chartIssues, reviewerName, managerName, contractorCommentsByName, commentsByAuthor);
+      renderActivityChart(chartIssues, reviewerName, managerName, contractorCommentsByName, commentsByAuthor, Object.values(chartReports));
       document.getElementById('activityChartStatus').textContent = `${Object.keys(chartIssues).length} საკითხი`;
     } catch(e) {
       console.error('activity chart: render failed', e);
@@ -3107,6 +3111,16 @@ function setupActivityChart(pid, reviewerName, managerName) {
       redrawChart();
     }, err => console.error('activity chart issues listener error:', err));
     unsubFns.push(unsub);
+  }
+  if (canReadReports()) {   // a contractor may not read reports: for them the chart stays as it was
+    unsubFns.push(onSnapshot(collection(db,'projects',pid,'reports'), snap => {
+      for (const d of snap.docs) {
+        const x = d.data();
+        if (x.createdAt?.toDate) chartReports[d.id] = { type: reportKind(x), time: x.createdAt.toDate().getTime(), authorName: x.authorName || 'უცნობი' };
+      }
+      snap.docChanges().forEach(change => { if (change.type === 'removed') delete chartReports[change.doc.id]; });
+      redrawChart();
+    }, err => console.warn('activity chart: reports could not be read', err)));
   }
   unsubActivityChart = unsubFns;
 }
@@ -3142,18 +3156,19 @@ function bumpCurve(times, startTime, endTime) {
   }
   return points;
 }
-const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mp', 'review:elec', 'review:mep', 'review:other', 'internal', 'mep', 'comments']; // order inside a person's group
+const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mp', 'review:elec', 'review:mep', 'review:other', 'internal', 'mep', 'comments', 'report:weekly', 'report:daily']; // order inside a person's group
 const ROW_SUB = { // the words shown next to the person's name (each becomes its own translatable piece)
   'review:arch': ['რევიზია', 'არქიტექტურა'], 'review:struct': ['რევიზია', 'კონსტრუქცია'],
   'review:mp': ['რევიზია', 'Mechanical & Plumbing'], 'review:elec': ['რევიზია', 'Electrical'],
   'review:mep': ['რევიზია', 'MEP (ძველი)'], 'review:other': ['რევიზია', 'სხვა'],
   internal: ['DM'], mep: ['MEP რევიზია'], comments: ['კომენტარები'],
+  'report:weekly': ['ოქმი', 'ყოველკვირეული'], 'report:daily': ['ოქმი', 'ყოველდღიური'],   // the weekly and the daily reports a person wrote
 };
 // The data of the "rows" view (renderActivityRows), finer than the line chart: every person gets a SEPARATE line for
 // each kind of thing they did — issues in the review section split by discipline (architecture / structural /
 // mechanical & plumbing / electrical / the old single MEP / other), issues in the DM section, issues in the MEP review section, and their comments (any section, whoever they
 // are). `issues` = the project's issues sorted by creation time, commentsByAuthor = {name: [timestamps]}.
-function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime) {
+function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime, reports = []) {
   const creators = [...new Set(issues.map(i => i.createdByName))];
   const eventsByCreator = {};
   for (const name of creators) eventsByCreator[name] = [];
@@ -3171,6 +3186,7 @@ function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime) {
     }
   }
   for (const [name, times] of Object.entries(commentsByAuthor || {})) for (const t of times) addTime(name, 'comments', t);
+  for (const r of reports) addTime(r.authorName, `report:${r.type === 'daily' ? 'daily' : 'weekly'}`, r.time);   // reports = [{ type, time (ms), authorName }]
   const rowsList = [];
   for (const [name, bySlot] of Object.entries(timesByPerson)) {
     const slots = ROW_SLOTS.filter(slot => bySlot[slot]);
@@ -3192,23 +3208,24 @@ function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime) {
 // "Name (MEP)" — plus section total lines and contractors' comment curves, all drawn upward from zero.
 // issuesMap = the project's issues; reviewerName / managerName pick the two highlighted (filled) people;
 // contractorCommentsByName = {review: {name: [timestamps]}, internal: {...}}.
-function renderActivityChart(issuesMap, reviewerName, managerName, contractorCommentsByName, commentsByAuthor) {
+function renderActivityChart(issuesMap, reviewerName, managerName, contractorCommentsByName, commentsByAuthor, reports = []) {
   const issues = Object.values(issuesMap).filter(i => i.createdAt?.toDate);
   if (activityChartInstance) { activityChartInstance.destroy(); activityChartInstance = null; }
   activityRowsData = null; // refilled below; cleared here so a project without issues doesn't show the previous project's rows
-  if (!issues.length) { if (activityViewMode === 'rows') renderActivityRows(); return; }
+  if (!issues.length && !reports.length) { if (activityViewMode === 'rows') renderActivityRows(); return; }   // (a project with only reports is drawn too)
 
   // Sort by creation time, build a cumulative running total (overall line).
   issues.sort((a,b) => a.createdAt.toDate() - b.createdAt.toDate());
   const creators = [...new Set(issues.map(i => i.createdByName))];
   const totalPoints = issues.map((iss, idx) => ({ x: iss.createdAt.toDate(), y: idx+1 }));
-  const startTime = totalPoints[0].x.getTime();
+  const reportTimes = reports.map(r => r.time);
+  const startTime = Math.min(...(totalPoints.length ? [totalPoints[0].x.getTime()] : []), ...reportTimes);
   const now = Date.now();
-  const endTime = Math.max(totalPoints[totalPoints.length-1].x.getTime(), now);
+  const endTime = Math.max(...(totalPoints.length ? [totalPoints[totalPoints.length-1].x.getTime()] : []), ...reportTimes, now);
   // Extend the line flat to "today" — without this, the white line would
   // just stop at the last real issue instead of stretching across the full
   // axis, and the middle dates wouldn't distribute proportionally.
-  if (totalPoints[totalPoints.length-1].x.getTime() < now) {
+  if (totalPoints.length && totalPoints[totalPoints.length-1].x.getTime() < now) {
     totalPoints.push({ x: new Date(now), y: totalPoints[totalPoints.length-1].y });
   }
 
@@ -3282,6 +3299,17 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     if (mepTimes.length) perCreatorMepPoints[name] = buildPlainBumpCurve(mepTimes);
   }
 
+  // The reports people wrote: per author, one curve for the weekly reports and one for the daily ones (reports = [{ type, time, authorName }]).
+  const reportAuthors = [...new Set(reports.map(r => r.authorName))];
+  const perAuthorWeeklyPoints = {}, perAuthorDailyPoints = {};
+  for (const name of reportAuthors) {
+    const weekly = reports.filter(r => r.authorName === name && r.type !== 'daily').map(r => r.time);
+    const daily = reports.filter(r => r.authorName === name && r.type === 'daily').map(r => r.time);
+    if (weekly.length) perAuthorWeeklyPoints[name] = buildPlainBumpCurve(weekly);
+    if (daily.length) perAuthorDailyPoints[name] = buildPlainBumpCurve(daily);
+  }
+  const chartPeople = [...creators, ...reportAuthors.filter(n => !creators.includes(n))];   // issue creators first, then people who only wrote reports
+
   // Same idea for contractor COMMENT activity: two independent curves per
   // contractor (review comments, DM comments), both drawn upward.
   function buildPlainBumpCurve(times) { return bumpCurve(times, startTime, endTime); }
@@ -3349,7 +3377,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       pointRadius: 0,
       hidden: true,
     }] : []),
-    ...creators.flatMap((name) => {
+    ...chartPeople.flatMap((name) => {
       const color = colorForCreator(name);
       const fill = fillForCreator(name);
       const groupKey = `creator-${name}`;
@@ -3368,6 +3396,9 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       if (perCreatorInternalPoints[name]) sets.push({ ...base, label: `${firstName(name)} (DM)`, data: perCreatorInternalPoints[name] });
       // MEP curves are never filled, even for the project's own reviewer/manager.
       if (perCreatorMepPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', label: `${firstName(name)} (MEP)`, data: perCreatorMepPoints[name] });
+      // Report curves: never filled; long dashes for the weekly reports, short ones for the daily reports.
+      if (perAuthorWeeklyPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', borderDash: [9, 4], label: `${firstName(name)} (ყოველკვირეული ოქმი)`, data: perAuthorWeeklyPoints[name] });
+      if (perAuthorDailyPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', borderDash: [2, 3], label: `${firstName(name)} (ყოველდღიური ოქმი)`, data: perAuthorDailyPoints[name] });
       return sets;
     }),
     ...contractorNames.flatMap((name, i) => {
@@ -3394,7 +3425,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
     }),
   ];
 
-  activityRowsData = buildActivityRowsData(issues, commentsByAuthor, startTime, endTime); // for the rows view
+  activityRowsData = buildActivityRowsData(issues, commentsByAuthor, startTime, endTime, reports); // for the rows view
   if (activityViewMode === 'rows') renderActivityRows();
 
   const ctx = document.getElementById('activityChartCanvas').getContext('2d');
@@ -3979,7 +4010,14 @@ async function loadProjectActivityRaw(project) {
     });
   }
   const commentsByAuthor = {};
-  if (!issues.length) return { issues, commentsByAuthor };
+  const reports = [];   // the weekly and daily reports (only for those who may read them)
+  if (canReadReports()) {
+    try {
+      const rs = await getDocs(collection(db,'projects',project.id,'reports'));
+      rs.forEach(d => { const x = d.data(); if (x.createdAt && x.createdAt.toDate) reports.push({ type: reportKind(x), time: x.createdAt.toDate().getTime(), authorName: x.authorName || 'უცნობი' }); });
+    } catch (e) { /* reports that can't be read just aren't counted */ }
+  }
+  if (!issues.length) return { issues, commentsByAuthor, reports };
   issues.sort((a, b) => a.createdAt.toDate() - b.createdAt.toDate());
   const withComments = issues;
   for (let i = 0; i < withComments.length; i += 20) { // 20 issues at a time
@@ -3996,16 +4034,17 @@ async function loadProjectActivityRaw(project) {
       } catch (e) { /* a comment list that can't be read just isn't counted */ }
     }));
   }
-  return { issues, commentsByAuthor };
+  return { issues, commentsByAuthor, reports };
 }
 // The same, built into the rows-view data (null for a project without issues). leadMs moves the start of the time axis
 // that much BEFORE the project's first issue, so the curves begin with a straight stretch (0 = start at the first issue).
 async function loadProjectActivityRows(project, leadMs = 0) {
-  const { issues, commentsByAuthor } = await loadProjectActivityRaw(project);
-  if (!issues.length) return null;
-  const startTime = issues[0].createdAt.toDate().getTime() - leadMs;
-  const endTime = Math.max(issues[issues.length - 1].createdAt.toDate().getTime(), Date.now());
-  return buildActivityRowsData(issues, commentsByAuthor, startTime, endTime);
+  const { issues, commentsByAuthor, reports } = await loadProjectActivityRaw(project);
+  const allTimes = [...issues.map(i => i.createdAt.toDate().getTime()), ...reports.map(r => r.time)];
+  if (!allTimes.length) return null;
+  const startTime = Math.min(...allTimes) - leadMs;
+  const endTime = Math.max(Math.max(...allTimes), Date.now());
+  return buildActivityRowsData(issues, commentsByAuthor, startTime, endTime, reports);
 }
 
 // Admin tools → the all-projects wallpaper: goes through every project of the list on the main page, one after the
@@ -4050,8 +4089,9 @@ const PROJECT_LINES_START = 120;   // x where every line begins
 // One project's activity as a single bump curve. The time axis begins a little before the project's first day.
 function projectLineData(project, raw, endTime) {
   const issueTimes = raw.issues.map(i => i.createdAt.toDate().getTime());
-  const times = [...issueTimes, ...Object.values(raw.commentsByAuthor).flat()];
-  const first = issueTimes.length ? Math.min(...issueTimes) : endTime; // a project without issues is just a flat line
+  const reportTimes = (raw.reports || []).map(r => r.time);   // reports (weekly and daily alike) count as activity of the project too
+  const times = [...issueTimes, ...Object.values(raw.commentsByAuthor).flat(), ...reportTimes];
+  const first = (issueTimes.length || reportTimes.length) ? Math.min(...issueTimes, ...reportTimes) : endTime; // a project without any activity is just a flat line
   const startTime = first - (WALLPAPER_LEAD_PX / 30) * WALLPAPER_DAY; // 30 px per day
   const end = Math.max(endTime, first);
   return { startTime, endTime: end, rows: [{ key: 'project:' + project.id, label: project.name, sub: [], curves: [{ kind: 'all', points: bumpCurve(times, startTime, end) }] }] };
@@ -5366,15 +5406,16 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
 const REPORT_SLOTS = 3, REPORT_MAX_PHOTOS = 12;            // photo places that are always there / the most photos in one report
 const REPORT_GROUPS = [['completed', 'შესრულებული სამუშაოები'], ['ongoing', 'მიმდინარე სამუშაოები'], ['planned', 'დაგეგმილი სამუშაოები']];
 // Two kinds of report, numbered separately: weekly (with a PDF) and daily (no PDF; nothing in the form is required).
-// A report's code: the project's code, the kind and a 3-digit number — MZK-R-057 (weekly), MZK-dR-002 (daily); without a project code: R-057 / dR-002.
+// A report's code: the project's code, the kind and a 3-digit number — MZK-wR-057 (weekly), MZK-dR-002 (daily); without a project code: wR-057 / dR-002.
 // A report saved before the kinds existed has no `type` and counts as weekly.
 const reportKind = r => (r && r.type === 'daily') ? 'daily' : 'weekly';
 const REPORT_KIND_LABEL = { weekly: 'ყოველკვირეული', daily: 'ყოველდღიური' };
 function reportCode(project, r) {
   const prefix = String((project && project.code) || '').trim();
-  return [prefix, reportKind(r) === 'daily' ? 'dR' : 'R', String(r.number == null ? '' : r.number).padStart(3, '0')].filter(Boolean).join('-');
+  return [prefix, reportKind(r) === 'daily' ? 'dR' : 'wR', String(r.number == null ? '' : r.number).padStart(3, '0')].filter(Boolean).join('-');
 }
-const REPORT_LOGO = null;                                  // the company logo for the PDF: a PNG as a data URL; null = a "LOGO" placeholder
+// The company logo for the PDF (Biograpi Living): a PNG with a transparent background, 711 x 200 px — the proportions of the original SVG file. null = a "LOGO" placeholder.
+const REPORT_LOGO = { dataUrl: 'data:image/png;base64,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', width: 711, height: 200 };
 let reportsProjectId = null, reportsProject = null, reportsList = [];   // the project whose reports are open
 let editingReport = null, reportStorageId = null, reportInfoDraft = null, reportFormType = 'weekly';
 let reportSlots = [], reportWorks = { completed: [''], ongoing: [''], planned: [''] }, reportPickIndex = 0;
@@ -5689,7 +5730,7 @@ window.downloadReportPdf = async id => {
     const photos = []; for (const ph of (r.photos || [])) photos.push(await loadReportPhoto(ph));
     const report = { code: reportCode(reportsProject, r), number: r.number, date: r.date, authorName: r.authorName, info: r.info || reportInfoFromProject(reportsProject || {}), photos, completed: r.completed, ongoing: r.ongoing, planned: r.planned };
     const pdf = renderReportPdf(window.jspdf.jsPDF, report, { fontRegular: fonts.regular, fontBold: fonts.bold, logo: REPORT_LOGO, downloadedOn: todayDotted() });
-    pdf.save(`${reportCode(reportsProject, r).replace(/[^\w-]+/g, '_')}.pdf`);   // e.g. MZK-R-057.pdf
+    pdf.save(`${reportCode(reportsProject, r).replace(/[^\w-]+/g, '_')}.pdf`);   // e.g. MZK-wR-057.pdf
   } catch (e) {
     console.error('report pdf failed:', e);
     showToast('PDF-ის შექმნა ვერ მოხერხდა' + (/fonts|NotoSans/.test(String(e && e.message)) ? ' (ფონტის ფაილები ვერ ჩაიტვირთა)' : ''));
@@ -5703,7 +5744,7 @@ window.downloadReportPdf = async id => {
 //              info: { projectName, address },
 //              photos: [{ caption, dataUrl, width, height }]  (dataUrl = JPEG; width/height = its pixel size; no dataUrl = failed to load),
 //              completed: [text], ongoing: [text], planned: [text] }
-//   assets = { fontRegular, fontBold  (the font files as base64),  logo (a data URL or null → a "LOGO" placeholder),  downloadedOn: 'YYYY.MM.DD' }
+//   assets = { fontRegular, fontBold  (the font files as base64),  logo ({ dataUrl (PNG), width, height } in pixels, or null → a "LOGO" placeholder),  downloadedOn: 'YYYY.MM.DD' }
 const REPORT_TITLE = 'ობიექტზე სამუშაოთა მიმდინარეობის გეგმიური ოქმი';
 function renderReportPdf(JsPDF, report, assets) {
   const doc = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
@@ -5815,7 +5856,10 @@ function renderReportPdf(JsPDF, report, assets) {
   const shortName = wrap(info.projectName || '', 95, 'normal', 8)[0] || '';
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p);
-    if (assets.logo) { doc.addImage(assets.logo, 'PNG', ML, 9, 36, 13, undefined, 'FAST'); }
+    if (assets.logo && assets.logo.dataUrl) {   // the logo keeps its own proportions: only the height is chosen, the width follows from the picture's size
+      const LOGO_H = 11, logoW = LOGO_H * assets.logo.width / assets.logo.height;
+      doc.addImage(assets.logo.dataUrl, 'PNG', ML, 9.5, logoW, LOGO_H, undefined, 'FAST');
+    }
     else {  // placeholder until the real logo file is added
       doc.setFillColor(...PANEL); doc.setDrawColor(...GRAY); doc.setLineWidth(0.3); doc.setLineDashPattern([1.5, 1.2], 0); doc.roundedRect(ML, 9, 36, 13, 1.5, 1.5, 'FD'); doc.setLineDashPattern([], 0);
       font('bold', 10, GRAY); doc.text('LOGO', ML + 18, 17.2, { align: 'center' });
