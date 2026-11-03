@@ -68,6 +68,7 @@ onSnapshot(collection(db, 'publicProjects'), (snap) => {
 <h1>პროექტების მართვის დიაგრამა</h1>
 <div class="subtitle" id="dateLabel"></div>
 <div class="controls">
+  <label><input type="checkbox" id="chkAll"> ყველა</label>
   <label><input type="checkbox" id="chkDm" checked> დიზაინ მენეჯერები</label>
   <label><input type="checkbox" id="chkPm" checked> პროექტ მენეჯერები</label>
   <label><input type="checkbox" id="chkSite" checked> საიტ მენეჯერები</label>
@@ -345,6 +346,22 @@ window.renderChart = function() {
 ['chkDm','chkPm','chkSite','chkArch','chkStruct','chkMp','chkElec','chkReviewer'].forEach(function(id) {
   document.getElementById(id).addEventListener('change', window.renderChart);
 });
+// The "all" box: switches every box on or off at once; it follows the others (ticked = all on, a bar = some, empty = none).
+var allBoxIds = ['chkDm','chkPm','chkSite','chkArch','chkStruct','chkMp','chkElec','chkReviewer'];
+function syncAllBox() {
+  var on = 0; allBoxIds.forEach(function(id) { if (document.getElementById(id).checked) on++; });
+  var all = document.getElementById('chkAll');
+  all.checked = on === allBoxIds.length;
+  all.indeterminate = on > 0 && on < allBoxIds.length;
+}
+document.getElementById('chkAll').addEventListener('change', function() {
+  var on = this.checked;
+  allBoxIds.forEach(function(id) { document.getElementById(id).checked = on; });
+  syncAllBox();
+  window.renderChart();
+});
+allBoxIds.forEach(function(id) { document.getElementById(id).addEventListener('change', syncAllBox); });
+syncAllBox();
 window.addEventListener('resize', window.renderChart);
 </script>
 </body>
