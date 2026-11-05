@@ -478,15 +478,15 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   <div class="projects-grid" id="projectsGrid"></div>
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
     <div style="display:none;align-items:center;justify-content:center;gap:14px;margin-bottom:10px;flex-wrap:wrap" id="sankeyControlsRow">
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyAll" checked onchange="toggleSankeyAll()"> ყველა</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyDm" checked onchange="toggleSankeyManagerType()"> დიზაინ მენეჯერები</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyPm" onchange="toggleSankeyManagerType()" checked> პროექტ მენეჯერები</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeySite" onchange="toggleSankeyManagerType()" checked> საიტ მენეჯერები</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyArch" checked onchange="toggleSankeyDiscipline()"> არქიტექტორი</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyStruct" checked onchange="toggleSankeyDiscipline()"> კონსტრუქტორი</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyMp" checked onchange="toggleSankeyDiscipline()"> MP</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyElec" checked onchange="toggleSankeyDiscipline()"> Electrical</label>
-      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyReviewer" checked onchange="toggleSankeyReviewer()"> რევიზორები</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyAll" onchange="toggleSankeyAll()"> ყველა</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyDm" onchange="toggleSankeyManagerType()"> დიზაინ მენეჯერები</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyPm" onchange="toggleSankeyManagerType()"> პროექტ მენეჯერები</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeySite" onchange="toggleSankeyManagerType()"> საიტ მენეჯერები</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyArch" onchange="toggleSankeyDiscipline()"> არქიტექტორი</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyStruct" onchange="toggleSankeyDiscipline()"> კონსტრუქტორი</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyMp" onchange="toggleSankeyDiscipline()"> MP</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyElec" onchange="toggleSankeyDiscipline()"> Electrical</label>
+      <label class="activity-legend-item"><input type="checkbox" id="chkSankeyReviewer" onchange="toggleSankeyReviewer()"> რევიზორები</label>
     </div>
     <svg id="reviewerManagerChartSvg"></svg>
   </div>
@@ -2054,9 +2054,9 @@ const DEFAULT_PROJECT_LOGO = 'data:image/svg+xml;utf8,' + encodeURIComponent('<s
 const SANKEY_SITE_PALETTE = ['#64748b','#475569','#94a3b8','#334155','#78716c','#57534e','#a8a29e'];
 const SANKEY_ELEC_PALETTE = ['#14b8a6','#0d9488','#2dd4bf','#0f766e','#5eead4','#10b981','#34d399'];
 let sankeySizeMode = 'gba'; // always GBA on the live app now — the issues/GBA toggle was removed
-let sankeyManagerTypes = { dm: true, pm: true, site: true }; // which manager column(s) are included (design managers, project managers, site managers) — all on when the page opens
-let sankeyShowReviewer = true; // whether the reviewer column is shown
-let sankeyDisciplines = { arch: true, struct: true, mp: true, elec: true }; // which contractor disciplines are included
+let sankeyManagerTypes = { dm: false, pm: false, site: false }; // which manager column(s) are included (design managers, project managers, site managers) — all off when the page opens: only the projects are shown
+let sankeyShowReviewer = false; // whether the reviewer column is shown (off when the page opens)
+let sankeyDisciplines = { arch: false, struct: false, mp: false, elec: false }; // which contractor disciplines are included (all off when the page opens)
 let lastChartProjects = null; // cached for re-render when the size toggle changes, without refetching
 
 // The three toggle functions below are called by the checkboxes above the diagram: they read the checkboxes, then redraw.
@@ -2108,7 +2108,24 @@ window.toggleSankeyReviewer = function() {
 // projects = array of project documents. opts (used by the PDF export) can render into another SVG (svgEl, width, height),
 // use a light theme, or force sizing by GBA. Link thickness = the project's GBA. Every link carries its project id,
 // so hovering any node highlights that project's whole path.
+// PROJECTS IN ALPHABETICAL ORDER by name — the same order on the project cards and in the diagram, whatever order the database returns them in.
+// (Georgian letters in the Georgian alphabet; numbers as numbers, so "Block 2" comes before "Block 10"; capitals and small letters count the same.)
+const PROJECT_NAME_COLLATOR = new Intl.Collator('ka', { numeric: true, sensitivity: 'base' });
+function sortProjectsByName(list) {
+  return [...list].sort((a, b) => PROJECT_NAME_COLLATOR.compare(a.name || '', b.name || '') || String(a.id).localeCompare(String(b.id)));
+}
+// How wide a piece of text is at a given size (px). The browser's canvas measures it, also when the chart is hidden; where there is no canvas (tests) an estimate.
+function measureLabelWidth(str, px) {
+  try {
+    const ctx = measureLabelWidth.ctx || (measureLabelWidth.ctx = document.createElement('canvas').getContext('2d'));
+    ctx.font = `${px}px 'Noto Sans Georgian','Inter',sans-serif`;
+    const w = ctx.measureText(str).width;
+    if (w > 0) return w;
+  } catch (e) { /* no canvas: estimate */ }
+  return String(str).length * px * 0.6;
+}
 function renderReviewerManagerChart(projects, opts) {
+  projects = sortProjectsByName(projects);   // always alphabetical, so the rows of the diagram and the order of the cards agree
   opts = opts || {};
   const isExport = !!opts.svgEl;
   const sizeMode = opts.forceSizeMode || sankeySizeMode;
@@ -2198,6 +2215,7 @@ function renderReviewerManagerChart(projects, opts) {
     const value = sizeMode === 'gba' ? Math.max(p.gba || 1000, 1) : Math.max(p.issueCount || 0, 1);
     const projectId = addNode(`p:${p.id}`, projectLabel(p.name), projectColor);
     nodesById.get(projectId).logo = p.logo || '';   // the project's own logo (an SVG as a data URL), if it has one
+    nodesById.get(projectId).value0 = value;         // the project's size (its bar), for the layout that has no flows
     const reviewerId = sankeyShowReviewer ? addNode(`r:${reviewerFullName}`, firstNameOnly(reviewerFullName), reviewerColor) : null;
     // Every link carries the project's id explicitly — this is what makes
     // hover-highlighting correct and simple regardless of how many hops
@@ -2297,17 +2315,51 @@ function renderReviewerManagerChart(projects, opts) {
   const svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
   svg.append('rect').attr('x', 0).attr('y', 0).attr('width', width).attr('height', height).attr('fill', bgColor);
   const { sankey, sankeyLinkHorizontal } = d3;
+  // THE ORDER OF THE COLUMNS. The projects stand fixed (alphabetical, as they were added). Every other column is ordered so that the flows cross as little
+  // as possible: each node is placed by the weighted average position of the nodes it is linked to (on both sides), a few sweeps over all the columns.
+  // The result depends only on the data (never on the order the database returns it in) and is the same every time.
+  const columnOrder = (() => {
+    const ids = [...nodesById.keys()], group = id => id.split(':')[0], groups = {}, order = {};
+    ids.forEach(id => (groups[group(id)] = groups[group(id)] || []).push(id));
+    Object.values(groups).forEach(g => g.forEach((id, i) => { order[id] = i; }));
+    const pos = id => (order[id] + 0.5) / groups[group(id)].length;   // where the node stands in its column, from 0 (top) to 1 (bottom)
+    const neighbours = {};
+    links.forEach(l => { (neighbours[l.source] = neighbours[l.source] || []).push([l.target, l.value]); (neighbours[l.target] = neighbours[l.target] || []).push([l.source, l.value]); });
+    for (let sweep = 0; sweep < 12; sweep++) for (const g of Object.keys(groups)) {
+      if (g === 'p') continue;   // the projects are fixed
+      const score = {};
+      groups[g].forEach(id => { let w = 0, t = 0; (neighbours[id] || []).forEach(([other, v]) => { w += v; t += v * pos(other); }); score[id] = w ? t / w : pos(id); });
+      groups[g].sort((x, y) => score[x] - score[y] || order[x] - order[y]);
+      groups[g].forEach((id, i) => { order[id] = i; });
+    }
+    return { pos };
+  })();
   const sankeyGen = sankey()
     .nodeId(d => d.id)
     .nodeWidth(14)
     .nodePadding(20)
+    .nodeSort((a, b) => (columnOrder.pos(a.id) - columnOrder.pos(b.id)) || (a.index - b.index))   // the order worked out above: the library does not reshuffle the columns by itself, so it is the same in every state of the boxes
     .extent([[mg.left + leftPad, mg.top], [width - mg.right, height - mg.bottom]]);
 
-  const graph = sankeyGen({
+  // With every column but the projects switched off there are no flows: the library cannot size a bar without one (every position would be "not a
+  // number" and the projects would pile up at the top). So then the project rows are laid out by hand, in the same rows, with bars sized by the project.
+  const noFlows = links.length === 0;
+  function layoutProjectsOnly() {
+    const proj = [...nodesById.values()].filter(isProject).map(d => ({ ...d }));
+    const pitch = newLook ? rowPitch : Math.max(8, (height - mg.top - mg.bottom) / Math.max(proj.length, 1));
+    const cap = Math.max(4, newLook ? pitch - 10 : pitch * 0.8);
+    const biggest = Math.max(1, ...proj.map(d => d.value0 || 1)), x0 = mg.left + leftPad;
+    proj.forEach((d, i) => {
+      const h = Math.max(2, cap * (d.value0 || 1) / biggest), c = mg.top + (i + 0.5) * pitch;
+      Object.assign(d, { x0, x1: x0 + 14, y0: c - h / 2, y1: c + h / 2, depth: 0, layer: 0, index: i, value: d.value0 || 1, sourceLinks: [], targetLinks: [] });
+    });
+    return { nodes: proj, links: [] };
+  }
+  const graph = noFlows ? layoutProjectsOnly() : sankeyGen({
     nodes: [...nodesById.values()].map(d => ({ ...d })),
     links: links.map(d => ({ ...d })),
   });
-  if (newLook) {
+  if (newLook && !noFlows) {
     // The projects stand in equal rows, in the order the layout gave them. A bar is never thicker than its row allows: when the project column is the
     // one that decides the scale (e.g. every other box is switched off) all the bars and flows are made thinner by the same factor.
     const proj = graph.nodes.filter(isProject).sort((a, b) => a.y0 - b.y0);
@@ -2534,6 +2586,17 @@ function renderReviewerManagerChart(projects, opts) {
     headerStyle(svg.append('text').attr('x', width - mg.right).attr('text-anchor', 'end')).text(tr('საიტ მენეჯერი'));
   }
   } // end of the column headers
+
+  // Only the projects (every other box off): the block — logo, bar, name — stands in the middle of the picture, all rows moving together so the logos stay in one line.
+  if (noFlows && graph.nodes.length) {
+    const labelW = noLabels ? 0 : Math.max(...graph.nodes.map(d => measureLabelWidth(d.name, parseFloat(newLook ? projectFontPx : fontPx)))) + 6;
+    const left = newLook && logoSize ? mg.left : graph.nodes[0].x0, right = graph.nodes[0].x1 + labelW;
+    const shift = Math.round((width - (right - left)) / 2 - left);
+    if (Number.isFinite(shift) && shift !== 0) {
+      svg.selectAll('g.sankey-node').attr('transform', `translate(${shift},0)`);
+      svg.selectAll(':scope > text').attr('transform', `translate(${shift},0)`);   // the "პროექტი" heading goes along
+    }
+  }
 }
 
 // Downloads the diagram as a standalone page (projects.zip containing projects.html): a snapshot of the data is
@@ -2603,7 +2666,8 @@ window.downloadSankeyAsHtml = function() {
 </div>
 <div class="chart-wrap"><svg id="chartSvg"></svg></div>
 <script>
-var PROJECTS = ${dataJson};
+var PROJECT_NAME_COLLATOR = new Intl.Collator('ka', { numeric: true, sensitivity: 'base' });   // the projects in alphabetical order, as in the app
+var PROJECTS = ${dataJson}.sort(function(a, b) { return PROJECT_NAME_COLLATOR.compare(a.name || '', b.name || '') || String(a.id).localeCompare(String(b.id)); });
 var REVIEWER_PALETTE = ['#ef4444','#b91c1c','#f97316','#dc2626','#fb7185','#c2410c','#e11d48'];
 var MANAGER_PALETTE = ['#2563eb','#06b6d4','#6366f1','#0ea5e9','#3b82f6','#0891b2','#8b5cf6'];
 var PM_PALETTE = ['#22c55e','#16a34a','#84cc16','#4ade80','#65a30d','#15803d','#a3e635'];
@@ -2747,7 +2811,26 @@ function render() {
   var svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
   svg.append('rect').attr('x', 0).attr('y', 0).attr('width', width).attr('height', height).attr('fill', '#1a1120');
 
-  var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).nodePadding(20)
+  // THE ORDER OF THE COLUMNS (as in the app): the projects stand fixed (alphabetical); every other column is ordered so that the flows cross as little as
+// possible, each node by the weighted average position of the nodes it is linked to; a few sweeps. It depends only on the data.
+var columnOrder = (function() {
+  var ids = Object.keys(nodesById), groups = {}, order = {};
+  function group(id) { return id.split(':')[0]; }
+  ids.forEach(function(id) { (groups[group(id)] = groups[group(id)] || []).push(id); });
+  Object.keys(groups).forEach(function(g) { groups[g].forEach(function(id, i) { order[id] = i; }); });
+  function pos(id) { return (order[id] + 0.5) / groups[group(id)].length; }
+  var neighbours = {};
+  links.forEach(function(l) { (neighbours[l.source] = neighbours[l.source] || []).push([l.target, l.value]); (neighbours[l.target] = neighbours[l.target] || []).push([l.source, l.value]); });
+  for (var sweep = 0; sweep < 12; sweep++) Object.keys(groups).forEach(function(g) {
+    if (g === 'p') return;
+    var score = {};
+    groups[g].forEach(function(id) { var w = 0, t = 0; (neighbours[id] || []).forEach(function(x) { w += x[1]; t += x[1] * pos(x[0]); }); score[id] = w ? t / w : pos(id); });
+    groups[g].sort(function(x, y) { return score[x] - score[y] || order[x] - order[y]; });
+    groups[g].forEach(function(id, i) { order[id] = i; });
+  });
+  return { pos: pos };
+})();
+var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).nodePadding(20).nodeSort(function(a, b) { return (columnOrder.pos(a.id) - columnOrder.pos(b.id)) || (a.index - b.index); })
     .extent([[1 + leftPad, 34], [width - 1, height - 5]]);
   var graph = sankeyGen({
     nodes: Object.keys(nodesById).map(function(k) { return Object.assign({}, nodesById[k]); }),
@@ -3091,6 +3174,7 @@ async function showProjects() {
     projects = snap.docs.map(d=>({id:d.id,...d.data()}));
   }
 
+  projects = sortProjectsByName(projects);   // the cards in alphabetical order
   let html = '';
   if (!projects.length) {
     html += `<div style="color:rgba(255,255,255,.4);font-size:13px;padding:20px">${(currentGlobalRole==='admin'||currentGlobalRole==='reviewer')?'შექმენი პირველი პროექტი':'პროექტზე არ ხართ დამატებული. დაელოდეთ.'}</div>`;

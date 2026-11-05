@@ -111,7 +111,8 @@ function colorFor(map, name, palette) {
 }
 
 window.renderChart = function() {
-  var PROJECTS = window.PROJECTS || [];
+  var PROJECT_NAME_COLLATOR = new Intl.Collator('ka', { numeric: true, sensitivity: 'base' });   // the projects in alphabetical order, as in the app
+var PROJECTS = (window.PROJECTS || []).slice().sort(function(a, b) { return PROJECT_NAME_COLLATOR.compare(a.name || '', b.name || '') || String(a.id).localeCompare(String(b.id)); });
   if (!PROJECTS.length) return;
 
   var showDm = document.getElementById('chkDm').checked;
@@ -232,7 +233,26 @@ window.renderChart = function() {
   var svg = d3.select(svgEl).attr('viewBox', [0, 0, width, height]);
   svg.append('rect').attr('x', 0).attr('y', 0).attr('width', width).attr('height', height).attr('fill', '#1a1120');
 
-  var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).nodePadding(20)
+  // THE ORDER OF THE COLUMNS (as in the app): the projects stand fixed (alphabetical); every other column is ordered so that the flows cross as little as
+// possible, each node by the weighted average position of the nodes it is linked to; a few sweeps. It depends only on the data.
+var columnOrder = (function() {
+  var ids = Object.keys(nodesById), groups = {}, order = {};
+  function group(id) { return id.split(':')[0]; }
+  ids.forEach(function(id) { (groups[group(id)] = groups[group(id)] || []).push(id); });
+  Object.keys(groups).forEach(function(g) { groups[g].forEach(function(id, i) { order[id] = i; }); });
+  function pos(id) { return (order[id] + 0.5) / groups[group(id)].length; }
+  var neighbours = {};
+  links.forEach(function(l) { (neighbours[l.source] = neighbours[l.source] || []).push([l.target, l.value]); (neighbours[l.target] = neighbours[l.target] || []).push([l.source, l.value]); });
+  for (var sweep = 0; sweep < 12; sweep++) Object.keys(groups).forEach(function(g) {
+    if (g === 'p') return;
+    var score = {};
+    groups[g].forEach(function(id) { var w = 0, t = 0; (neighbours[id] || []).forEach(function(x) { w += x[1]; t += x[1] * pos(x[0]); }); score[id] = w ? t / w : pos(id); });
+    groups[g].sort(function(x, y) { return score[x] - score[y] || order[x] - order[y]; });
+    groups[g].forEach(function(id, i) { order[id] = i; });
+  });
+  return { pos: pos };
+})();
+var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).nodePadding(20).nodeSort(function(a, b) { return (columnOrder.pos(a.id) - columnOrder.pos(b.id)) || (a.index - b.index); })
     .extent([[1 + leftPad, 34], [width - 1, height - 5]]);
   var graph = sankeyGen({
     nodes: Object.keys(nodesById).map(function(k) { return Object.assign({}, nodesById[k]); }),
