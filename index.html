@@ -404,6 +404,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .dev-wrap button:hover:not(:disabled){border-color:var(--dv-axis)}
 .dev-wrap button:disabled{opacity:.45;cursor:default}
 .dev-wrap button.primary{background:var(--dv-actual);color:#fff;border-color:var(--dv-actual)}
+.dev-wrap button.dv-danger{color:var(--dv-bad);border-color:var(--dv-bad);margin-left:auto}
 .dev-wrap table{width:100%;border-collapse:collapse;font-size:13px}
 .dev-wrap th,.dev-wrap td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--dv-grid);vertical-align:middle}
 .dev-wrap th{color:var(--dv-ink2);font-weight:500;white-space:nowrap}
@@ -771,6 +772,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
           <button type="button" onclick="devAddStage()">+ ეტაპის დამატება</button>
           <button type="button" class="primary" id="devSave" onclick="devSave()">შენახვა</button>
           <button type="button" id="devCancel" onclick="devCancelEdits()">ცვლილებების გაუქმება</button>
+          <button type="button" class="dv-danger" id="devDelete" style="display:none" onclick="devDeleteAll()">გრაფიკის სრულად წაშლა</button>
         </div>
         <div class="dv-ed-head" style="margin-top:22px"><div><h3>გეგმის ცვლილებები</h3><p>როცა გეგმა იცვლება მას შემდეგ, რაც ფაქტიური მონაცემები უკვე არის, ცვლილება აქ ჩაიწერება.</p></div></div>
         <div class="dv-card" id="devLog"></div>
@@ -1193,6 +1195,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"გრაფიკის სრულად წაშლა": "Delete the whole chart",
+"გრაფიკი წაიშალა": "The chart was deleted",
 "შესრულება %": "Progress %",
 "S-მრუდი": "S-curve",
 "საერთო შესრულება": "Overall progress",
@@ -1630,6 +1634,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^წაიშლება ამ პროექტის განვითარების გრაფიკი მთლიანად: ეტაპები: (\d+), ცვლილებების ისტორია: (\d+)\. ყველა გეგმა და ფაქტიური მონაცემი წაიშლება და ვერ დაბრუნდება\. წავშალო\?$/, function (m) { return 'The whole progress chart of this project will be deleted: stages: ' + m[1] + ', history of changes: ' + m[2] + '. All the plan and actual data will be deleted and cannot be restored. Delete?'; }],
     [/^\+(\d+) დღე გვიან$/, function (m) { return '+' + m[1] + (m[1] === '1' ? ' day' : ' days') + ' late'; }],
     [/^(\d+) დღით ადრე$/, function (m) { return m[1] + (m[1] === '1' ? ' day' : ' days') + ' early'; }],
     [/^პროექტის განვითარება · ([\s\S]*)$/, function (m) { return 'Project progress · ' + translit(m[1]); }],
@@ -3835,7 +3840,7 @@ const devAddDays = (d, n) => { const r = new Date(d.getFullYear(), d.getMonth(),
 
 // ── The window ──
 // state: the document on the server (what everybody sees) and the draft (what the project manager is editing; the chart follows the draft while editing)
-const devState = { pid: null, project: null, canEdit: false, isAdmin: false, server: [], log: [], updatedAt: null, draft: [], todayOverride: null, dirty: false, popIdx: -1 };
+const devState = { pid: null, project: null, canEdit: false, isAdmin: false, exists: false, server: [], log: [], updatedAt: null, draft: [], todayOverride: null, dirty: false, popIdx: -1 };
 const devTodayNow = () => devState.todayOverride || devTodayLocal();
 const canReadDevelopment = () => currentGlobalRole !== 'contractor' || isAdminLike();     // everybody but contractors
 const isProjectPmOf = project => !!project && !!currentUser && project.pmUid === currentUser.uid && currentGlobalRole === 'viewer' && currentUserIsProjectManager === true;
@@ -3868,10 +3873,10 @@ window.openDevelopment = async pid => {
   const pd = await getDoc(doc(db, 'projects', pid));
   if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); return; }
   const project = { id: pid, ...pd.data() };
-  let data = { stages: [], planLog: [] };
-  try { const snap = await getDoc(doc(db, 'projects', pid, 'development', 'main')); if (snap.exists()) data = snap.data(); }
+  let data = { stages: [], planLog: [] }, exists = false;
+  try { const snap = await getDoc(doc(db, 'projects', pid, 'development', 'main')); if (snap.exists()) { data = snap.data(); exists = true; } }
   catch (e) { showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
-  Object.assign(devState, { pid, project, canEdit: canEditDevelopment(project), isAdmin: isAdminLike(), server: (data.stages || []).map(devCleanStage), log: data.planLog || [],
+  Object.assign(devState, { pid, project, canEdit: canEditDevelopment(project), isAdmin: isAdminLike(), exists, server: (data.stages || []).map(devCleanStage), log: data.planLog || [],
     updatedAt: data.updatedAt && data.updatedAt.toDate ? data.updatedAt.toDate() : null, todayOverride: null, dirty: false, popIdx: -1 });
   devState.draft = devClone(devState.server);
   document.getElementById('devTitle').textContent = 'პროექტის განვითარება · ' + (project.name || '');
@@ -4011,6 +4016,9 @@ function devRefreshEditor() {
   document.getElementById('devProblems').innerHTML = v.errors.map(e => `<div class="e">${esc(e)}</div>`).join('') + v.warnings.map(e => `<div class="w">${esc(e)}</div>`).join('');
   document.getElementById('devSave').disabled = !devState.dirty || !v.ok;
   document.getElementById('devCancel').disabled = !devState.dirty;
+  const del = document.getElementById('devDelete');
+  del.style.display = devState.isAdmin ? '' : 'none';   // deleting the whole chart: an admin or the super-reviewer only
+  del.disabled = !devState.exists;
 }
 
 // the table
@@ -4053,12 +4061,25 @@ window.devSave = async () => {
   const btn = document.getElementById('devSave'); btn.disabled = true; btn.textContent = 'ინახება...';
   try {
     await setDoc(doc(db, 'projects', devState.pid, 'development', 'main'), { stages, planLog, updatedAt: serverTimestamp(), updatedBy: currentUser.uid, updatedByName: currentUserName || '' });
-    devState.server = devClone(stages); devState.draft = devClone(stages); devState.log = planLog; devState.updatedAt = new Date(); devState.dirty = false;
+    devState.server = devClone(stages); devState.draft = devClone(stages); devState.log = planLog; devState.updatedAt = new Date(); devState.dirty = false; devState.exists = true;
     devUpdatedLine(); devRenderLog(); devBuildEditor(); devRender();
     showToast('შენახულია');
     devFillCardLine(devState.pid, stages);
   } catch (e) { alert('შეცდომა შენახვისას: ' + e.message); console.error(e); }
   finally { btn.textContent = 'შენახვა'; devRefreshEditor(); }
+};
+// Deleting the whole chart of this project (all the stages, the plan, the actual figures and the history of plan changes): an admin or the super-reviewer only. It cannot be undone.
+window.devDeleteAll = async () => {
+  if (!isAdminLike() || !devState.exists) return;
+  if (!confirm(`წაიშლება ამ პროექტის განვითარების გრაფიკი მთლიანად: ეტაპები: ${devState.server.length}, ცვლილებების ისტორია: ${(devState.log || []).length}. ყველა გეგმა და ფაქტიური მონაცემი წაიშლება და ვერ დაბრუნდება. წავშალო?`)) return;
+  const btn = document.getElementById('devDelete'); btn.disabled = true;
+  try {
+    await deleteDoc(doc(db, 'projects', devState.pid, 'development', 'main'));
+    devState.server = []; devState.draft = []; devState.log = []; devState.updatedAt = null; devState.dirty = false; devState.exists = false;
+    devClosePop(); devUpdatedLine(); devRenderLog(); devBuildEditor(); devRender();
+    showToast('გრაფიკი წაიშალა');
+    devFillCardLine(devState.pid, []);
+  } catch (e) { alert('შეცდომა წაშლისას: ' + e.message); console.error(e); btn.disabled = false; }
 };
 // the line on the card of the project's sections: today's actual and planned figures
 function devFillCardLine(pid, stages) {
