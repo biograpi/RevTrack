@@ -50,8 +50,10 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 /* ── AUTH ── */
 .auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--ink)}
 .auth-box{background:white;border-radius:12px;padding:36px 32px;width:340px;box-shadow:var(--shadow-md)}
-.auth-logo{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:500;color:var(--accent);letter-spacing:.06em;margin-bottom:4px}
-.auth-sub{font-size:13px;color:var(--ink-light);margin-bottom:22px}
+.auth-wrap{display:flex;flex-direction:column;align-items:center}
+.auth-brand{display:inline-flex;align-items:center;gap:14px;font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:30px;font-weight:700;letter-spacing:.01em;color:white;white-space:nowrap;margin-bottom:6px}   /* the header's lettering and its turning spiral, larger (the header: 16px and 36px) */
+.auth-brand .hdr-spiral{height:56px;width:calc(56px * 14.68 / 15.36)}
+.auth-tagline{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:22px;text-align:center}
 .auth-tabs{display:flex;margin-bottom:20px;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
 .auth-tab{flex:1;padding:8px;text-align:center;font-size:13px;font-weight:500;cursor:pointer;color:var(--ink-light);background:var(--bg);border:none;font-family:inherit}
 .auth-tab.active{background:var(--accent);color:white}
@@ -65,7 +67,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .auth-note{font-size:12px;color:var(--ink-light);margin-top:12px;text-align:center;line-height:1.6}
 
 /* ── PROJECTS SCREEN ── */
-.projects-screen{display:none;min-height:100vh;background:var(--soft-black)}
+.projects-screen{display:none;min-height:calc(100vh - var(--footer-h));background:var(--soft-black)}
 .projects-header{height:52px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px;position:sticky;top:0;z-index:100}
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
@@ -134,7 +136,14 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 /* the project's logo in front of its name on the card of the project list */
 .project-card-title{display:flex;align-items:center;justify-content:center;gap:12px;max-width:100%}
 .project-card-mark{flex:none;width:30px;height:30px}
-.section-bar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+.section-bar{grid-column:1/-1;display:grid;grid-template-columns:minmax(max-content,1fr) minmax(0,auto) minmax(max-content,1fr);align-items:center;gap:12px;margin-bottom:4px}
+.section-bar>:first-child{justify-self:start}.section-bar>:last-child{justify-self:end}
+.section-bar>.section-back{grid-column:auto;margin-bottom:0}   /* (the back arrow and the settings are direct children of the card grid elsewhere, where they span the whole row: inside this bar each keeps its own column) */
+.section-title{text-align:center;font-size:22px;font-weight:600;color:#f1eece;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%}   /* the project's name in the middle of the top line: a little larger than the names on the cards (16px) */
+.project-card-address{font-size:12px;line-height:1.3;color:rgba(255,255,255,.8);margin-top:2px;margin-bottom:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.project-card-address.is-empty{color:rgba(255,255,255,.35)}
+.project-card.project-card-filled:hover .project-card-address{color:var(--soft-black)!important}
+@media (max-width:700px){.section-bar{grid-template-columns:1fr 1fr}.section-bar .section-title{grid-column:1/-1;grid-row:2;white-space:normal;font-size:19px}}
 .section-back{grid-column:1/-1;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;margin-bottom:4px;width:fit-content}
 .section-back:hover{color:white}
 .project-card-count{position:absolute;top:10px;right:10px;font-size:80px;font-weight:800;line-height:1;color:rgba(255,255,255,.15);z-index:0;pointer-events:none;font-family:'JetBrains Mono',monospace}
@@ -427,6 +436,14 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .dev-wrap .dv-log-item .h{font-weight:600;color:var(--dv-ink);margin-bottom:2px}
 .dev-wrap .dv-muted{color:var(--dv-muted);font-size:12.5px}
 #projectsGrid.is-loading,#reviewerManagerChartWrap.is-loading{opacity:.55;pointer-events:none;cursor:progress;transition:opacity .15s}
+:root{--footer-h:0px}
+body.has-footer{--footer-h:34px;box-sizing:border-box;padding-bottom:var(--footer-h)}
+.site-footer{display:none;position:fixed;left:0;right:0;bottom:0;height:34px;box-sizing:border-box;padding:0 32px;align-items:center;justify-content:flex-end;background:var(--soft-black);border-top:1px solid rgba(255,255,255,.55);font-size:12px;color:rgba(255,255,255,.6);z-index:90}   /* below the windows (200) and the IFC viewer, above the page */
+body.has-footer .site-footer{display:flex}
+.site-footer a{color:rgba(255,255,255,.85);text-decoration:none}
+.site-footer a:hover{color:#fff;text-decoration:underline}
+@media (max-width:700px){.site-footer{padding:0 16px}}
+@media print{.site-footer{display:none!important}}
 .logo-field{display:flex;gap:14px;align-items:center}
 .logo-field-preview{flex:none;width:56px;height:56px;border-radius:12px;background:#1a1120;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center}
 .logo-field-preview svg{width:40px;height:40px}
@@ -485,7 +502,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 /* ── VIEWER BANNER ── */
 
 /* ── MISC ── */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast{position:fixed;bottom:calc(24px + var(--footer-h));left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite}
 .spinner-dark{display:inline-block;width:18px;height:18px;border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
@@ -500,9 +517,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 <!-- ══ AUTH ══ -->
 <div class="auth-screen" id="authScreen">
   <button type="button" data-lang-toggle data-no-i18n style="position:fixed;top:14px;right:14px;z-index:5;padding:6px 12px;font-size:12px;border-radius:6px;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.4);color:#fff;cursor:pointer">English</button>
+  <div class="auth-wrap">
+  <div class="auth-brand"><svg class="hdr-spiral" aria-hidden="true"><use href="#spiralIcon" width="100%" height="100%"/></svg><span>RevTrack</span></div>
+  <div class="auth-tagline">პროექტების რევიზიების სისტემა</div>
   <div class="auth-box">
-    <div class="auth-logo">RevTrack</div>
-    <div class="auth-sub">პროექტების რევიზიების სისტემა</div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tabLogin">შესვლა</button>
       <button class="auth-tab" id="tabRegister">რეგისტრაცია</button>
@@ -533,6 +551,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
       <button class="btn-primary" style="width:100%;justify-content:center" id="btnRegister">რეგისტრაცია</button>
       <div class="auth-note">ტექნიკური კითხვების შემთხვევაში დაუკავშირდით: <a href="mailto:d.avalishvili@biograpi.ge" style="color:var(--accent);text-decoration:none">d.avalishvili@biograpi.ge</a></div>
     </div>
+  </div>
   </div>
 </div>
 
@@ -1196,6 +1215,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"მისამართი არ არის მითითებული": "No address set",
 "პროექტ მენეჯერი (წერს ოქმებს და გეგმავს განვითარებას)": "Project manager (writes reports and plans the progress)",
 "ეს განყოფილება თქვენთვის მიუწვდომელია": "This section is not available to you",
 "ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში)": "A new report can be written by this project's site manager or project manager (set in the project settings)",
@@ -4144,29 +4164,27 @@ window.showProjectSections = async function(pid) {
   grid.innerHTML = `
     <div class="section-bar">
       <div class="section-back" onclick="showProjects()">← პროექტები</div>
-      ${canManage?`<div class="section-back" onclick="openProjectModal('${pid}')">⚙ პროექტის მართვა</div>`:''}
+      <div class="section-title" data-no-i18n title="${esc(p.name)}">${esc(p.name)}</div>
+      ${canManage?`<div class="section-back" onclick="openProjectModal('${pid}')">⚙ პროექტის მართვა</div>`:'<span></span>'}
     </div>
     <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','review')">
       <div class="project-card-count" id="pcount-review"></div>
       <div class="project-card-body">
-        <div class="project-card-name">${esc(p.name)}</div>
-        <div class="section-label">რევიზია</div>
+        <div class="project-card-name">რევიზია</div>
         <div class="project-card-creator">რევიზორი: ${esc(p.createdByName||'ადმინი')}</div>
       </div>
     </div>
     <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','internal')">
       <div class="project-card-count" id="pcount-internal"></div>
       <div class="project-card-body">
-        <div class="project-card-name">${esc(p.name)}</div>
-        <div class="section-label">DM საკითხები</div>
+        <div class="project-card-name">DM საკითხები</div>
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
       </div>
     </div>
     <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','mep')">
       <div class="project-card-count" id="pcount-mep"></div>
       <div class="project-card-body">
-        <div class="project-card-name">${esc(p.name)}</div>
-        <div class="section-label">MEP რევიზია</div>
+        <div class="project-card-name">MEP რევიზია</div>
         ${(() => { const rv = projectMepReviewers(p); const lines = []; if (rv.mp) lines.push('MP რევიზორი: ' + rv.mp); if (rv.elec) lines.push('Electrical რევიზორი: ' + rv.elec); if (!lines.length && rv.legacy) lines.push('MEP რევიზორი: ' + rv.legacy); return lines.map(t => `<div class="project-card-creator">${esc(t)}</div>`).join(''); })()}
       </div>
     </div>
@@ -4184,15 +4202,14 @@ window.showProjectSections = async function(pid) {
     ${canReadReports() ? `<div class="project-card project-card-filled" ${cardStyle} onclick="openReports('${pid}')">
       <div class="project-card-count" id="pcount-reports"></div>
       <div class="project-card-body">
-        <div class="project-card-name">${esc(p.name)}</div>
-        <div class="section-label">რეპორტი</div>
+        <div class="project-card-name">რეპორტი</div>
+        ${(p.address || '').trim() ? `<div class="project-card-address" title="${esc((p.address || '').trim())}">${esc((p.address || '').trim())}</div>` : `<div class="project-card-address is-empty">მისამართი არ არის მითითებული</div>`}
         <div class="project-card-creator">${projectSiteManagers(p).length > 1 ? 'საიტ მენეჯერები' : 'საიტ მენეჯერი'}: ${projectSiteManagers(p).length ? esc(projectSiteManagers(p).join(', ')) : '—'}</div>
       </div>
     </div>` : ''}
     ${canReadDevelopment() ? `<div class="project-card project-card-filled" ${cardStyle} onclick="openDevelopment('${pid}')">
       <div class="project-card-body">
-        <div class="project-card-name">${esc(p.name)}</div>
-        <div class="section-label">პროექტის განვითარება</div>
+        <div class="project-card-name">პროექტის განვითარება</div>
         <div class="project-card-creator" id="pdev-line">გრაფიკი</div>
       </div>
     </div>` : ''}
@@ -7660,6 +7677,16 @@ document.getElementById('saveNewProj').addEventListener('click', async () => {
   btn.disabled=false;
 });
 
+</script>
+<div class="site-footer" id="siteFooter" data-no-i18n><span>developed by <a href="mailto:d.avalishvili@biograpi.ge">David Avalishvili</a></span></div>
+<script>
+// The footer shows on every screen except the sign-in / registration page (the IFC viewer's window covers it). A small script of its own: it does not depend on the rest of the page.
+(function () {
+  var auth = document.getElementById('authScreen');
+  function sync() { document.body.classList.toggle('has-footer', !auth || getComputedStyle(auth).display === 'none'); }
+  sync();
+  if (auth && window.MutationObserver) new MutationObserver(sync).observe(auth, { attributes: true, attributeFilter: ['style', 'class'] });
+})();
 </script>
 </body>
 </html>
