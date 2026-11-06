@@ -426,6 +426,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .dev-wrap .dv-log-item{border-top:1px solid var(--dv-grid);padding:8px 0;font-size:12.5px;color:var(--dv-ink2)}
 .dev-wrap .dv-log-item .h{font-weight:600;color:var(--dv-ink);margin-bottom:2px}
 .dev-wrap .dv-muted{color:var(--dv-muted);font-size:12.5px}
+#projectsGrid.is-loading,#reviewerManagerChartWrap.is-loading{opacity:.55;pointer-events:none;cursor:progress;transition:opacity .15s}
 .logo-field{display:flex;gap:14px;align-items:center}
 .logo-field-preview{flex:none;width:56px;height:56px;border-radius:12px;background:#1a1120;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center}
 .logo-field-preview svg{width:40px;height:40px}
@@ -1195,6 +1196,9 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"პროექტ მენეჯერი (წერს ოქმებს და გეგმავს განვითარებას)": "Project manager (writes reports and plans the progress)",
+"ეს განყოფილება თქვენთვის მიუწვდომელია": "This section is not available to you",
+"ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში)": "A new report can be written by this project's site manager or project manager (set in the project settings)",
 "გრაფიკის სრულად წაშლა": "Delete the whole chart",
 "გრაფიკი წაიშალა": "The chart was deleted",
 "შესრულება %": "Progress %",
@@ -1920,11 +1924,11 @@ function canOpenMepAsUser() { return currentGlobalRole === 'viewer' && currentUs
 let currentUserIsSiteManager = false;
 let currentUserIsProjectManager = false;   // users/{uid}.projectManager: marked as a project manager by an admin
 const isSiteManagerOf = project => !!project && !!currentUser && projectSiteManagerEntries(project).some(e => e.uid && e.uid === currentUser.uid) && currentGlobalRole === 'viewer' && currentUserIsSiteManager === true;
-const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project);
-// Changing or deleting a report: an admin always; the site manager only their OWN report and only during the first 24 hours after it was created.
+const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project) || isProjectPmOf(project);   // the site managers and the project manager of this project
+// Changing or deleting a report: an admin always; a site manager or the project manager only their OWN report and only during the first 24 hours after it was created.
 const REPORT_EDIT_WINDOW_MS = 24 * 3600 * 1000;
 const reportEditable = r => !(r && r.createdAt && r.createdAt.toDate) || (Date.now() - r.createdAt.toDate().getTime() <= REPORT_EDIT_WINDOW_MS);   // no time yet (just created, still being saved) counts as new
-const canEditReport = (r, project) => isAdminLike() || (isSiteManagerOf(project) && r.authorId === currentUser?.uid && reportEditable(r));
+const canEditReport = (r, project) => isAdminLike() || ((isSiteManagerOf(project) || isProjectPmOf(project)) && r.authorId === currentUser?.uid && reportEditable(r));
 const canReadReports = () => currentGlobalRole !== 'contractor' || isAdminLike(); // everybody but contractors
 function canOpenInSectionAsUser(section) { return (section === 'internal' && canOpenDmAsUser()) || (section === 'mep' && canOpenMepAsUser()); }
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
@@ -3396,20 +3400,27 @@ async function showProjects() {
   document.getElementById('btnAdminTools').style.display = isAdminLike() ? 'flex' : 'none';
   document.getElementById('btnNewProjectHdr').style.display = (currentGlobalRole==='admin'||currentGlobalRole==='reviewer') ? 'flex' : 'none';
 
-  const grid = document.getElementById('projectsGrid');
-  grid.classList.remove('projects-grid-4col');   // the list of projects: three columns (the four section cards of a project keep their row of four)
-  grid.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px">იტვირთება...</div>';
-
-  await loadAllUsers();
+  const grid = document.getElementById('projectsGrid'), _wrap = document.getElementById('reviewerManagerChartWrap');
+  // The first time (nothing drawn yet) a short "loading" line; later the screen stays as it is, only dimmed, and everything is drawn in one step below
+  // (before, the list was emptied here and the switch appeared only at the end, so the cards jumped down).
+  if (!grid.children.length) grid.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:13px">იტვირთება...</div>';
+  else { grid.classList.add('is-loading'); _wrap.classList.add('is-loading'); }
 
   let projects = [];
-  const globallyVisible = ['admin','reviewer','design_manager','viewer'].includes(currentGlobalRole);
-  if (globallyVisible) {
-    const snap = await getDocs(collection(db,'projects'));
-    projects = snap.docs.map(d=>({id:d.id,...d.data()}));
-  } else {
-    const snap = await getDocs(query(collection(db,'projects'), where('memberIds','array-contains',currentUser.uid)));
-    projects = snap.docs.map(d=>({id:d.id,...d.data()}));
+  try {
+    await loadAllUsers();
+    const globallyVisible = ['admin','reviewer','design_manager','viewer'].includes(currentGlobalRole);
+    if (globallyVisible) {
+      const snap = await getDocs(collection(db,'projects'));
+      projects = snap.docs.map(d=>({id:d.id,...d.data()}));
+    } else {
+      const snap = await getDocs(query(collection(db,'projects'), where('memberIds','array-contains',currentUser.uid)));
+      projects = snap.docs.map(d=>({id:d.id,...d.data()}));
+    }
+  } catch (e) {   // the screen must not stay dimmed and dead
+    grid.classList.remove('is-loading'); _wrap.classList.remove('is-loading');
+    if (!grid.children.length || /იტვირთება/.test(grid.textContent)) grid.innerHTML = '';
+    showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return;
   }
 
   projects = sortProjectsByName(projects);   // the cards in alphabetical order
@@ -3440,6 +3451,9 @@ async function showProjects() {
       </div>`;
     });
   }
+  // the one step: the list, the diagram, the switch and the view that is shown, together
+  grid.classList.remove('projects-grid-4col');   // the list of projects: three columns
+  grid.classList.remove('is-loading'); _wrap.classList.remove('is-loading');
   grid.innerHTML = html;
   renderReviewerManagerChart(projects);
   document.getElementById('mainViewToggle').style.display = 'flex';
@@ -3448,6 +3462,7 @@ async function showProjects() {
     mainListView = currentGlobalRole === 'contractor' ? 'grid' : 'chart';
   }
   setMainListView(mainListView);
+  window.scrollTo(0, 0);
 }
 
 // ── SHOW A PROJECT'S SECTION CARDS ── (review, DM issues, MEP review, IFC viewer)
@@ -4090,14 +4105,18 @@ function devFillCardLine(pid, stages) {
 
 window.showProjectSections = async function(pid) {
   sectionsViewProjectId = pid;
-  document.getElementById('reviewerManagerChartWrap').style.display = 'none';
-  document.getElementById('mainViewToggle').style.display = 'none';
-  const pd = await getDoc(doc(db,'projects',pid));
-  if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
+  // While the data comes, the list stays exactly where it is (only dimmed, so the click is seen): hiding the switch first made the cards jump up, and the
+  // empty gap before the new cards made them jump again. Everything changes in one step below.
+  const _wrap = document.getElementById('reviewerManagerChartWrap'), _grid0 = document.getElementById('projectsGrid');
+  _wrap.classList.add('is-loading'); _grid0.classList.add('is-loading');
+  const unload = () => { _wrap.classList.remove('is-loading'); _grid0.classList.remove('is-loading'); };
+  let pd;
+  try { pd = await getDoc(doc(db,'projects',pid)); } catch (e) { unload(); showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
+  if (!pd.exists()) { unload(); showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   const p = {id:pid,...pd.data()};
   currentProjectData = p;
 
-  await loadAllUsers();
+  try { await loadAllUsers(); } catch (e) { unload(); showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
   const managerName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email) : null;
 
   const brandColor = p.color || DEFAULT_CARD_COLOR;
@@ -4117,6 +4136,11 @@ window.showProjectSections = async function(pid) {
 
   const grid = document.getElementById('projectsGrid');
   grid.classList.remove('projects-grid-4col'); // the section cards: three columns (six cards = 3 + 3)
+  // ── the one step: the list, the diagram and the switch give way to the section cards at once (no await from here to the end of the drawing) ──
+  _wrap.style.display = 'none';
+  document.getElementById('mainViewToggle').style.display = 'none';
+  unload();
+  window.scrollTo(0, 0);
   grid.innerHTML = `
     <div class="section-bar">
       <div class="section-back" onclick="showProjects()">← პროექტები</div>
@@ -6586,6 +6610,7 @@ function reportInfoFromProject(p) {
 // may see the section can look through the old reports; the buttons on a row download the PDF or (for who may) edit / delete. ──
 let reportsSortDesc = true, reportViewId = null;
 window.openReports = async pid => {
+  if (!canReadReports()) { showToast('ეს განყოფილება თქვენთვის მიუწვდომელია'); return; }   // contractors: no card, and no way in
   reportsProjectId = pid; reportsList = []; reportsProject = null;
   document.getElementById('reportsSearch').value = '';
   document.getElementById('reportsTypeFilter').value = '';
@@ -6606,7 +6631,7 @@ window.openReports = async pid => {
     const mayWrite = canWriteReportsOn(reportsProject);
     document.getElementById('btnNewReport').style.display = mayWrite ? '' : 'none';
     document.getElementById('btnNewDailyReport').style.display = mayWrite ? '' : 'none';
-    document.getElementById('reportsHint').textContent = mayWrite ? '' : 'ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს (მითითებულია პროექტის მართვაში)';
+    document.getElementById('reportsHint').textContent = mayWrite ? '' : 'ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში)';
     await loadReports();
   } catch (e) { document.getElementById('reportsTbody').textContent = 'შეცდომა: ' + e.message; }
 };
@@ -7112,7 +7137,7 @@ function renderUsersPanel() {
       <div class="user-label-row">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
           <input type="checkbox" ${u.projectManager?'checked':''} onchange="toggleUserProjectManager('${u.id}',this.checked)">
-          პროექტ მენეჯერი
+          პროექტ მენეჯერი (წერს ოქმებს და გეგმავს განვითარებას)
         </label>
       </div>`:''}
     </div>`).join('') : `<div style="padding:20px;color:var(--ink-light);font-size:13px">${allCount ? 'ძებნით ან ფილტრით არავინ მოიძებნა' : 'მომხმარებელი არ არის'}</div>`;
