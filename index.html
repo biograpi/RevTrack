@@ -139,11 +139,13 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .section-bar{grid-column:1/-1;display:grid;grid-template-columns:minmax(max-content,1fr) minmax(0,auto) minmax(max-content,1fr);align-items:center;gap:12px;margin-bottom:4px}
 .section-bar>:first-child{justify-self:start}.section-bar>:last-child{justify-self:end}
 .section-bar>.section-back{grid-column:auto;margin-bottom:0}   /* (the back arrow and the settings are direct children of the card grid elsewhere, where they span the whole row: inside this bar each keeps its own column) */
-.section-title{text-align:center;font-size:22px;font-weight:600;color:#f1eece;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:100%}   /* the project's name in the middle of the top line: a little larger than the names on the cards (16px) */
+.section-title{display:flex;align-items:center;justify-content:center;gap:12px;font-size:22px;font-weight:600;color:#f1eece;line-height:1.25;min-width:0;max-width:100%}   /* the project's logo and name in the middle of the top line: the name a little larger than the names on the cards (16px) */
+.section-title>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.section-title-mark{flex:none;width:28px;height:28px}   /* the logo, in the same light cream as in the project list (the filter of the list) */
 .project-card-address{font-size:12px;line-height:1.3;color:rgba(255,255,255,.8);margin-top:2px;margin-bottom:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .project-card-address.is-empty{color:rgba(255,255,255,.35)}
 .project-card.project-card-filled:hover .project-card-address{color:var(--soft-black)!important}
-@media (max-width:700px){.section-bar{grid-template-columns:1fr 1fr}.section-bar .section-title{grid-column:1/-1;grid-row:2;white-space:normal;font-size:19px}}
+@media (max-width:700px){.section-bar{grid-template-columns:1fr 1fr}.section-bar .section-title{grid-column:1/-1;grid-row:2;font-size:19px}.section-bar .section-title>span{white-space:normal}.section-title-mark{width:24px;height:24px}}
 .section-back{grid-column:1/-1;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;margin-bottom:4px;width:fit-content}
 .section-back:hover{color:white}
 .project-card-count{position:absolute;top:10px;right:10px;font-size:80px;font-weight:800;line-height:1;color:rgba(255,255,255,.15);z-index:0;pointer-events:none;font-family:'JetBrains Mono',monospace}
@@ -4164,7 +4166,7 @@ window.showProjectSections = async function(pid) {
   grid.innerHTML = `
     <div class="section-bar">
       <div class="section-back" onclick="showProjects()">← პროექტები</div>
-      <div class="section-title" data-no-i18n title="${esc(p.name)}">${esc(p.name)}</div>
+      <div class="section-title" data-no-i18n title="${esc(p.name)}"><svg class="section-title-mark" viewBox="0 0 30 30" aria-hidden="true"><image href="${esc((typeof p.logo === 'string' && p.logo.startsWith('data:image/svg+xml')) ? p.logo : DEFAULT_PROJECT_LOGO)}" filter="url(#project-card-ink)" x="0" y="0" width="30" height="30" preserveAspectRatio="xMidYMid meet"/></svg><span>${esc(p.name)}</span></div>
       ${canManage?`<div class="section-back" onclick="openProjectModal('${pid}')">⚙ პროექტის მართვა</div>`:'<span></span>'}
     </div>
     <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','review')">
