@@ -4260,6 +4260,8 @@ window.showProjectSections = async function(pid) {
 
   try { await loadAllUsers(); } catch (e) { unload(); showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
   const managerName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email) : null;
+  // the project manager: the chosen account (its current name), or, for an older project, the name that was typed
+  const pmName = p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName || '').trim() || null);
 
   const brandColor = p.color || DEFAULT_CARD_COLOR;
   const cardStyle = brandColor ? `style="--card-color:${brandColor};border-color:${brandColor}"` : '';
@@ -4332,6 +4334,7 @@ window.showProjectSections = async function(pid) {
     ${canReadDevelopment() ? `<div class="project-card project-card-filled" ${cardStyle} onclick="openDevelopment('${pid}')">
       <div class="project-card-body">
         <div class="project-card-name">პროექტის განვითარება</div>
+        <div class="project-card-creator">პროექტ მენეჯერი: ${pmName ? esc(pmName) : '—'}</div>
         <div class="project-card-creator" id="pdev-line">გრაფიკი</div>
       </div>
     </div>` : ''}
