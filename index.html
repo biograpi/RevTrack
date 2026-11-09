@@ -324,12 +324,14 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .btn-add-link:hover{background:var(--accent);color:white}
 .modal-footer{padding:13px 20px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end;gap:10px}
 /* weekly site reports: the list screen (same look as the issue list) */
-.report-grid-row{display:grid;grid-template-columns:150px 130px 100px minmax(140px,1fr) 150px;align-items:center;gap:10px;padding:0 8px;min-height:44px}
+.report-grid-row{display:grid;grid-template-columns:150px 130px 100px minmax(140px,1fr) 190px;align-items:center;gap:10px;padding:0 8px;min-height:44px}
 .report-grid-row>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .reports-scroll{overflow-x:auto}
-.reports-scroll .issue-header-row,.reports-scroll #reportsTbody{min-width:720px}
+.reports-scroll .issue-header-row,.reports-scroll #reportsTbody{min-width:760px}
 .issue-row.rp-weekly{background:#e4f1fb}
 .issue-row.rp-weekly:hover{background:#d3e8f7}
+.issue-row.rp-quality{background:#e7f4e9}
+.issue-row.rp-quality:hover{background:#d5ecd9}
 .issue-row.rp-daily{background:#fdf5d4}
 .issue-row.rp-daily:hover{background:#faeeb8}
 .rp-actions{display:flex;gap:6px;justify-content:flex-end;overflow:visible!important}
@@ -353,6 +355,28 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .rp-photo textarea{min-height:90px;resize:vertical}
 .rp-x{width:26px;height:26px;border-radius:50%;border:1px solid var(--rule);background:white;color:var(--ink-light);cursor:pointer;font-size:13px;line-height:1}
 .rp-x:hover{border-color:var(--accent);color:var(--accent)}
+/* the quality report: every issue is a numbered block, set apart by a band with its number in the middle */
+.rq-issue{margin-bottom:6px}
+.rq-divider{position:relative;margin:20px 0 12px;padding:5px 70px;background:#e8ecf2;border:1px solid var(--rule);border-radius:6px;text-align:center;font-weight:700;font-size:14px;letter-spacing:.08em;color:var(--accent)}
+.rq-tools{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:flex;gap:4px}
+.rq-tools button{width:24px;height:24px;border-radius:50%;border:1px solid var(--rule);background:white;color:var(--ink-light);cursor:pointer;font-size:12px;line-height:1;padding:0}
+.rq-tools button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.rq-tools button:disabled{opacity:.35;cursor:default}
+.rq-sub{font-size:13px;font-weight:600;margin:12px 0 5px;color:var(--ink)}
+.rq-sub.fix{color:#166534}
+.rq-sub small{font-weight:400;color:var(--ink-light);margin-left:6px}
+.rq-text{width:100%;min-height:66px;resize:vertical}
+.rq-issues-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 0}
+#rQNote,#rIssues textarea{width:100%;box-sizing:border-box;border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg);transition:border-color .15s}
+#rQNote{min-height:70px;resize:vertical}
+#rQNote:focus,#rIssues textarea:focus{outline:none;border-color:var(--accent);background:white}
+#rIssues .rp-vphoto img{display:block;max-width:100%;max-height:220px;object-fit:contain;background:var(--bg);border:1px solid var(--rule);border-radius:var(--r);cursor:zoom-in}   /* the issue's pictures in the limited form (only to look at) */
+#rIssues .rp-vphoto div{font-size:13px;margin-top:5px}
+.rq-fix{margin-top:10px;padding:8px 10px;border-left:3px solid #16a34a;background:#f1faf3;border-radius:0 var(--r) var(--r) 0}
+.rq-static{white-space:pre-wrap;font-size:13.5px;line-height:1.55;margin:0 0 4px}
+.rq-static.empty{color:var(--ink-light)}
+.rp-view .rq-divider{margin:24px 0 12px;padding:5px 12px}
+.rp-view .rq-fixview{margin-top:10px;padding:8px 12px;border-left:3px solid #16a34a;background:#f1faf3;border-radius:0 var(--r) var(--r) 0}
 .rp-work{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .rp-work b{min-width:22px;font-size:12px;color:var(--ink-light);text-align:right}
 .rp-work input{flex:1}
@@ -717,11 +741,13 @@ body.has-footer .site-footer{display:flex}
       <option value="">ყველა ტიპი</option>
       <option value="weekly">ყოველკვირეული</option>
       <option value="daily">ყოველდღიური</option>
+      <option value="quality">ხარისხის</option>
     </select>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <button class="btn-primary" id="btnNewReport" style="display:none" onclick="openReportForm(null, 'weekly')">+ ყოველკვირეული ოქმი</button>
     <button class="btn-primary" id="btnNewDailyReport" style="display:none" onclick="openReportForm(null, 'daily')">+ ყოველდღიური ოქმი</button>
+    <button class="btn-primary" id="btnNewQualityReport" style="display:none" onclick="openReportForm(null, 'quality')">+ ხარისხის ოქმი</button>
     <div class="stats-row"><span class="stat-chip closed" id="reportsCount">0</span></div>
   </div>
 </div>
@@ -747,6 +773,7 @@ body.has-footer .site-footer{display:flex}
     <div class="modal-body rp-view" id="reportViewBody"></div>
     <div class="modal-footer">
       <button class="btn-secondary" id="btnReportViewPdf">⬇ PDF</button>
+      <button class="btn-secondary" id="btnReportViewFix" style="display:none">✓ გასწორების დამატება</button>
       <button class="btn-secondary" id="btnReportViewEdit" style="display:none">✎ რედაქტირება</button>
       <button class="btn-secondary" onclick="cm('reportViewModal')">დახურვა</button>
     </div>
@@ -905,12 +932,26 @@ body.has-footer .site-footer{display:flex}
       <div class="auth-hint" id="rWindowNote" style="display:none;margin-bottom:8px">ოქმის შეცვლა და წაშლა შესაძლებელია მხოლოდ შექმნიდან 24 საათის განმავლობაში</div>
       <div class="rp-info" id="rInfoPreview"></div>
       <button type="button" class="btn-secondary" style="font-size:12px;padding:5px 10px" onclick="refreshReportInfo()">↻ ობიექტის ინფორმაციის განახლება პროექტიდან</button>
-      <div class="rp-section">ფოტომასალა</div>
+      <div class="rp-section" id="rSecPhotos">ფოტომასალა</div>
       <div id="rPhotos"></div>
       <button type="button" class="btn-secondary" id="btnAddReportPhoto" onclick="addReportPhotoSlot()">+ ფოტოს დამატება</button>
       <input type="file" id="rPhotoInput" accept="image/*" multiple style="display:none">
-      <div class="rp-section">ობიექტზე მიმდინარე და დასრულებული სამუშაოები</div>
+      <div class="rp-section" id="rSecWorks">ობიექტზე მიმდინარე და დასრულებული სამუშაოები</div>
       <div id="rWorks"></div>
+      <!-- the quality report: numbered issues instead of the photos and the lists of works -->
+      <div class="auth-hint" id="rFixOnlyNote" style="display:none;margin:10px 0 0">ოქმის შეცვლის 24 საათი გავიდა. შეგიძლია თითოეულ საკითხს დაამატო „ხარვეზი გასწორებულია“ ფოტოებით და კომენტარებით.</div>
+      <div id="rQNoteBox" style="display:none">
+        <div class="rp-section">ზოგადი ინფორმაცია</div>
+        <textarea id="rQNote" placeholder="სურვილისამებრ: ზოგადი ინფორმაცია ოქმის შესახებ" maxlength="4000"></textarea>
+        <div class="rq-static" id="rQNoteStatic" style="display:none"></div>
+      </div>
+      <div class="rq-issues-head" id="rIssuesHead" style="display:none">
+        <div class="rp-section" style="margin:0">საკითხები</div>
+        <button type="button" class="btn-secondary" id="btnAddQualityIssueTop" style="font-size:12px;padding:4px 10px" onclick="addQualityIssue()">+ საკითხის დამატება</button>
+      </div>
+      <div id="rIssues" style="display:none"></div>
+      <button type="button" class="btn-secondary" id="btnAddQualityIssue" style="display:none;margin-top:14px" onclick="addQualityIssue()">+ საკითხის დამატება</button>
+      <input type="file" id="rQPhotoInput" accept="image/*" multiple style="display:none">
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeReportForm()">გაუქმება</button>
@@ -1217,6 +1258,31 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"ზოგადი ინფორმაცია": "General information",
+"სურვილისამებრ: ზოგადი ინფორმაცია ოქმის შესახებ": "Optional: general information about the report",
+"საკითხები": "Issues",
+"თარიღი:": "Date:",
+"მოამზადა:": "Prepared by:",
+"ხარისხის": "Quality",
+"+ ხარისხის ოქმი": "+ Quality report",
+"ახალი ხარისხის ოქმი": "New quality report",
+"ოქმის შეცვლის 24 საათი გავიდა. შეგიძლია თითოეულ საკითხს დაამატო „ხარვეზი გასწორებულია“ ფოტოებით და კომენტარებით.": "The 24 hours for changing the report have passed. You can add \"Defect corrected\" to each issue, with photos and comments.",
+"+ საკითხის დამატება": "+ Add an issue",
+"✓ გასწორების დამატება": "✓ Add a correction",
+"✓ გასწორება": "✓ Correction",
+"ხარვეზის გასწორების დამატება": "Add the correction of a defect",
+"ხარვეზის აღწერა": "Description of the defect",
+"სავარაუდო მიზეზი": "Probable cause",
+"გამოსწორების მეთოდი": "Method of correction",
+"ხარვეზი გასწორებულია": "Defect corrected",
+"+ ხარვეზი გასწორებულია": "+ Defect corrected",
+"+ ფოტო კომენტარით": "+ Photo with a comment",
+"კომენტარი": "Comment",
+"ფოტოს აღწერა (არასავალდებულოა)": "Photo description (optional)",
+"საკითხის წაშლა": "Delete the issue",
+"დაამატე ერთი საკითხი მაინც": "Add at least one issue",
+"საკითხი არ არის": "There are no issues",
+"აღწერა ან კომენტარი არის, მაგრამ ფოტო არ არის არჩეული. ასეთი ტექსტი არ შეინახება. მაინც შევინახო?": "There is a description or comment but no photo is chosen. Such text will not be saved. Save anyway?",
 "მისამართი არ არის მითითებული": "No address set",
 "პროექტ მენეჯერი (წერს ოქმებს და გეგმავს განვითარებას)": "Project manager (writes reports and plans the progress)",
 "ეს განყოფილება თქვენთვის მიუწვდომელია": "This section is not available to you",
@@ -1660,6 +1726,11 @@ body.has-footer .site-footer{display:flex}
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^გასწორების დამატება ([\s\S]+)$/, function (m) { return 'Add a correction ' + m[1]; }],
+    [/^ოქმში მაქსიმუმ (\d+) საკითხია$/, function (m) { return 'A report can have at most ' + m[1] + ' issues'; }],
+    [/^ერთ საკითხში მაქსიმუმ (\d+) ფოტოა$/, function (m) { return 'At most ' + m[1] + ' photos in one issue'; }],
+    [/^ცარიელი საკითხები \((\d+)\) არ შეინახება\. მაინც შევინახო\?$/, function (m) { return 'The empty issues (' + m[1] + ') will not be saved. Save anyway?'; }],
+    [/^წავშალო საკითხი (\d+)\? მისი ფოტოებიც წაიშლება\.$/, function (m) { return 'Delete issue ' + m[1] + '? Its photos will be deleted too.'; }],
     [/^წაიშლება ამ პროექტის განვითარების გრაფიკი მთლიანად: ეტაპები: (\d+), ცვლილებების ისტორია: (\d+)\. ყველა გეგმა და ფაქტიური მონაცემი წაიშლება და ვერ დაბრუნდება\. წავშალო\?$/, function (m) { return 'The whole progress chart of this project will be deleted: stages: ' + m[1] + ', history of changes: ' + m[2] + '. All the plan and actual data will be deleted and cannot be restored. Delete?'; }],
     [/^\+(\d+) დღე გვიან$/, function (m) { return '+' + m[1] + (m[1] === '1' ? ' day' : ' days') + ' late'; }],
     [/^(\d+) დღით ადრე$/, function (m) { return m[1] + (m[1] === '1' ? ' day' : ' days') + ' early'; }],
@@ -1951,6 +2022,8 @@ const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project) |
 const REPORT_EDIT_WINDOW_MS = 24 * 3600 * 1000;
 const reportEditable = r => !(r && r.createdAt && r.createdAt.toDate) || (Date.now() - r.createdAt.toDate().getTime() <= REPORT_EDIT_WINDOW_MS);   // no time yet (just created, still being saved) counts as new
 const canEditReport = (r, project) => isAdminLike() || ((isSiteManagerOf(project) || isProjectPmOf(project)) && r.authorId === currentUser?.uid && reportEditable(r));
+// A QUALITY report can no longer be changed after 24 hours, but anybody who may write reports on the project can still add "defect corrected" entries to its issues.
+const canAddReportFix = (r, project) => reportKind(r) === 'quality' && canWriteReportsOn(project);
 const canReadReports = () => currentGlobalRole !== 'contractor' || isAdminLike(); // everybody but contractors
 function canOpenInSectionAsUser(section) { return (section === 'internal' && canOpenDmAsUser()) || (section === 'mep' && canOpenMepAsUser()); }
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
@@ -6604,19 +6677,20 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
 
 // ── WEEKLY SITE REPORTS ("ოქმები") ──
 // A fifth section of every project, next to the review / DM / MEP sections but of its own kind: each report is one document
-// projects/{pid}/reports/{rid} = { type ('weekly' | 'daily'; missing = weekly), number, date, authorId, authorName, info (the object's name and address, copied from the project), photos [{url, path,
+// projects/{pid}/reports/{rid} = { type ('weekly' | 'daily' | 'quality'; missing = weekly), number, date, authorId, authorName, info (the object's name and address, copied from the project), photos [{url, path,
 // caption}], completed / ongoing / planned [text] }. Site managers (User accounts with the "write reports" right) and admins write them;
 // everybody but contractors reads them. A report can be downloaded as an A4 PDF (renderReportPdf, further below).
 const REPORT_SLOTS = 3, REPORT_MAX_PHOTOS = 12;            // photo places that are always there / the most photos in one report
 const REPORT_GROUPS = [['completed', 'შესრულებული სამუშაოები'], ['ongoing', 'მიმდინარე სამუშაოები'], ['planned', 'დაგეგმილი სამუშაოები']];
-// Two kinds of report, numbered separately: weekly (with a PDF) and daily (no PDF; nothing in the form is required).
+// Three kinds of report, numbered separately: weekly (with a PDF), daily (no PDF; nothing in the form is required) and quality (numbered issues, with a PDF: see THE QUALITY REPORT below).
 // A report's code: the project's code, the kind and a 3-digit number — MZK-wR-057 (weekly), MZK-dR-002 (daily); without a project code: wR-057 / dR-002.
 // A report saved before the kinds existed has no `type` and counts as weekly.
-const reportKind = r => (r && r.type === 'daily') ? 'daily' : 'weekly';
-const REPORT_KIND_LABEL = { weekly: 'ყოველკვირეული', daily: 'ყოველდღიური' };
+const reportKind = r => (r && r.type === 'daily') ? 'daily' : (r && r.type === 'quality') ? 'quality' : 'weekly';
+const REPORT_KIND_LABEL = { weekly: 'ყოველკვირეული', daily: 'ყოველდღიური', quality: 'ხარისხის' };
+const REPORT_CODE_LETTER = { weekly: 'wR', daily: 'dR', quality: 'qR' };   // MZK-wR-057 (weekly), MZK-dR-002 (daily), MZK-qR-001 (quality)
 function reportCode(project, r) {
   const prefix = String((project && project.code) || '').trim();
-  return [prefix, reportKind(r) === 'daily' ? 'dR' : 'wR', String(r.number == null ? '' : r.number).padStart(3, '0')].filter(Boolean).join('-');
+  return [prefix, REPORT_CODE_LETTER[reportKind(r)], String(r.number == null ? '' : r.number).padStart(3, '0')].filter(Boolean).join('-');
 }
 // The company logo for the PDF (Biograpi Living): a PNG with a transparent background, 711 x 200 px — the proportions of the original SVG file. null = a "LOGO" placeholder.
 const REPORT_LOGO = { dataUrl: 'data:image/png;base64,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', width: 711, height: 200 };
@@ -6642,6 +6716,7 @@ window.openReports = async pid => {
   document.getElementById('reportsTypeFilter').value = '';
   document.getElementById('btnNewReport').style.display = 'none';   // the two "new report" buttons are shown below once we know whether this person may write here
   document.getElementById('btnNewDailyReport').style.display = 'none';
+  document.getElementById('btnNewQualityReport').style.display = 'none';
   document.getElementById('reportsHint').textContent = '';
   document.getElementById('reportsCount').textContent = '';
   document.getElementById('reportsTbody').textContent = 'იტვირთება...';
@@ -6657,6 +6732,7 @@ window.openReports = async pid => {
     const mayWrite = canWriteReportsOn(reportsProject);
     document.getElementById('btnNewReport').style.display = mayWrite ? '' : 'none';
     document.getElementById('btnNewDailyReport').style.display = mayWrite ? '' : 'none';
+    document.getElementById('btnNewQualityReport').style.display = mayWrite ? '' : 'none';
     document.getElementById('reportsHint').textContent = mayWrite ? '' : 'ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში)';
     await loadReports();
   } catch (e) { document.getElementById('reportsTbody').textContent = 'შეცდომა: ' + e.message; }
@@ -6682,7 +6758,7 @@ async function loadReports() {
 function filteredReports() {
   const words = document.getElementById('reportsSearch').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const kind = document.getElementById('reportsTypeFilter').value;
-  const text = r => [reportCode(reportsProject, r), REPORT_KIND_LABEL[reportKind(r)], reportDate(r.date), r.authorName, ...(r.photos || []).map(ph => ph.caption), ...(r.completed || []), ...(r.ongoing || []), ...(r.planned || [])].join(' ').toLowerCase();
+  const text = r => [reportCode(reportsProject, r), REPORT_KIND_LABEL[reportKind(r)], reportDate(r.date), r.authorName, ...(r.photos || []).map(ph => ph.caption), ...(r.completed || []), ...(r.ongoing || []), ...(r.planned || []), ...qualityText(r)].join(' ').toLowerCase();
   const order = (a, b) => String(a.date || '').localeCompare(String(b.date || '')) || ((a.number || 0) - (b.number || 0));
   return reportsList.filter(r => (!kind || reportKind(r) === kind) && words.every(w => text(r).includes(w))).sort((a, b) => reportsSortDesc ? order(b, a) : order(a, b));
 }
@@ -6697,9 +6773,10 @@ function renderReportsList() {
       <div class="issue-date-cell">${esc(reportDate(r.date))}</div>
       <div class="issue-title-cell">${esc(r.authorName || '')}</div>
       <div class="rp-actions">
-        ${reportKind(r) === 'weekly' ? `<button class="btn-secondary" style="padding:4px 9px;font-size:11.5px" onclick="event.stopPropagation(); downloadReportPdf('${r.id}')">⬇ PDF</button>` : ''}
+        ${reportKind(r) !== 'daily' ? `<button class="btn-secondary" style="padding:4px 9px;font-size:11.5px" onclick="event.stopPropagation(); downloadReportPdf('${r.id}')">⬇ PDF</button>` : ''}
         ${canEditReport(r, reportsProject) ? `<button class="icon-btn" title="რედაქტირება" onclick="event.stopPropagation(); openReportForm('${r.id}')">${ICON_EDIT}</button>
           <button class="icon-btn del" title="წაშლა" onclick="event.stopPropagation(); deleteReport('${r.id}')">${ICON_DELETE}</button>` : ''}
+        ${!canEditReport(r, reportsProject) && canAddReportFix(r, reportsProject) ? `<button class="btn-secondary" style="padding:4px 9px;font-size:11.5px" title="ხარვეზის გასწორების დამატება" onclick="event.stopPropagation(); openReportForm('${r.id}')">✓ გასწორება</button>` : ''}
       </div>
     </div>`).join('') : `<div style="padding:20px;color:var(--ink-light);font-size:13px">${reportsList.length ? 'ძებნით არაფერი მოიძებნა' : 'ოქმი ჯერ არ არის'}</div>`;
 }
@@ -6711,6 +6788,8 @@ document.getElementById('rpHeadNumber').addEventListener('click', () => { report
 window.openReportView = id => {
   const r = reportsList.find(x => x.id === id); if (!r) return;
   reportViewId = id;
+  document.getElementById('btnReportViewFix').style.display = 'none';
+  if (reportKind(r) === 'quality') { renderQualityView(r); return; }
   const info = r.info || reportInfoFromProject(reportsProject || {});
   const photos = r.photos || [];
   const group = (title, items) => `<div style="font-weight:600;font-size:13px;margin:12px 0 4px">${title}</div>` +
@@ -6733,8 +6812,11 @@ document.getElementById('btnReportViewEdit').addEventListener('click', () => { c
 window.openReportForm = (id, type) => {
   if (!canWriteReportsOn(reportsProject)) return;
   editingReport = id ? reportsList.find(r => r.id === id) : null;
-  if (id && (!editingReport || !canEditReport(editingReport, reportsProject))) return;
-  reportFormType = editingReport ? reportKind(editingReport) : (type === 'daily' ? 'daily' : 'weekly');   // a new report: the button that was pressed; an old one keeps its kind
+  if (id && !editingReport) return;
+  // an old QUALITY report that can no longer be changed still opens, only to add "defect corrected" entries to its issues
+  reportFixOnly = !!(editingReport && !canEditReport(editingReport, reportsProject));
+  if (reportFixOnly && !canAddReportFix(editingReport, reportsProject)) { reportFixOnly = false; return; }
+  reportFormType = editingReport ? reportKind(editingReport) : (type === 'daily' ? 'daily' : type === 'quality' ? 'quality' : 'weekly');   // a new report: the button that was pressed; an old one keeps its kind
   reportStorageId = editingReport ? editingReport.id : doc(collection(db, 'projects', reportsProjectId, 'reports')).id; // names the photo folder before the first save
   reportInfoDraft = (editingReport && editingReport.info) || reportInfoFromProject(reportsProject || {});
   reportPhotosToDelete = []; reportUploadedThisSession = []; reportUploads = 0;
@@ -6747,17 +6829,19 @@ window.openReportForm = (id, type) => {
   document.getElementById('rNumber').value = editingReport ? editingReport.number : (nextNumber == null ? '' : nextNumber);
   document.getElementById('rDate').value = reportDate(editingReport ? editingReport.date : todayDotted().replace(/\./g, '-'));
   document.getElementById('rAuthor').value = editingReport ? (editingReport.authorName || '') : currentUserName;
-  document.getElementById('reportFormTitle').textContent = editingReport ? `ოქმის რედაქტირება ${reportCode(reportsProject, editingReport)}` : (reportFormType === 'daily' ? 'ახალი ყოველდღიური ოქმი' : 'ახალი ყოველკვირეული ოქმი');
+  document.getElementById('reportFormTitle').textContent = reportFixOnly ? `გასწორების დამატება ${reportCode(reportsProject, editingReport)}` : editingReport ? `ოქმის რედაქტირება ${reportCode(reportsProject, editingReport)}` : (reportFormType === 'daily' ? 'ახალი ყოველდღიური ოქმი' : reportFormType === 'quality' ? 'ახალი ხარისხის ოქმი' : 'ახალი ყოველკვირეული ოქმი');
   document.getElementById('rDailyNote').style.display = reportFormType === 'daily' ? '' : 'none';
-  document.getElementById('rWindowNote').style.display = isAdminLike() ? 'none' : '';   // an admin may change a report at any time
+  document.getElementById('rWindowNote').style.display = isAdminLike() || reportFixOnly ? 'none' : '';   // an admin may change a report at any time (the limited form has a note of its own)
   updateReportCodePreview();
+  if (reportFormType === 'quality') qLoadState(editingReport); else { qIssues = []; }
   renderReportInfo(); renderReportPhotos(); renderReportWorks();
+  applyReportFormKind();
   om('reportModal');
 };
-// The next number for a kind: the last number of that kind + 1; with none yet, 1 for a daily report and nothing (typed by hand) for a weekly one.
+// The next number for a kind: the last number of that kind + 1; with none yet, 1 for a daily or a quality report and nothing (typed by hand) for a weekly one.
 function nextReportNumber(kind) {
   const nums = reportsList.filter(r => reportKind(r) === kind).map(r => Number(r.number) || 0);
-  return nums.length ? Math.max(...nums) + 1 : (kind === 'daily' ? 1 : null);
+  return nums.length ? Math.max(...nums) + 1 : (kind === 'weekly' ? null : 1);
 }
 // Under the number field: the code the report will get, as the number is typed.
 window.updateReportCodePreview = () => {
@@ -6857,10 +6941,12 @@ window.closeReportForm = () => {
   if (reportUploads && !confirm('ფოტოების ატვირთვა ჯერ არ დასრულებულა. მაინც დავხურო?')) return;
   deleteReportFiles(reportUploadedThisSession);   // pictures uploaded in this session but never saved
   reportUploadedThisSession = []; reportPhotosToDelete = [];
+  qIssues = []; reportFixOnly = false;
   cm('reportModal');
 };
 window.saveReport = async () => {
   if (reportUploads) { alert('ფოტოების ატვირთვა ჯერ არ დასრულებულა, მოიცადე'); return; }
+  if (reportFormType === 'quality') return saveQualityReport();
   // A weekly report needs its number and a description for every photo. A daily report needs nothing: an empty number is filled in with the next one.
   const daily = reportFormType === 'daily';
   let number = parseInt(document.getElementById('rNumber').value, 10);
@@ -6903,10 +6989,239 @@ window.deleteReport = async id => {
   if (!confirm(`წავშალო ოქმი ${reportCode(reportsProject, r)}? მისი ფოტოებიც წაიშლება.`)) return;
   try {
     await deleteDoc(doc(db, 'projects', reportsProjectId, 'reports', id));
-    deleteReportFiles((r.photos || []).map(ph => ph.path).filter(Boolean));
+    deleteReportFiles(reportAllPhotoPaths(r));
     await loadReports();
   } catch (e) { alert(e && e.code === 'permission-denied' && !isAdminLike() ? 'ოქმის წაშლის დრო (24 საათი) ამოიწურა' : 'შეცდომა წაშლისას: ' + e.message); }
 };
+
+// ══ THE QUALITY REPORT ("ხარისხის ოქმი", code qR) ══
+// A third kind of report: instead of photos and lists of works it has numbered ISSUES (01, 02, ...). Each issue = a picture or several (each with an optional description), then
+// three sub-headings with a text under each: the description of the defect, its probable cause and the method of correction. Stored in the same document:
+//   issues: [{ id, photos: [{ url, path, caption }], defect, cause, method }]
+//   fixes:  [{ issueId, photos: [{ url, path, caption }], at (ISO time), by (uid), byName }]    ← "defect corrected": photos with comments, added to an issue
+// The report is edited like any other during its first 24 hours (the author; an admin at any time). After that the issues are closed, but anybody who may write reports on the project
+// (and an admin) can still add "defect corrected" entries (the form then opens in a limited way: reportFixOnly); the database rules let only the field "fixes" change.
+const REPORT_MAX_ISSUES = 40, REPORT_ISSUE_PHOTOS = 6;
+let qIssues = [], qPick = null, reportFixOnly = false;
+const qNum = i => String(i + 1).padStart(2, '0');
+const qNewId = () => 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const qEmptySlot = () => ({ url: '', path: '', caption: '', busy: false });
+const qBlankIssue = () => ({ id: qNewId(), defect: '', cause: '', method: '', photos: [qEmptySlot()], fix: null });
+const qCopyPhotos = list => (list || []).map(ph => ({ url: ph.url, path: ph.path || '', caption: ph.caption || '', busy: false }));
+// every picture of a report (the old kinds: photos; the quality kind: the issues' pictures and the "corrected" pictures)
+function reportAllPhotoPaths(r) {
+  const out = [...(r.photos || [])];
+  (r.issues || []).forEach(it => out.push(...(it.photos || [])));
+  (r.fixes || []).forEach(f => out.push(...(f.photos || [])));
+  return out.map(ph => ph.path).filter(Boolean);
+}
+// the words of a quality report, for the search box
+const qualityText = r => [r.note || '', ...(r.issues || []).flatMap(it => [it.defect, it.cause, it.method, ...(it.photos || []).map(ph => ph.caption)]), ...(r.fixes || []).flatMap(f => (f.photos || []).map(ph => ph.caption))];
+
+// from a saved report (or nothing) into the state of the editor
+function qLoadState(r) {
+  const fixes = new Map(((r && r.fixes) || []).map(f => [f.issueId, f]));
+  qIssues = ((r && r.issues) || []).map(it => {
+    const f = fixes.get(it.id);
+    return { id: it.id, defect: it.defect || '', cause: it.cause || '', method: it.method || '', photos: qCopyPhotos(it.photos),
+      fix: f ? { photos: qCopyPhotos(f.photos), at: f.at || '', by: f.by || '', byName: f.byName || '', dirty: false } : null };
+  });
+  if (!qIssues.length && !reportFixOnly) qIssues.push(qBlankIssue());
+  if (!reportFixOnly) qIssues.forEach(it => { if (!it.photos.length) it.photos.push(qEmptySlot()); });
+}
+// the form shows what belongs to the kind of report: the quality report has its issues, the others their photos and lists
+function applyReportFormKind() {
+  const quality = reportFormType === 'quality', $ = id => document.getElementById(id);
+  ['rSecPhotos', 'rPhotos', 'btnAddReportPhoto', 'rSecWorks', 'rWorks'].forEach(id => { $(id).style.display = quality ? 'none' : ''; });
+  $('rIssues').style.display = quality ? '' : 'none';
+  $('rIssuesHead').style.display = quality ? '' : 'none';
+  $('btnAddQualityIssueTop').style.display = quality && !reportFixOnly ? '' : 'none';
+  $('btnAddQualityIssue').style.display = quality && !reportFixOnly ? '' : 'none';
+  // the general information: one optional text above the issues (only to be read in the limited form, and then only if there is one)
+  const note = (editingReport && editingReport.note) || '';
+  $('rQNote').value = note;
+  $('rQNoteBox').style.display = quality && !(reportFixOnly && !note.trim()) ? '' : 'none';
+  $('rQNote').style.display = reportFixOnly ? 'none' : '';
+  $('rQNoteStatic').style.display = quality && reportFixOnly && note.trim() ? '' : 'none';
+  $('rQNoteStatic').textContent = note;
+  $('rFixOnlyNote').style.display = quality && reportFixOnly ? '' : 'none';
+  $('rNumber').disabled = reportFixOnly;
+  const refresh = document.querySelector('#reportModal button[onclick="refreshReportInfo()"]'); if (refresh) refresh.style.display = reportFixOnly ? 'none' : '';
+  if (quality) renderQualityIssues();
+}
+
+// ── the issues in the form ──
+const qSlots = (i, kind) => { const it = qIssues[i]; return it ? (kind === 'fix' ? (it.fix && it.fix.photos) : it.photos) : null; };
+const qPhotoHtml = (s, i, kind, j, placeholder, readonly) => readonly
+  ? `<div class="rp-vphoto" style="margin-bottom:12px"><img src="${esc(s.url)}" alt="" onclick="qOpenPhoto(${i},'${kind}',${j})">${s.caption ? `<div>${esc(s.caption)}</div>` : ''}</div>`
+  : `<div class="rp-photo">
+      <div class="rp-photo-box" onclick="qPickPhoto(${i},'${kind}',${j})">${s.busy ? '<span class="spinner-dark"></span>' : (s.url ? `<img src="${esc(s.url)}" alt="">` : '📷<br>ფოტოს არჩევა')}</div>
+      <textarea data-qf="${i}|${kind}${j}" placeholder="${placeholder}" oninput="qSetCaption(${i},'${kind}',${j},this.value)">${esc(s.caption)}</textarea>
+      <button type="button" class="rp-x" title="${kind === 'issue' && j === 0 ? 'გასუფთავება' : 'წაშლა'}" onclick="qRemovePhoto(${i},'${kind}',${j})">✕</button>
+    </div>`;
+function renderQualityIssues() {
+  const ro = reportFixOnly, el = document.getElementById('rIssues');
+  const active = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.qf : null;
+  const caret = active ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+  const fixDate = f => f.at ? ` · ${reportDate(String(f.at).slice(0, 10))}${f.byName ? ' · ' + esc(f.byName) : ''}` : '';
+  el.innerHTML = qIssues.map((it, i) => {
+    const text = (k, label) => ro
+      ? `<div class="rq-sub">${label}</div><div class="rq-static${it[k].trim() ? '' : ' empty'}">${it[k].trim() ? esc(it[k]) : '—'}</div>`
+      : `<div class="rq-sub">${label}</div><textarea class="rq-text" data-qf="${i}|${k}" oninput="qSetField(${i},'${k}',this.value)">${esc(it[k])}</textarea>`;
+    const photos = ro ? it.photos.filter(s => s.url).map((s, j) => qPhotoHtml(s, i, 'issue', j, '', true)).join('')
+      : it.photos.map((s, j) => qPhotoHtml(s, i, 'issue', j, 'ფოტოს აღწერა (არასავალდებულოა)', false)).join('') +
+        (it.photos.length < REPORT_ISSUE_PHOTOS ? `<button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="qAddPhotoSlot(${i},'issue')">+ ფოტოს დამატება</button>` : '');
+    const fix = it.fix
+      ? `<div class="rq-fix"><div class="rq-sub fix" style="margin-top:0">ხარვეზი გასწორებულია<small>${fixDate(it.fix)}</small></div>` +
+        it.fix.photos.map((s, j) => qPhotoHtml(s, i, 'fix', j, 'კომენტარი', false)).join('') +
+        (it.fix.photos.length < REPORT_ISSUE_PHOTOS ? `<button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px" onclick="qAddPhotoSlot(${i},'fix')">+ ფოტო კომენტარით</button>` : '') + `</div>`
+      : `<button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px;margin-top:12px" onclick="qOpenFix(${i})">+ ხარვეზი გასწორებულია</button>`;
+    return `<div class="rq-issue">
+      <div class="rq-divider">${qNum(i)}${ro ? '' : `<span class="rq-tools"><button type="button" title="ზევით" ${i === 0 ? 'disabled' : ''} onclick="qMoveIssue(${i},-1)">↑</button><button type="button" title="ქვევით" ${i === qIssues.length - 1 ? 'disabled' : ''} onclick="qMoveIssue(${i},1)">↓</button><button type="button" title="საკითხის წაშლა" onclick="qRemoveIssue(${i})">✕</button></span>`}</div>
+      ${photos}${text('defect', 'ხარვეზის აღწერა')}${text('cause', 'სავარაუდო მიზეზი')}${text('method', 'გამოსწორების მეთოდი')}${fix}
+    </div>`;
+  }).join('');
+  if (active) { const t = el.querySelector(`[data-qf="${active}"]`); if (t) { t.focus(); if (caret && t.setSelectionRange) t.setSelectionRange(caret[0], caret[1]); } }
+}
+window.qSetField = (i, k, v) => { if (qIssues[i]) qIssues[i][k] = v; };
+window.qSetCaption = (i, kind, j, v) => { const slots = qSlots(i, kind); if (slots && slots[j]) { slots[j].caption = v; if (kind === 'fix') qIssues[i].fix.dirty = true; } };
+window.addQualityIssue = () => {
+  if (qIssues.length >= REPORT_MAX_ISSUES) { alert(`ოქმში მაქსიმუმ ${REPORT_MAX_ISSUES} საკითხია`); return; }
+  qIssues.push(qBlankIssue()); renderQualityIssues();
+  const last = document.querySelectorAll('#rIssues .rq-issue'); if (last.length && last[last.length - 1].scrollIntoView) last[last.length - 1].scrollIntoView({ block: 'nearest' });   // the new issue comes into view
+};
+function qAllPaths(it) { return [...it.photos, ...(it.fix ? it.fix.photos : [])].map(s => s.path).filter(Boolean); }
+window.qRemoveIssue = i => {
+  const it = qIssues[i]; if (!it) return;
+  const filled = it.defect.trim() || it.cause.trim() || it.method.trim() || it.photos.some(s => s.url) || (it.fix && it.fix.photos.some(s => s.url));
+  if (filled && !confirm(`წავშალო საკითხი ${qNum(i)}? მისი ფოტოებიც წაიშლება.`)) return;
+  reportPhotosToDelete.push(...qAllPaths(it));
+  qIssues.splice(i, 1);
+  if (!qIssues.length) qIssues.push(qBlankIssue());
+  renderQualityIssues();
+};
+window.qMoveIssue = (i, d) => { const j = i + d; if (j < 0 || j >= qIssues.length) return; [qIssues[i], qIssues[j]] = [qIssues[j], qIssues[i]]; renderQualityIssues(); };
+window.qOpenFix = i => { const it = qIssues[i]; if (!it || it.fix) return; it.fix = { photos: [qEmptySlot()], at: '', by: '', byName: '', dirty: true }; renderQualityIssues(); };
+window.qAddPhotoSlot = (i, kind) => {
+  const slots = qSlots(i, kind); if (!slots || slots.length >= REPORT_ISSUE_PHOTOS) return;
+  slots.push(qEmptySlot()); if (kind === 'fix') qIssues[i].fix.dirty = true;
+  renderQualityIssues(); qPickPhoto(i, kind, slots.length - 1);
+};
+window.qRemovePhoto = (i, kind, j) => {
+  const slots = qSlots(i, kind), s = slots && slots[j]; if (!s) return;
+  if (s.path) reportPhotosToDelete.push(s.path);        // removed from Storage when the report is saved
+  if (kind === 'issue' && j === 0 && slots.length === 1) slots[0] = qEmptySlot(); else slots.splice(j, 1);
+  if (kind === 'fix') { qIssues[i].fix.dirty = true; if (!slots.length) qIssues[i].fix = null; }
+  renderQualityIssues();
+};
+window.qPickPhoto = (i, kind, j) => { qPick = { i, kind, j }; const input = document.getElementById('rQPhotoInput'); input.value = ''; input.click(); };
+// the picture in the lightbox (reading or fixing: only the saved-looking ones)
+window.qOpenPhoto = (i, kind, j) => { const slots = qSlots(i, kind) || []; const urls = slots.filter(s => s.url).map(s => s.url); openLightbox(urls, Math.max(0, slots.slice(0, j).filter(s => s.url).length)); };
+// several files may be chosen at once: the first goes to the place that was clicked, the others to the next free places (new ones are added)
+document.getElementById('rQPhotoInput').addEventListener('change', async e => {
+  const files = [...e.target.files].filter(f => f.type && f.type.startsWith('image/'));
+  if (!files.length || !qPick) return;
+  const { i, kind } = qPick, slots = qSlots(i, kind); if (!slots) return;
+  const targets = [];
+  files.forEach((f, k) => {
+    let idx = k === 0 ? qPick.j : slots.findIndex((s, jj) => jj > qPick.j && !s.url && !s.busy && !targets.some(t => t.slot === s));
+    if (idx < 0 || (k > 0 && idx === qPick.j)) { if (slots.length >= REPORT_ISSUE_PHOTOS) return; slots.push(qEmptySlot()); idx = slots.length - 1; }
+    targets.push({ slot: slots[idx], file: f });
+  });
+  if (files.length > targets.length) alert(`ერთ საკითხში მაქსიმუმ ${REPORT_ISSUE_PHOTOS} ფოტოა`);
+  targets.forEach(t => { t.slot.busy = true; });
+  if (kind === 'fix' && qIssues[i] && qIssues[i].fix) qIssues[i].fix.dirty = true;
+  renderQualityIssues();
+  for (const t of targets) await uploadQualityPhoto(t.slot, t.file, kind === 'fix');   // one after another (phone photos are big)
+});
+// A "corrected" picture is named fix_...: the storage rules let those be added at any time, the others only while the report can still be changed.
+async function uploadQualityPhoto(slot, file, isFix) {
+  reportUploads++;
+  try {
+    const blob = await compressImage(file, 2000, 0.85);
+    const path = `projects/${reportsProjectId}/reports/${reportStorageId}/${isFix ? 'fix_' : ''}${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const ref = storageRef(storage, path);
+    await uploadBytes(ref, blob, { contentType: 'image/jpeg' });
+    const url = await getDownloadURL(ref);
+    if (slot.path) reportPhotosToDelete.push(slot.path);
+    slot.url = url; slot.path = path; reportUploadedThisSession.push(path);
+  } catch (e) {
+    alert(e && e.code === 'storage/quota-exceeded' ? 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.' : 'სურათის ატვირთვის შეცდომა: ' + (e && e.message));
+  } finally {
+    slot.busy = false; reportUploads--;
+    renderQualityIssues();
+  }
+}
+
+// ── saving ──
+// During the first 24 hours (or for an admin): everything. Afterwards: only the "defect corrected" entries (the field "fixes").
+async function saveQualityReport() {
+  const limited = reportFixOnly;
+  const fixOf = it => (it.fix ? it.fix.photos : []);
+  if (!limited) {
+    const filled = it => it.defect.trim() || it.cause.trim() || it.method.trim() || it.photos.some(s => s.url);
+    const empty = qIssues.filter(it => !filled(it));
+    if (empty.length === qIssues.length) { alert('დაამატე ერთი საკითხი მაინც'); return; }
+    if (empty.length && !confirm(`ცარიელი საკითხები (${empty.length}) არ შეინახება. მაინც შევინახო?`)) return;
+  }
+  const orphan = qIssues.some(it => (limited ? [] : it.photos).concat(fixOf(it)).some(s => !s.url && s.caption.trim()));
+  if (orphan && !confirm('აღწერა ან კომენტარი არის, მაგრამ ფოტო არ არის არჩეული. ასეთი ტექსტი არ შეინახება. მაინც შევინახო?')) return;
+  let number = parseInt(document.getElementById('rNumber').value, 10);
+  if (!Number.isInteger(number) || number < 1) number = editingReport ? editingReport.number : nextReportNumber('quality');
+  const code = reportCode(reportsProject, { type: 'quality', number });
+  if (!limited && reportsList.some(r => r.id !== (editingReport && editingReport.id) && reportKind(r) === 'quality' && Number(r.number) === number) && !confirm(`ოქმი ${code} უკვე არსებობს ამ პროექტში. მაინც შევინახო?`)) return;
+  const cleanPhotos = list => list.filter(s => s.url).map(s => ({ url: s.url, path: s.path, caption: s.caption.trim() }));
+  const kept = limited ? qIssues : qIssues.filter(it => it.defect.trim() || it.cause.trim() || it.method.trim() || it.photos.some(s => s.url));
+  const now = new Date().toISOString();
+  const fixes = kept.filter(it => fixOf(it).some(s => s.url)).map(it => {
+    const changed = it.fix.dirty || !it.fix.at;
+    return { issueId: it.id, photos: cleanPhotos(it.fix.photos), at: changed ? now : it.fix.at, by: changed ? currentUser.uid : it.fix.by, byName: changed ? (currentUserName || '') : it.fix.byName };
+  });
+  const issues = kept.map(it => ({ id: it.id, photos: cleanPhotos(it.photos), defect: it.defect.trim(), cause: it.cause.trim(), method: it.method.trim() }));
+  const note = limited ? '' : document.getElementById('rQNote').value.trim();
+  const data = limited ? { fixes, updatedAt: serverTimestamp() } : { type: 'quality', number, info: reportInfoDraft, note, issues, fixes, updatedAt: serverTimestamp() };
+  const btn = document.getElementById('btnSaveReport'); btn.disabled = true; btn.textContent = 'ინახება...';
+  try {
+    const ref = doc(db, 'projects', reportsProjectId, 'reports', reportStorageId);
+    if (editingReport) await updateDoc(ref, data);
+    else await setDoc(ref, { ...data, date: todayDotted().replace(/\./g, '-'), authorId: currentUser.uid, authorName: currentUserName, createdAt: serverTimestamp() });
+    const nowPaths = new Set([...issues.flatMap(it => it.photos), ...fixes.flatMap(f => f.photos)].map(ph => ph.path));
+    const gone = reportPhotosToDelete.filter(path => !nowPaths.has(path));    // removed pictures that are not in the saved report any more
+    reportPhotosToDelete = []; reportUploadedThisSession = [];
+    deleteReportFiles(gone);
+    cm('reportModal');
+    showToast('ოქმი შენახულია');
+    await loadReports();
+  } catch (e) { alert(e && e.code === 'permission-denied' && editingReport && !isAdminLike() && !limited ? 'ოქმის შეცვლის დრო (24 საათი) ამოიწურა' : 'შეცდომა შენახვისას: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = 'შენახვა'; }
+}
+
+// ── reading ──
+let reportViewUrls = [];
+window.openReportViewPhoto = k => openLightbox(reportViewUrls, k);
+function renderQualityView(r) {
+  const info = r.info || reportInfoFromProject(reportsProject || {});
+  const fixes = new Map((r.fixes || []).map(f => [f.issueId, f]));
+  reportViewUrls = [];
+  const img = ph => { const k = reportViewUrls.push(ph.url) - 1; return `<div class="rp-vphoto"><img src="${esc(ph.url)}" alt="" onclick="openReportViewPhoto(${k})">${ph.caption ? `<div>${esc(ph.caption)}</div>` : ''}</div>`; };
+  const text = (label, t) => `<div class="rq-sub">${label}</div><div class="rq-static${String(t || '').trim() ? '' : ' empty'}">${String(t || '').trim() ? esc(t) : '—'}</div>`;
+  const issues = (r.issues || []).map((it, i) => {
+    const f = fixes.get(it.id);
+    return `<div class="rq-divider">${qNum(i)}</div>` + (it.photos || []).map(img).join('') +
+      text('ხარვეზის აღწერა', it.defect) + text('სავარაუდო მიზეზი', it.cause) + text('გამოსწორების მეთოდი', it.method) +
+      (f && (f.photos || []).length ? `<div class="rq-fixview"><div class="rq-sub fix" style="margin-top:0">ხარვეზი გასწორებულია<small>${f.at ? reportDate(String(f.at).slice(0, 10)) : ''}${f.byName ? ' · ' + esc(f.byName) : ''}</small></div>${f.photos.map(img).join('')}</div>` : '');
+  }).join('');
+  document.getElementById('reportViewTitle').textContent = `ოქმი ${reportCode(reportsProject, r)}`;
+  document.getElementById('reportViewBody').innerHTML =
+    `<p><b>ტიპი:</b> ${REPORT_KIND_LABEL.quality}</p><p><b>ობიექტი:</b> ${esc(info.projectName)}</p><p><b>მისამართი:</b> ${esc(info.address || '—')}</p><p><b>თარიღი:</b> ${esc(reportDate(r.date))}</p><p><b>მოამზადა:</b> ${esc(r.authorName || '')}</p>` +
+    (String(r.note || '').trim() ? `<div class="rq-sub">ზოგადი ინფორმაცია</div><div class="rq-static">${esc(r.note)}</div>` : '') +
+    (issues || '<div style="color:var(--ink-light)">საკითხი არ არის</div>');
+  document.getElementById('btnReportViewEdit').style.display = canEditReport(r, reportsProject) ? '' : 'none';
+  document.getElementById('btnReportViewFix').style.display = !canEditReport(r, reportsProject) && canAddReportFix(r, reportsProject) ? '' : 'none';
+  document.getElementById('btnReportViewPdf').style.display = '';
+  om('reportViewModal');
+}
+document.getElementById('btnReportViewFix').addEventListener('click', () => { cm('reportViewModal'); openReportForm(reportViewId); });
 
 // ── Report → PDF: the pieces are fetched here (the fonts from the fonts folder next to this page, the photos from Storage) and
 // handed to renderReportPdf, which draws the A4 pages. ──
@@ -6929,14 +7244,28 @@ async function loadReportPhoto(ph) {   // → { caption, dataUrl, width, height 
   } catch (e) { return { caption: ph.caption, dataUrl: null }; }
 }
 window.downloadReportPdf = async id => {
-  const r = reportsList.find(x => x.id === id); if (!r || reportKind(r) !== 'weekly') return;   // a daily report has no PDF
+  const r = reportsList.find(x => x.id === id); if (!r || reportKind(r) === 'daily') return;   // a daily report has no PDF
   showToast('PDF მზადდება...');
   try {
     const fonts = await loadReportFonts();
-    const photos = []; for (const ph of (r.photos || [])) photos.push(await loadReportPhoto(ph));
-    const report = { code: reportCode(reportsProject, r), number: r.number, date: r.date, authorName: r.authorName, info: r.info || reportInfoFromProject(reportsProject || {}), photos, completed: r.completed, ongoing: r.ongoing, planned: r.planned };
+    const info = r.info || reportInfoFromProject(reportsProject || {});
+    let report;
+    if (reportKind(r) === 'quality') {   // the issues, each with its pictures and, if there is one, its "defect corrected" pictures
+      const fixes = new Map((r.fixes || []).map(f => [f.issueId, f]));
+      const issues = [];
+      for (const [i, it] of (r.issues || []).entries()) {
+        const photos = []; for (const ph of (it.photos || [])) photos.push(await loadReportPhoto(ph));
+        const f = fixes.get(it.id); let fix = null;
+        if (f && (f.photos || []).length) { const fp = []; for (const ph of f.photos) fp.push(await loadReportPhoto(ph)); fix = { photos: fp, at: f.at, byName: f.byName }; }
+        issues.push({ number: qNum(i), photos, defect: it.defect, cause: it.cause, method: it.method, fix });
+      }
+      report = { kind: 'quality', code: reportCode(reportsProject, r), number: r.number, date: r.date, authorName: r.authorName, info, note: r.note || '', issues };
+    } else {
+      const photos = []; for (const ph of (r.photos || [])) photos.push(await loadReportPhoto(ph));
+      report = { code: reportCode(reportsProject, r), number: r.number, date: r.date, authorName: r.authorName, info, photos, completed: r.completed, ongoing: r.ongoing, planned: r.planned };
+    }
     const pdf = renderReportPdf(window.jspdf.jsPDF, report, { fontRegular: fonts.regular, fontBold: fonts.bold, logo: REPORT_LOGO, downloadedOn: todayDotted() });
-    pdf.save(`${reportCode(reportsProject, r).replace(/[^\w-]+/g, '_')}.pdf`);   // e.g. MZK-wR-057.pdf
+    pdf.save(`${reportCode(reportsProject, r).replace(/[^\w-]+/g, '_')}.pdf`);   // e.g. MZK-wR-057.pdf, MZK-qR-001.pdf
   } catch (e) {
     console.error('report pdf failed:', e);
     showToast('PDF-ის შექმნა ვერ მოხერხდა' + (/fonts|NotoSans/.test(String(e && e.message)) ? ' (ფონტის ფაილები ვერ ჩაიტვირთა)' : ''));
@@ -6950,8 +7279,11 @@ window.downloadReportPdf = async id => {
 //              info: { projectName, address },
 //              photos: [{ caption, dataUrl, width, height }]  (dataUrl = JPEG; width/height = its pixel size; no dataUrl = failed to load),
 //              completed: [text], ongoing: [text], planned: [text] }
+//   A QUALITY report: report.kind = 'quality', report.note (the general information, may be empty) and instead of photos / completed / ongoing / planned:
+//              issues: [{ number ('01'), photos: [{ caption, dataUrl, width, height }], defect, cause, method, fix: null | { photos: [...], at (ISO), byName } }]
 //   assets = { fontRegular, fontBold  (the font files as base64),  logo ({ dataUrl (PNG), width, height } in pixels, or null → a "LOGO" placeholder),  downloadedOn: 'YYYY.MM.DD' }
 const REPORT_TITLE = 'ობიექტზე სამუშაოთა მიმდინარეობის გეგმიური ოქმი';
+const QUALITY_REPORT_TITLE = 'ხარისხის ოქმი';
 function renderReportPdf(JsPDF, report, assets) {
   const doc = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
   doc.addFileToVFS('NotoSansGeorgian-Regular.ttf', assets.fontRegular); doc.addFont('NotoSansGeorgian-Regular.ttf', 'NSG', 'normal');
@@ -6960,7 +7292,7 @@ function renderReportPdf(JsPDF, report, assets) {
   // page geometry (mm) and colours
   const W = 210, ML = 15, MR = 15, CW = W - ML - MR;         // content width 180
   const TOP = 34, BOTTOM = 280;                               // content area; the header sits above TOP, the footer below BOTTOM
-  const INK = [33, 37, 41], GRAY = [107, 114, 128], ACCENT = [31, 58, 95], PANEL = [243, 244, 246], RULE = [209, 213, 219];
+  const INK = [33, 37, 41], GRAY = [107, 114, 128], ACCENT = [31, 58, 95], PANEL = [243, 244, 246], RULE = [209, 213, 219], BAND = [226, 232, 240], GREEN = [22, 101, 52];
   const font = (style, size, color = INK) => { doc.setFont('NSG', style); doc.setFontSize(size); doc.setTextColor(...color); };
   const lineH = size => size * 0.3528 * 1.45;                  // line height for a font size in pt
   const wrap = (text, width, style, size) => { font(style, size); return doc.splitTextToSize(String(text == null ? '' : text), width); };
@@ -6972,7 +7304,7 @@ function renderReportPdf(JsPDF, report, assets) {
 
   // ── title: just the name of the document (the report's code is in the header of every page) ──
   const code = report.code || String(report.number);
-  const title = REPORT_TITLE;
+  const title = report.kind === 'quality' ? QUALITY_REPORT_TITLE : REPORT_TITLE;
   const titleLines = wrap(title, CW, 'bold', 15);
   y += 5;
   font('bold', 15, ACCENT);
@@ -7010,6 +7342,7 @@ function renderReportPdf(JsPDF, report, assets) {
     y += 10;
   };
 
+  if (report.kind === 'quality') drawQualityIssues(); else {
   // ── photos: each as wide as the content area (a very tall picture is reduced only as far as needed to fit a page), numbered, with its
   // description underneath. A photo stays on the same page as the one before it ONLY if it fits there, below it, at the full width
   // (in practice two wide 16:9 photos); otherwise it starts a page. The first photo may sit on the first page, below the information. ──
@@ -7057,6 +7390,65 @@ function renderReportPdf(JsPDF, report, assets) {
     });
     y += 4;
   });
+  }
+
+  // ── the QUALITY report: every issue starts with a band that has its number in the middle; then its pictures (each with its description under it), the three
+  // sub-headings with their texts and, if there is one, the green block "defect corrected" with its pictures and comments ──
+  function drawQualityIssues() {
+    const PHOTO_MAX_H = 72, CAP_SIZE = 9.5, CAP_LH = lineH(CAP_SIZE);
+    const subHead = (text, color) => { ensure(8 + 6); font('bold', 10.5, color || INK); doc.text(text, ML, y + 4); y += 7.5; };
+    const para = text => {
+      const t = String(text == null ? '' : text).trim();
+      if (!t) { ensure(7); font('normal', 10, GRAY); doc.text('—', ML, y + 3.6); y += 7; return; }
+      const lh = lineH(10);
+      t.split('\n').forEach(part => wrap(part, CW, 'normal', 10).forEach(l => { ensure(lh); font('normal', 10, INK); doc.text(l, ML, y + 3.6); y += lh; }));
+      y += 2.5;
+    };
+    // the size of a picture and of its description: a tall picture is made narrower, never longer than a part of the page
+    const photoSize = p => {
+      const ok = p.dataUrl && p.width && p.height;
+      const ratio = ok ? p.height / p.width : 0.62;
+      const cap = p.caption ? wrap(p.caption, CW, 'normal', CAP_SIZE) : [], capH = cap.length ? cap.length * CAP_LH + 2 : 0;
+      let iw = CW, ih = CW * ratio;
+      if (ih > PHOTO_MAX_H) { ih = PHOTO_MAX_H; iw = ih / ratio; }
+      return { ok, iw, ih, cap, capH, total: ih + capH + 4 };
+    };
+    const photoBlock = p => {
+      const { ok, iw, ih, cap, capH, total } = photoSize(p);
+      ensure(total);
+      const x = ML + (CW - iw) / 2;
+      if (ok) doc.addImage(p.dataUrl, 'JPEG', x, y, iw, ih, undefined, 'FAST');
+      else { doc.setFillColor(...PANEL); doc.setDrawColor(...RULE); doc.setLineWidth(0.2); doc.rect(x, y, iw, ih, 'FD'); font('normal', 10, GRAY); doc.text('ფოტო ვერ ჩაიტვირთა', x + iw / 2, y + ih / 2, { align: 'center' }); }
+      y += ih + 2;
+      font('normal', CAP_SIZE, INK); cap.forEach(t => { doc.text(t, ML, y + 3.4); y += CAP_LH; });
+      y += capH ? 4 : 2;
+    };
+    const issues = report.issues || [];
+    if (String(report.note || '').trim()) { subHead('ზოგადი ინფორმაცია'); para(report.note); y += 4; }   // the general information goes above the first issue
+    if (!issues.length) { font('normal', 10, GRAY); doc.text('—', ML, y + 4); y += 8; }
+    issues.forEach(it => {
+      ensure(7 + 4.5 + ((it.photos || [])[0] ? photoSize(it.photos[0]).total : 24));               // the band is never alone at the bottom of a page: it moves with what follows it
+      doc.setFillColor(...BAND); doc.rect(ML, y, CW, 7, 'F');
+      font('bold', 11, ACCENT); doc.text(String(it.number), W / 2, y + 5, { align: 'center' });
+      y += 7 + 4.5;
+      (it.photos || []).forEach(photoBlock);
+      subHead('ხარვეზის აღწერა'); para(it.defect);
+      subHead('სავარაუდო მიზეზი'); para(it.cause);
+      subHead('გამოსწორების მეთოდი'); para(it.method);
+      if (it.fix && (it.fix.photos || []).length) {
+        y += 1;
+        ensure(9 + photoSize(it.fix.photos[0]).total);                                              // the heading goes with its first picture
+        doc.setFillColor(...GREEN); doc.rect(ML, y, 1.6, 6, 'F');
+        const head = 'ხარვეზი გასწორებულია';
+        font('bold', 10.5, GREEN); const headW = doc.getTextWidth(head); doc.text(head, ML + 4.5, y + 4.6);     // (its width is measured in ITS font, before the smaller one is set)
+        const meta = [it.fix.at ? dateText(String(it.fix.at).slice(0, 10)) : '', it.fix.byName || ''].filter(Boolean).join(' · ');
+        if (meta) { font('normal', 8.5, GRAY); doc.text(meta, ML + 4.5 + headW + 3, y + 4.6); }
+        y += 9;
+        it.fix.photos.forEach(photoBlock);
+      }
+      y += 5;
+    });
+  }
 
   // ── on every page: the header (logo, report number, object) and the footer (where it came from, page x / y) ──
   const pages = doc.getNumberOfPages();
