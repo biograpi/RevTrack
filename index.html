@@ -173,9 +173,16 @@ header,.projects-header{padding-left:8px}
 .project-name-hdr:hover{color:white}
 .header-right{display:flex;align-items:center;gap:8px}
 .user-chip{font-size:12px;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:6px}
+.mark-badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;background:rgba(255,255,255,.18);color:rgba(255,255,255,.92);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;margin-left:2px}
+.mark-more{display:none;font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,.18);color:rgba(255,255,255,.92);vertical-align:middle}
+@media (max-width:700px){
+  #projScreenUser,#hdrUserName,#reportsHdrUser{display:inline-flex;align-items:center;gap:4px;max-width:58vw;min-width:0}   /* on a phone: the name, the first mark and "+N" in ONE line */
+  .hdr-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+  .mark-badge{flex:0 1 auto;min-width:0;max-width:34vw;margin-left:0}
+  .mark-badge:not(.mark-first){display:none}
+  .mark-more{display:inline-block;flex:none}
+}
 .role-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase}
-.status-label-badge{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;letter-spacing:.03em;background:rgba(255,255,255,.18);color:inherit;vertical-align:middle}
-.status-label-badge-light{background:var(--rule);color:var(--ink-mid)}
 .btn-hdr{background:rgba(255,255,255,.1);border:none;border-radius:var(--r);color:white;cursor:pointer;padding:6px 12px;font-size:12px;font-family:inherit;transition:background .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
 .pending-badge{background:var(--warn);color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:9px;line-height:1.4}
 .btn-hdr:hover{background:rgba(255,255,255,.2)}
@@ -964,7 +971,7 @@ body.has-footer .site-footer{display:flex}
   <div class="modal" style="max-width:720px">
     <div class="modal-header"><h2>👥 ყველა მომხმარებელი</h2><button class="modal-close" onclick="cm('usersModal')">✕</button></div>
     <div style="padding:14px 20px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <input type="search" id="usersSearch" placeholder="🔍 ძებნა: სახელი, მეილი, ლეიბლი" autocomplete="off" style="flex:2;min-width:190px;border:1px solid var(--rule);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:13px">
+      <input type="search" id="usersSearch" placeholder="🔍 ძებნა: სახელი, მეილი" autocomplete="off" style="flex:2;min-width:190px;border:1px solid var(--rule);border-radius:var(--r);padding:8px 10px;font-family:inherit;font-size:13px">
       <select id="usersRoleFilter" style="flex:1;min-width:130px;border:1px solid var(--rule);border-radius:var(--r);padding:8px;font-family:inherit;font-size:13px">
         <option value="">ყველა როლი</option>
         <option value="admin">Admin</option>
@@ -972,6 +979,11 @@ body.has-footer .site-footer{display:flex}
         <option value="design_manager">დიზაინ მენეჯერი</option>
         <option value="contractor">კონტრაქტორი</option>
         <option value="viewer">User</option>
+      </select>
+      <select id="usersApprovalFilter" style="flex:1;min-width:130px;border:1px solid var(--rule);border-radius:var(--r);padding:8px;font-family:inherit;font-size:13px">
+        <option value="">ყველა სტატუსი</option>
+        <option value="pending">დასამტკიცებელი</option>
+        <option value="approved">დამტკიცებული</option>
       </select>
       <span id="usersTotalCount" style="font-size:12px;color:var(--ink-light);white-space:nowrap"></span>
     </div>
@@ -1258,6 +1270,11 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"ინტერიერის დიზაინერი": "Interior designer",
+"დასამტკიცებელი": "Awaiting approval",
+"დამტკიცებული": "Approved",
+"🔍 ძებნა: სახელი, მეილი": "🔍 Search: name, email",
+"ჯერ არც ერთ პროექტზე ხარ არჩეული": "You are not chosen on any project yet",
 "ზოგადი ინფორმაცია": "General information",
 "სურვილისამებრ: ზოგადი ინფორმაცია ოქმის შესახებ": "Optional: general information about the report",
 "საკითხები": "Issues",
@@ -1726,6 +1743,7 @@ body.has-footer .site-footer{display:flex}
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^(საიტ მენეჯერი|პროექტ მენეჯერი): ([\s\S]+)$/, function (m) { return ({ 'საიტ მენეჯერი': 'Site manager', 'პროექტ მენეჯერი': 'Project manager' })[m[1]] + ': ' + m[2].split(', ').map(function (n) { return n === '—' ? n : translit(n); }).join(', '); }],
     [/^გასწორების დამატება ([\s\S]+)$/, function (m) { return 'Add a correction ' + m[1]; }],
     [/^ოქმში მაქსიმუმ (\d+) საკითხია$/, function (m) { return 'A report can have at most ' + m[1] + ' issues'; }],
     [/^ერთ საკითხში მაქსიმუმ (\d+) ფოტოა$/, function (m) { return 'At most ' + m[1] + ' photos in one issue'; }],
@@ -2005,7 +2023,6 @@ function isAdminLike() {
 // The signed-in Firebase Auth user (null when logged out).
 let currentUser = null;
 let currentUserName = ''; // real name from Firestore users/{uid}.name — Auth displayName is never set, so don't rely on it
-let currentUserLabel = ''; // optional status label (DM/PM/TT...), only meaningful for User-role accounts
 let currentUserCanOpenDmIssues = false; // User-role accounts can be individually granted DM issue-creation
 function canOpenDmAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenDmIssues === true; }
 let currentUserCanOpenMepIssues = false; // ...and, separately, issue-creation in the MEP review section
@@ -2022,6 +2039,31 @@ const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project) |
 const REPORT_EDIT_WINDOW_MS = 24 * 3600 * 1000;
 const reportEditable = r => !(r && r.createdAt && r.createdAt.toDate) || (Date.now() - r.createdAt.toDate().getTime() <= REPORT_EDIT_WINDOW_MS);   // no time yet (just created, still being saved) counts as new
 const canEditReport = (r, project) => isAdminLike() || ((isSiteManagerOf(project) || isProjectPmOf(project)) && r.authorId === currentUser?.uid && reportEditable(r));
+// ── The person's MARKS, shown in the headers next to the name (there used to be a free-text label): a site manager / project manager mark with the projects the person is chosen
+// on ("საიტ მენეჯერი: ბარე", "პროექტ მენეჯერი: ბარე, ბოჰემა, ჰისნი"), and the two marks that belong to no project (interior designer, MEP reviewer). A User who has any mark
+// no longer gets the grey "User" badge: the marks are shown instead. ──
+let myMarkProjects = { site: [], pm: [] };   // names of the projects where this person is chosen as a site manager / as the project manager (renewed whenever the list of projects is loaded)
+function computeMyMarkProjects(projects) {
+  const uid = currentUser && currentUser.uid; if (!uid) return;
+  const names = list => sortProjectsByName(list).map(p => p.name || '').filter(Boolean);
+  myMarkProjects = { site: names(projects.filter(p => projectSiteManagerEntries(p).some(e => e.uid === uid))), pm: names(projects.filter(p => p.pmUid === uid)) };
+}
+function userMarks() {   // [{ text, title }]: the marks of the signed-in person, for a User account only
+  if (currentGlobalRole !== 'viewer') return [];
+  const out = [], withProjects = (label, on, names) => { if (on) out.push({ text: `${label}: ${names.length ? names.join(', ') : '—'}`, title: names.length ? '' : 'ჯერ არც ერთ პროექტზე ხარ არჩეული' }); };
+  withProjects('საიტ მენეჯერი', currentUserIsSiteManager, myMarkProjects.site);
+  withProjects('პროექტ მენეჯერი', currentUserIsProjectManager, myMarkProjects.pm);
+  if (currentUserCanOpenDmIssues) out.push({ text: 'ინტერიერის დიზაინერი', title: '' });
+  if (currentUserCanOpenMepIssues) out.push({ text: 'MEP რევიზორი', title: '' });
+  return out;
+}
+// The name in a header, followed by the marks; roleBadgeId (if the header has one): the grey role badge is hidden when there are marks to show instead.
+function renderHeaderUser(nameId, roleBadgeId) {
+  const marks = userMarks();
+  const all = marks.map(m => m.text).join(' · ');   // on a phone only the first mark is shown, with "+N": the full list is in its tooltip
+  document.getElementById(nameId).innerHTML = `<span class="hdr-name">${esc(currentUserName)}</span>` + marks.map((m, i) => ` <span class="mark-badge${i === 0 ? ' mark-first' : ''}" title="${esc(i === 0 && marks.length > 1 ? all : (m.title || m.text))}">${esc(m.text)}</span>`).join('') + (marks.length > 1 ? ` <span class="mark-more" title="${esc(all)}">+${marks.length - 1}</span>` : '');
+  if (roleBadgeId) document.getElementById(roleBadgeId).style.display = marks.length ? 'none' : '';
+}
 // A QUALITY report can no longer be changed after 24 hours, but anybody who may write reports on the project can still add "defect corrected" entries to its issues.
 const canAddReportFix = (r, project) => reportKind(r) === 'quality' && canWriteReportsOn(project);
 const canReadReports = () => currentGlobalRole !== 'contractor' || isAdminLike(); // everybody but contractors
@@ -2246,8 +2288,7 @@ onAuthStateChanged(auth, async user => {
   const uDoc = await getDoc(doc(db,'users',user.uid));
   let role = 'contractor';
   let name = user.displayName || user.email;
-  let label = '';
-  if (ADMIN_EMAILS.includes(user.email)) {
+    if (ADMIN_EMAILS.includes(user.email)) {
     role = 'admin';
     if (!uDoc.exists()) {
       await setDoc(doc(db,'users',user.uid),{name:user.displayName||user.email,email:user.email,role:'admin',approved:true,createdAt:serverTimestamp()});
@@ -2268,7 +2309,6 @@ onAuthStateChanged(auth, async user => {
     if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ'); await signOut(auth); return; }
     role = d.role || 'contractor';
     name = d.name || name;
-    label = d.statusLabel || '';
     currentUserCanOpenDmIssues = d.canOpenDmIssues === true;
     currentUserCanOpenMepIssues = d.canOpenMepIssues === true;
     currentUserIsSiteManager = d.siteManager === true;
@@ -2279,7 +2319,6 @@ onAuthStateChanged(auth, async user => {
 
   currentUser = user;
   currentUserName = name;
-  currentUserLabel = label;
   currentRole = role;
   currentGlobalRole = role;
 
@@ -3497,7 +3536,7 @@ async function showProjects() {
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('reportsScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
-  document.getElementById('projScreenUser').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
+  renderHeaderUser('projScreenUser');
   document.getElementById('btnGlobalUsers').style.display = isAdminLike() ? 'flex' : 'none';
   document.getElementById('btnAdminTools').style.display = isAdminLike() ? 'flex' : 'none';
   document.getElementById('btnNewProjectHdr').style.display = (currentGlobalRole==='admin'||currentGlobalRole==='reviewer') ? 'flex' : 'none';
@@ -3553,6 +3592,7 @@ async function showProjects() {
       </div>`;
     });
   }
+  computeMyMarkProjects(projects); renderHeaderUser('projScreenUser');   // the projects where this person is a site manager or the project manager
   // the one step: the list, the diagram, the switch and the view that is shown, together
   grid.classList.remove('projects-grid-4col');   // the list of projects: three columns
   grid.classList.remove('is-loading'); _wrap.classList.remove('is-loading');
@@ -5529,9 +5569,9 @@ async function openProject(pid, section) {
   document.getElementById('reportsScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('hdrProjectName').textContent = (currentProjectData.name||'პროექტი') + ' — ' + SECTION_LABEL[currentSection];
-  document.getElementById('hdrUserName').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
   document.getElementById('hdrRoleBadge').textContent = roleLabel;
   document.getElementById('hdrRoleBadge').className = 'role-badge role-'+myRole;
+  renderHeaderUser('hdrUserName', 'hdrRoleBadge');
   document.getElementById('btnAddIssue').style.display = canEdit?'flex':'none';
   document.getElementById('actionsHead').style.display = canEdit?'':'none';
   document.getElementById('btnManageProject').style.display = canManageProject?'flex':'none';
@@ -6491,7 +6531,7 @@ async function loadComments(issueId) {
       <div class="comment-avatar">${initials(c.authorName)}</div>
       <div class="comment-bubble">
         <div class="comment-meta">
-          <span class="comment-author-group"><span class="comment-author">${esc(c.authorName)}</span>${c.authorLabel?`<span class="status-label-badge status-label-badge-light">${esc(c.authorLabel)}</span>`:''}</span>
+          <span class="comment-author-group"><span class="comment-author">${esc(c.authorName)}</span></span>
           <span class="comment-meta-right">${time}${c.editedAt?' (რედაქტ.)':''}${canEditComment?`<button class="comment-del" title="რედაქტირება" onclick="startEditComment('${issueId}','${d.id}')">${ICON_EDIT}</button>`:''}${canDeleteComment?`<button class="comment-del" title="წაშლა" onclick="deleteCommentHandler('${issueId}','${d.id}')">${ICON_DELETE}</button>`:''}</span>
         </div>
         <div class="comment-text" id="ctext-${d.id}">${esc(c.text)}</div>
@@ -6561,7 +6601,7 @@ async function sendComment(issueId) {
   const btn = document.getElementById('btnSendComment'); btn.disabled = true;
   try {
     await addDoc(collection(db,'projects',currentProjectId,'issues',issueId,'comments'), {
-      text, authorName: currentUserName, authorLabel: currentUserLabel || null,
+      text, authorName: currentUserName,
       authorId: currentUser.uid, createdAt: serverTimestamp(),
       photos: pendingCommentPhotos.length ? [...pendingCommentPhotos] : []
     });
@@ -6720,8 +6760,8 @@ window.openReports = async pid => {
   document.getElementById('reportsHint').textContent = '';
   document.getElementById('reportsCount').textContent = '';
   document.getElementById('reportsTbody').textContent = 'იტვირთება...';
-  document.getElementById('reportsHdrUser').innerHTML = esc(currentUserName) + (currentUserLabel ? ` <span class="status-label-badge">${esc(currentUserLabel)}</span>` : '');
   const badge = document.getElementById('reportsHdrRole'); badge.textContent = roleL[currentGlobalRole] || currentGlobalRole; badge.className = 'role-badge role-' + currentGlobalRole;
+  renderHeaderUser('reportsHdrUser', 'reportsHdrRole');
   document.getElementById('projectsScreen').style.display = 'none';
   document.getElementById('reportsScreen').style.display = 'block';
   window.scrollTo(0, 0);
@@ -7493,18 +7533,18 @@ async function loadAllUsers() {
     showToast('შეცდომა: ' + e.message);
   }
 }
-// Draws the admin users panel: role, approval, status label, DM/MEP permissions and delete. The list can be narrowed by role
-// and by the search box: every typed word has to appear somewhere in the person's name, email or status label (capital
+// Draws the admin users panel: role, approval, the marks (interior designer, MEP reviewer, site manager, project manager) and delete. The list can be narrowed by role, by
+// approval (only those waiting to be approved) and by the search box: every typed word has to appear somewhere in the person's name or email (capital
 // letters don't matter), so "gia ber" finds "Gia Beridze".
 function renderUsersPanel() {
   const panel = document.getElementById('usersPanel');
-  const roleFilter = document.getElementById('usersRoleFilter').value;
+  const roleFilter = document.getElementById('usersRoleFilter').value, approvalFilter = document.getElementById('usersApprovalFilter').value;
   const words = document.getElementById('usersSearch').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const matchesSearch = u => { const text = `${u.name || ''} ${u.email || ''} ${u.statusLabel || ''}`.toLowerCase(); return words.every(w => text.includes(w)); };
+  const matchesSearch = u => { const text = `${u.name || ''} ${u.email || ''}`.toLowerCase(); return words.every(w => text.includes(w)); };
   const allCount = Object.keys(allUsers).length;
-  const users = Object.values(allUsers).filter(u => (!roleFilter || u.role === roleFilter) && matchesSearch(u));
+  const users = Object.values(allUsers).filter(u => (!roleFilter || u.role === roleFilter) && (!approvalFilter || (approvalFilter === 'pending' ? !u.approved : !!u.approved)) && matchesSearch(u));
   // "Total" is always everyone registered; when the list is narrowed, how many of them are shown is added.
-  document.getElementById('usersTotalCount').textContent = `სულ დარეგისტრირებულია: ${allCount}` + ((roleFilter || words.length) ? ` (ნაჩვენებია: ${users.length})` : '');
+  document.getElementById('usersTotalCount').textContent = `სულ დარეგისტრირებულია: ${allCount}` + ((roleFilter || approvalFilter || words.length) ? ` (ნაჩვენებია: ${users.length})` : '');
   const canManageUsers = isAdminLike();
   panel.innerHTML = users.length ? users.map(u => `
     <div class="user-row-wrap">
@@ -7531,19 +7571,15 @@ function renderUsersPanel() {
         `:'<div style="grid-column:2 / -1;color:var(--accent);font-size:12px;font-weight:600">Admin</div>'}
       </div>
       ${canManageUsers && u.role==='viewer'?`<div class="user-label-row">
-        <span>ლეიბლი:</span>
-        <input type="text" value="${esc(u.statusLabel||'')}" placeholder="მაგ. DM, PM, TT..." onchange="updateUserLabel('${u.id}',this.value)">
-      </div>
-      <div class="user-label-row">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
           <input type="checkbox" ${u.canOpenDmIssues?'checked':''} onchange="toggleUserDmPermission('${u.id}',this.checked)">
-          DM საკითხების გახსნის უფლება
+          ინტერიერის დიზაინერი
         </label>
       </div>
       <div class="user-label-row">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
           <input type="checkbox" ${u.canOpenMepIssues?'checked':''} onchange="toggleUserMepPermission('${u.id}',this.checked)">
-          MEP საკითხების გახსნის უფლება
+          MEP რევიზორი
         </label>
       </div>
       <div class="user-label-row">
@@ -7561,19 +7597,17 @@ function renderUsersPanel() {
     </div>`).join('') : `<div style="padding:20px;color:var(--ink-light);font-size:13px">${allCount ? 'ძებნით ან ფილტრით არავინ მოიძებნა' : 'მომხმარებელი არ არის'}</div>`;
 }
 document.getElementById('usersRoleFilter').addEventListener('change', renderUsersPanel);
+document.getElementById('usersApprovalFilter').addEventListener('change', renderUsersPanel);
 document.getElementById('usersSearch').addEventListener('input', renderUsersPanel);
 document.getElementById('btnGlobalUsers').addEventListener('click', async () => {
   await loadAllUsers();
   document.getElementById('usersSearch').value = ''; // every time the panel opens it starts with the whole list
+  document.getElementById('usersApprovalFilter').value = '';
   renderUsersPanel();
   om('usersModal');
   document.getElementById('usersSearch').focus();
 });
 document.getElementById('btnAdminTools').addEventListener('click', () => om('adminToolsModal'));
-window.updateUserLabel = async (uid, label) => {
-  try { await updateDoc(doc(db,'users',uid), {statusLabel: label.trim()}); }
-  catch(e) { alert('შეცდომა: '+e.message); }
-};
 // ── The project's logo (an SVG file) in the project form. It is kept with the project as a data URL (at most 100 KB) and shown on the diagram in the
 // project's square. It is only ever shown as a picture (an <image> / <img>), where an SVG cannot run scripts — and files that contain scripts are refused anyway. ──
 let pendingProjectLogo = '';   // '' = the project has no logo of its own: the diagram shows the Biograpi spiral
