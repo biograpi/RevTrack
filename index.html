@@ -571,8 +571,8 @@ body.has-footer .site-footer{display:flex}
     </div>
   </div>
   <div class="main-view-toggle" id="mainViewToggle" style="display:none">
-    <button class="view-toggle-btn" id="mainViewToggleGrid" onclick="setMainListView('grid')">ბადე</button>
-    <button class="view-toggle-btn" id="mainViewToggleChart" onclick="setMainListView('chart')">გრაფიკი</button>
+    <button class="view-toggle-btn" id="mainViewToggleGrid" onclick="chooseMainListView('grid')">ბადე</button>
+    <button class="view-toggle-btn" id="mainViewToggleChart" onclick="chooseMainListView('chart')">გრაფიკი</button>
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
@@ -2162,6 +2162,7 @@ const ICON_DUPLICATE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColo
 // approval rules (unapproved accounts are signed straight back out), remembers who they are, then opens the project list.
 onAuthStateChanged(auth, async user => {
   if (isRegistering) return; // registration flow handles its own sign-out/UI; don't race with it
+  mainListViewDefaulted = false;   // whoever enters (or leaves) finds the grid again, never the view the previous person left
   if (!user) {
     showAuth();
     return;
@@ -2334,15 +2335,15 @@ function syncSankeyChecks() {
   document.querySelectorAll('#sankeyControlsRow label').forEach(l => { const box = l.querySelector('input'); l.classList.toggle('is-hidden', box.id === 'chkSankeyAll' ? on === 0 : !box.checked); });
 }
 // The "all" box: switches every box above the diagram on or off at once, then the diagram is drawn once.
-window.toggleSankeyAll = function() {
-  const on = document.getElementById('chkSankeyAll').checked;
+function setAllSankeyBoxes(on) {
   SANKEY_BOX_IDS.forEach(id => { document.getElementById(id).checked = on; });
   sankeyManagerTypes.dm = sankeyManagerTypes.pm = sankeyManagerTypes.site = on;
   sankeyDisciplines.arch = sankeyDisciplines.struct = sankeyDisciplines.mp = sankeyDisciplines.elec = on;
   sankeyShowReviewer = on;
   syncSankeyChecks();
   if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
-};
+}
+window.toggleSankeyAll = function() { setAllSankeyBoxes(document.getElementById('chkSankeyAll').checked); };
 
 window.toggleSankeyManagerType = function() {
   sankeyManagerTypes.dm = document.getElementById('chkSankeyDm').checked;
@@ -3397,6 +3398,13 @@ window.downloadSankeyAsPdf = function() {
 };
 
 // Switches the project list between the card grid and the diagram.
+// A click of the person on the "ბადე" / "გრაფიკი" buttons. Going to the diagram switches ALL the boxes above it on (the whole structure at once). Coming back to the list
+// from a project does not go through here: the view and the boxes stay as the person left them.
+window.chooseMainListView = function(view) {
+  const toChart = view === 'chart' && mainListView !== 'chart';
+  setMainListView(view);
+  if (toChart) setAllSankeyBoxes(true);
+};
 window.setMainListView = function(view) {
   mainListView = view;
   document.getElementById('projectsGrid').style.display = view === 'grid' ? 'grid' : 'none';
@@ -3406,8 +3414,7 @@ window.setMainListView = function(view) {
 };
 
 // The project list screen. Admins, reviewers, design managers and Users see every project; contractors only the projects
-// they are members of (memberIds). Draws the card grid and the diagram, then picks the default view
-// (diagram for everyone except contractors).
+// they are members of (memberIds). Draws the card grid and the diagram, then picks the view: the grid for everybody who enters the site.
 async function showProjects() {
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
   if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
@@ -3481,7 +3488,7 @@ async function showProjects() {
   document.getElementById('mainViewToggle').style.display = 'flex';
   if (!mainListViewDefaulted) {
     mainListViewDefaulted = true;
-    mainListView = currentGlobalRole === 'contractor' ? 'grid' : 'chart';
+    mainListView = 'grid';
   }
   setMainListView(mainListView);
   window.scrollTo(0, 0);
