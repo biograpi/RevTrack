@@ -141,11 +141,11 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .section-bar>.section-back{grid-column:auto;margin-bottom:0}   /* (the back arrow and the settings are direct children of the card grid elsewhere, where they span the whole row: inside this bar each keeps its own column) */
 .section-title{display:flex;align-items:center;justify-content:center;gap:12px;font-size:22px;font-weight:600;color:#f1eece;line-height:1.25;min-width:0;max-width:100%}   /* the project's logo and name in the middle of the top line: the name a little larger than the names on the cards (16px) */
 .section-title>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.section-title-mark{flex:none;width:28px;height:28px}   /* the logo, in the same light cream as in the project list (the filter of the list) */
+.section-title-mark{flex:none;width:42px;height:42px}   /* the logo, in the same light cream as in the project list (the filter of the list) */
 .project-card-address{font-size:12px;line-height:1.3;color:rgba(255,255,255,.8);margin-top:2px;margin-bottom:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .project-card-address.is-empty{color:rgba(255,255,255,.35)}
 .project-card.project-card-filled:hover .project-card-address{color:var(--soft-black)!important}
-@media (max-width:700px){.section-bar{grid-template-columns:1fr 1fr}.section-bar .section-title{grid-column:1/-1;grid-row:2;font-size:19px}.section-bar .section-title>span{white-space:normal}.section-title-mark{width:24px;height:24px}}
+@media (max-width:700px){.section-bar{grid-template-columns:1fr 1fr}.section-bar .section-title{grid-column:1/-1;grid-row:2;font-size:19px}.section-bar .section-title>span{white-space:normal}.section-title-mark{width:36px;height:36px}}
 .section-back{grid-column:1/-1;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;margin-bottom:4px;width:fit-content}
 .section-back:hover{color:white}
 .project-card-count{position:absolute;top:10px;right:10px;font-size:80px;font-weight:800;line-height:1;color:rgba(255,255,255,.15);z-index:0;pointer-events:none;font-family:'JetBrains Mono',monospace}
@@ -1787,6 +1787,7 @@ body.has-footer .site-footer{display:flex}
     [/^საიტ მენეჯერი: ([\s\S]*)$/, function (m) { return 'Site Manager: ' + m[1]; }],
     [/^(.+) \(ყოველკვირეული ოქმი\)$/, function (m) { return m[1] + ' (weekly report)'; }],
     [/^(.+) \(ყოველდღიური ოქმი\)$/, function (m) { return m[1] + ' (daily report)'; }],
+    [/^(.+) \(ხარისხის ოქმი\)$/, function (m) { return m[1] + ' (quality report)'; }],
     [/^კოდი: ([A-Za-z#0-9-]+)$/, function (m) { return 'Code: ' + m[1]; }],
     [/^([\s\S]*) \(არ არის მონიშნული საიტ მენეჯერად\)$/, function (m) { return m[1] + ' (not marked as a site manager)'; }],
     [/^ოქმი ([A-Za-z#0-9-]+)$/, function (m) { return 'Report ' + m[1]; }],
@@ -4476,13 +4477,13 @@ function bumpCurve(times, startTime, endTime) {
   }
   return points;
 }
-const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mp', 'review:elec', 'review:mep', 'review:other', 'internal', 'mep', 'comments', 'report:weekly', 'report:daily']; // order inside a person's group
+const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mp', 'review:elec', 'review:mep', 'review:other', 'internal', 'mep', 'comments', 'report:weekly', 'report:daily', 'report:quality']; // order inside a person's group
 const ROW_SUB = { // the words shown next to the person's name (each becomes its own translatable piece)
   'review:arch': ['რევიზია', 'არქიტექტურა'], 'review:struct': ['რევიზია', 'კონსტრუქცია'],
   'review:mp': ['რევიზია', 'Mechanical & Plumbing'], 'review:elec': ['რევიზია', 'Electrical'],
   'review:mep': ['რევიზია', 'MEP (ძველი)'], 'review:other': ['რევიზია', 'სხვა'],
   internal: ['DM'], mep: ['MEP რევიზია'], comments: ['კომენტარები'],
-  'report:weekly': ['ოქმი', 'ყოველკვირეული'], 'report:daily': ['ოქმი', 'ყოველდღიური'],   // the weekly and the daily reports a person wrote
+  'report:weekly': ['ოქმი', 'ყოველკვირეული'], 'report:daily': ['ოქმი', 'ყოველდღიური'], 'report:quality': ['ოქმი', 'ხარისხის'],   // the weekly, the daily and the quality reports a person wrote
 };
 // The data of the "rows" view (renderActivityRows), finer than the line chart: every person gets a SEPARATE line for
 // each kind of thing they did — issues in the review section split by discipline (architecture / structural /
@@ -4506,7 +4507,7 @@ function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime, rep
     }
   }
   for (const [name, times] of Object.entries(commentsByAuthor || {})) for (const t of times) addTime(name, 'comments', t);
-  for (const r of reports) addTime(r.authorName, `report:${r.type === 'daily' ? 'daily' : 'weekly'}`, r.time);   // reports = [{ type, time (ms), authorName }]
+  for (const r of reports) addTime(r.authorName, `report:${r.type === 'daily' ? 'daily' : r.type === 'quality' ? 'quality' : 'weekly'}`, r.time);   // reports = [{ type, time (ms), authorName }]
   const rowsList = [];
   for (const [name, bySlot] of Object.entries(timesByPerson)) {
     const slots = ROW_SLOTS.filter(slot => bySlot[slot]);
@@ -4621,12 +4622,14 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
 
   // The reports people wrote: per author, one curve for the weekly reports and one for the daily ones (reports = [{ type, time, authorName }]).
   const reportAuthors = [...new Set(reports.map(r => r.authorName))];
-  const perAuthorWeeklyPoints = {}, perAuthorDailyPoints = {};
+  const perAuthorWeeklyPoints = {}, perAuthorDailyPoints = {}, perAuthorQualityPoints = {};
   for (const name of reportAuthors) {
-    const weekly = reports.filter(r => r.authorName === name && r.type !== 'daily').map(r => r.time);
+    const weekly = reports.filter(r => r.authorName === name && r.type !== 'daily' && r.type !== 'quality').map(r => r.time);
     const daily = reports.filter(r => r.authorName === name && r.type === 'daily').map(r => r.time);
+    const quality = reports.filter(r => r.authorName === name && r.type === 'quality').map(r => r.time);
     if (weekly.length) perAuthorWeeklyPoints[name] = buildPlainBumpCurve(weekly);
     if (daily.length) perAuthorDailyPoints[name] = buildPlainBumpCurve(daily);
+    if (quality.length) perAuthorQualityPoints[name] = buildPlainBumpCurve(quality);
   }
   const chartPeople = [...creators, ...reportAuthors.filter(n => !creators.includes(n))];   // issue creators first, then people who only wrote reports
 
@@ -4716,9 +4719,10 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       if (perCreatorInternalPoints[name]) sets.push({ ...base, label: `${firstName(name)} (DM)`, data: perCreatorInternalPoints[name] });
       // MEP curves are never filled, even for the project's own reviewer/manager.
       if (perCreatorMepPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', label: `${firstName(name)} (MEP)`, data: perCreatorMepPoints[name] });
-      // Report curves: never filled; long dashes for the weekly reports, short ones for the daily reports.
+      // Report curves: never filled; long dashes for the weekly reports, short ones for the daily reports, dash-and-dot for the quality reports.
       if (perAuthorWeeklyPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', borderDash: [9, 4], label: `${firstName(name)} (ყოველკვირეული ოქმი)`, data: perAuthorWeeklyPoints[name] });
       if (perAuthorDailyPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', borderDash: [2, 3], label: `${firstName(name)} (ყოველდღიური ოქმი)`, data: perAuthorDailyPoints[name] });
+      if (perAuthorQualityPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', borderDash: [14, 3, 2, 3], label: `${firstName(name)} (ხარისხის ოქმი)`, data: perAuthorQualityPoints[name] });
       return sets;
     }),
     ...contractorNames.flatMap((name, i) => {
