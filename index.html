@@ -421,6 +421,36 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .dev-wrap .dv-pop label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--dv-ink2);margin-top:6px}
 .dev-wrap .dv-pop input[type=date],.dev-wrap .dv-pop input[type=number]{width:150px}
 .dev-wrap .dv-hint{color:var(--dv-ink2);font-size:12.5px;margin:0 0 8px}
+.dev-wrap .dv-cm-pop{width:350px}
+.dev-wrap .dv-cm-list{max-height:260px;overflow:auto;margin:2px 0 8px}
+.dev-wrap .dv-cm-item{border-top:1px solid var(--dv-grid);padding:8px 0;font-size:13px}
+.dev-wrap .dv-cm-item:first-child{border-top:0}
+.dev-wrap .dv-cm-item .h{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--dv-muted);font-size:12px;margin-bottom:2px}
+.dev-wrap .dv-cm-item .h b{color:var(--dv-ink);font-weight:600}
+.dev-wrap .dv-cm-item .t{white-space:pre-wrap;word-break:break-word}
+.dev-wrap .dv-cm-item .x{border:0;background:none;color:var(--dv-muted);padding:0 4px}
+.dev-wrap .dv-cm-empty{color:var(--dv-muted);font-size:12.5px;padding:4px 0 8px}
+.dev-wrap #devCmText,.dev-wrap #devAskReason{width:100%;box-sizing:border-box;font:inherit;font-size:13px;color:var(--dv-ink);background:var(--dv-field);border:1px solid var(--dv-border);border-radius:8px;padding:6px 8px;resize:vertical}
+.dev-wrap #devCmText:focus,.dev-wrap #devAskReason:focus{outline:2px solid var(--dv-actual);outline-offset:-1px}
+.dev-wrap .dv-cm-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.dev-wrap .dv-cm-btn{display:inline-flex;align-items:center;gap:5px;padding:3px 8px}
+.dev-wrap .dv-cm-btn svg path{fill:none;stroke:var(--dv-muted);stroke-width:1.4;stroke-linejoin:round}
+.dev-wrap .dv-cm-btn.has{color:var(--dv-actual);border-color:var(--dv-actual)}
+.dev-wrap .dv-cm-btn.has svg path{fill:var(--dv-actual);stroke:var(--dv-actual)}
+.dev-wrap .dv-tip .dv-tip-cm{margin-top:8px;padding-top:6px;border-top:1px solid var(--dv-border);font-size:12.5px;color:var(--dv-ink2);max-width:280px;white-space:normal}
+.dev-wrap .dv-tip .dv-tip-cm .h{font-weight:600;color:var(--dv-ink);margin-bottom:2px}
+.dev-wrap .dv-tip .dv-tip-cm .more{color:var(--dv-muted);font-size:12px;margin-top:2px}
+.dv-ask{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:400;padding:16px}
+.dv-ask-box{background:#fcfcfb;color:#0b0b0b;border-radius:12px;padding:18px 20px;width:min(540px,100%);max-height:90vh;overflow:auto;box-shadow:0 12px 36px rgba(0,0,0,.28);font-size:13.5px}
+.dv-ask-box h4{margin:0 0 6px;font-size:16px}
+.dv-ask-box p{margin:6px 0}
+.dv-ask-lines{background:#f1f0ea;border-radius:8px;padding:8px 10px;margin:6px 0 10px;font-size:12.5px;line-height:1.5;max-height:180px;overflow:auto;white-space:pre-wrap}
+.dv-ask-box label{display:block;font-size:12.5px;color:#52514e}
+.dv-ask-box textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;border:1px solid rgba(11,11,11,.2);border-radius:8px;padding:6px 8px;margin-top:4px;resize:vertical}
+.dv-ask-box .dv-muted{color:#898781;font-size:12.5px}
+.dv-ask-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}
+.dv-ask-actions button{font:inherit;font-size:13px;border:1px solid rgba(11,11,11,.2);background:#fff;border-radius:8px;padding:6px 14px;cursor:pointer}
+.dv-ask-actions button.primary{background:#2a78d6;color:#fff;border-color:#2a78d6}
 .dev-wrap .dv-tip{position:absolute;pointer-events:none;background:var(--dv-surface);color:var(--dv-ink);border:1px solid var(--dv-border);border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.12);min-width:210px;opacity:0;transition:opacity .12s;z-index:5}
 .dev-wrap .dv-tip .d{font-weight:600;margin-bottom:6px}
 .dev-wrap .dv-tip .row{display:flex;justify-content:space-between;gap:16px}
@@ -436,26 +466,29 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .dev-wrap .dv-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .dev-wrap .dv-tools label{color:var(--dv-ink2);font-size:13px;display:inline-flex;gap:8px;align-items:center}
 .dev-wrap input[type=date],.dev-wrap input[type=number],.dev-wrap input[type=text]{font:inherit;font-size:13px;color:var(--dv-ink);background:var(--dv-field);border:1px solid var(--dv-border);border-radius:8px;padding:5px 8px;font-variant-numeric:tabular-nums}
-.dev-wrap input[type=text]{width:100%;min-width:150px}
+.dev-wrap input[type=text]{width:100%;min-width:110px}
+.dev-wrap td.dt input[type=date]{width:128px;padding:5px 4px}
+.dev-wrap input.days{width:56px;padding:5px 4px;-moz-appearance:textfield}   /* the days of a stage: three digits must fit, without the little arrows */
+.dev-wrap input.days::-webkit-inner-spin-button,.dev-wrap input.days::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .dev-wrap input:focus{outline:2px solid var(--dv-actual);outline-offset:-1px}
 .dev-wrap input.bad{border-color:var(--dv-bad);outline-color:var(--dv-bad)}
 .dev-wrap input:disabled{opacity:.45}
-.dev-wrap input[type=number]{width:64px;text-align:right}
-.dev-wrap input[type=range]{width:110px;accent-color:var(--dv-actual);vertical-align:middle}
+.dev-wrap input[type=number]{width:50px;text-align:right}
+.dev-wrap input[type=range]{width:64px;accent-color:var(--dv-actual);vertical-align:middle}
 .dev-wrap button{font:inherit;font-size:13px;color:var(--dv-ink);background:var(--dv-field);border:1px solid var(--dv-border);border-radius:8px;padding:6px 12px;cursor:pointer}
 .dev-wrap button:hover:not(:disabled){border-color:var(--dv-axis)}
 .dev-wrap button:disabled{opacity:.45;cursor:default}
 .dev-wrap button.primary{background:var(--dv-actual);color:#fff;border-color:var(--dv-actual)}
 .dev-wrap button.dv-danger{color:var(--dv-bad);border-color:var(--dv-bad);margin-left:auto}
 .dev-wrap table{width:100%;border-collapse:collapse;font-size:13px}
-.dev-wrap th,.dev-wrap td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--dv-grid);vertical-align:middle}
+.dev-wrap th,.dev-wrap td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--dv-grid);vertical-align:middle}
 .dev-wrap th{color:var(--dv-ink2);font-weight:500;white-space:nowrap}
 .dev-wrap td.num,.dev-wrap th.num{text-align:right}
 .dev-wrap tbody tr.hl{background:var(--dv-wash)}
 .dev-wrap td.mv{white-space:nowrap}
-.dev-wrap td.mv button{padding:2px 7px;margin-right:2px}
-.dev-wrap .prog{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
-.dev-wrap .tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--dv-border);white-space:nowrap}
+.dev-wrap td.mv button{padding:2px 5px;margin-right:2px}
+.dev-wrap .prog{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.dev-wrap .tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--dv-border);white-space:normal;display:inline-block;max-width:130px;line-height:1.25}
 .dev-wrap .tag.late{color:var(--dv-bad)}.dev-wrap .tag.early{color:var(--dv-good-text)}
 .dev-wrap .scroll{overflow-x:auto}
 .dev-wrap td.dt{white-space:nowrap}
@@ -811,11 +844,32 @@ body.has-footer .site-footer{display:flex}
         <div class="dv-pop-head"><b id="devPopTitle" data-no-i18n></b><button type="button" onclick="devClosePop()">✕</button></div>
         <label>გეგმა: დაწყება <input type="date" data-pf="planStart"></label>
         <label>გეგმა: დასრულება <input type="date" data-pf="planEnd"></label>
+        <label>გეგმა: ხანგრძლივობა, დღე <input type="number" min="0" max="3650" step="1" data-pf="planDays"></label>
         <label>ფაქტ. დაწყება <span style="display:inline-flex;gap:4px"><input type="date" data-pf="actualStart"><button type="button" class="clear" data-pc="actualStart" title="გასუფთავება">×</button></span></label>
         <label>ფაქტ. დასრულება <span style="display:inline-flex;gap:4px"><input type="date" data-pf="actualEnd"><button type="button" class="clear" data-pc="actualEnd" title="გასუფთავება">×</button></span></label>
         <label>შესრულება % <input type="number" min="0" max="100" step="1" data-pf="prog"></label>
       </div>
-      <div class="dv-card dv-empty" id="devEmpty" style="display:none"></div>
+      <div class="dv-pop dv-cm-pop" id="devCmPop" style="display:none">
+<div class="dv-pop-head"><b id="devCmTitle" data-no-i18n></b><button type="button" onclick="devCloseComments()">✕</button></div>
+<div class="dv-cm-list" id="devCmList"></div>
+<div id="devCmAdd" style="display:none">
+<textarea id="devCmText" maxlength="600" rows="3" placeholder="კომენტარი ეტაპზე (მაგ. რატომ დაიგვიანა დაწყება)"></textarea>
+<div class="dv-cm-foot"><span class="dv-muted" id="devCmCount"></span><button type="button" class="primary" id="devCmAddBtn">დამატება</button></div>
+<div class="dv-muted" id="devCmNote" style="margin-top:6px">კომენტარი ბაზაში გრაფიკთან ერთად ჩაიწერება „შენახვის“ ღილაკით.</div>
+<button type="button" id="devCmSave" style="margin-top:6px">შენახვა</button>
+</div>
+</div>
+<div class="dv-ask" id="devAsk" style="display:none">
+<div class="dv-ask-box">
+<h4>მშენებლობა უკვე დაწყებულია</h4>
+<p>გეგმის ცვლილება ჩაიწერება ისტორიაში:</p>
+<div class="dv-ask-lines" id="devAskLines" data-no-i18n></div>
+<label>მიზეზი (არასავალდებულოა)<textarea id="devAskReason" maxlength="500" rows="3" placeholder="მაგ. რატომ გადაიდო დაწყება"></textarea></label>
+<p class="dv-muted">თუ მიზეზს ჩაწერ, ის დაემატება იმ ეტაპების კომენტარებს, რომლებსაც გეგმა შეეცვალათ.</p>
+<div class="dv-ask-actions"><button type="button" id="devAskNo">გაუქმება</button><button type="button" class="primary" id="devAskYes">შენახვა</button></div>
+</div>
+</div>
+<div class="dv-card dv-empty" id="devEmpty" style="display:none"></div>
       <div id="devEditor" style="display:none">
         <div class="dv-ed-head">
           <div><h3>გეგმა და ფაქტიური მონაცემები</h3><p>ეტაპები შეიძლება პარალელურად მიმდინარეობდეს: წილების ჯამი 100% უნდა იყოს. შეცვლილი გრაფიკი მაშინვე ჩანს, ყველასთვის კი შენახვის შემდეგ. დასრულების თარიღის გარეშე ეტაპი მიმდინარედ ითვლება.</p></div>
@@ -1270,6 +1324,20 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"ხანგრძლივობა დღეებში (გეგმის დაწყებიდან)": "Duration in days (from the plan start)",
+"გეგმა: ხანგრძლივობა, დღე": "Plan: duration, days",
+"დღე": "days",
+"კომენტარი ეტაპზე (მაგ. რატომ დაიგვიანა დაწყება)": "Comment on the stage (e.g. why the start was late)",
+"დამატება": "Add",
+"კომენტარი ბაზაში გრაფიკთან ერთად ჩაიწერება „შენახვის“ ღილაკით.": "The comment is saved together with the chart, with the \"Save\" button.",
+"კომენტარები ჯერ არ არის": "No comments yet",
+"წავშალო კომენტარი?": "Delete the comment?",
+"მშენებლობა უკვე დაწყებულია": "Construction has already started",
+"გეგმის ცვლილება ჩაიწერება ისტორიაში:": "The change of the plan will be written into the history:",
+"მიზეზი (არასავალდებულოა)": "Reason (optional)",
+"მაგ. რატომ გადაიდო დაწყება": "e.g. why the start was postponed",
+"თუ მიზეზს ჩაწერ, ის დაემატება იმ ეტაპების კომენტარებს, რომლებსაც გეგმა შეეცვალათ.": "If you write a reason, it is added to the comments of the stages whose plan changed.",
+"მიზეზი:": "Reason:",
 "ინტერიერის დიზაინერი": "Interior designer",
 "დასამტკიცებელი": "Awaiting approval",
 "დამტკიცებული": "Approved",
@@ -1743,6 +1811,9 @@ body.has-footer .site-footer{display:flex}
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^(\d+) კომენტარია, ზღვარია$/, function (m) { return m[1] + ' comments, the limit'; }],
+    [/^ამ ეტაპზე (\d+) კომენტარია, მეტის დამატება არ შეიძლება$/, function (m) { return 'This stage already has ' + m[1] + ' comments, no more can be added'; }],
+    [/^გრაფიკში კომენტარების საერთო რაოდენობა (\d+)-ს აღწევს$/, function (m) { return 'The chart has reached ' + m[1] + ' comments in total'; }],
     [/^(საიტ მენეჯერი|პროექტ მენეჯერი): ([\s\S]+)$/, function (m) { return ({ 'საიტ მენეჯერი': 'Site manager', 'პროექტ მენეჯერი': 'Project manager' })[m[1]] + ': ' + m[2].split(', ').map(function (n) { return n === '—' ? n : translit(n); }).join(', '); }],
     [/^გასწორების დამატება ([\s\S]+)$/, function (m) { return 'Add a correction ' + m[1]; }],
     [/^ოქმში მაქსიმუმ (\d+) საკითხია$/, function (m) { return 'A report can have at most ' + m[1] + ' issues'; }],
@@ -3726,6 +3797,32 @@ function devPlanDiff(oldList, newList) {
   if (keptOld !== keptNew) lines.push('ეტაპების რიგი შეიცვალა');
   return lines;
 }
+// the same changes of the plan, but told stage by stage: Map(stage id → ['გეგმის დაწყება 01.11.2026 → 15.11.2026', ...]) for the stages that exist in both versions
+function devPlanDiffByStage(oldList, newList) {
+  const fmt = v => { const d = devParseDate(v); return d ? `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}` : '—'; };
+  const out = new Map(), oldBy = new Map((oldList || []).map(s => [s.id, s]));
+  (newList || []).forEach(s => {
+    const o = oldBy.get(s.id); if (!o) return;
+    const ls = [];
+    if ((o.name || '') !== (s.name || '')) ls.push(`სახელი: ${o.name} → ${s.name}`);
+    if (Number(o.weight) !== Number(s.weight)) ls.push(`წილი ${o.weight}% → ${s.weight}%`);
+    if ((o.planStart || '') !== (s.planStart || '')) ls.push(`გეგმის დაწყება ${fmt(o.planStart)} → ${fmt(s.planStart)}`);
+    if ((o.planEnd || '') !== (s.planEnd || '')) ls.push(`გეგმის დასრულება ${fmt(o.planEnd)} → ${fmt(s.planEnd)}`);
+    if (ls.length) out.set(s.id, ls);
+  });
+  return out;
+}
+// a dialog (not the browser's confirm: it has to take a text): the changes, an optional reason; resolves { ok, reason }
+function devAskPlanChange(lines) {
+  return new Promise(resolve => {
+    const box = document.getElementById('devAsk'), ta = document.getElementById('devAskReason'), yes = document.getElementById('devAskYes'), no = document.getElementById('devAskNo');
+    document.getElementById('devAskLines').textContent = lines.slice(0, 12).join('\n') + (lines.length > 12 ? `\n… და კიდევ ${lines.length - 12}` : '');
+    ta.value = ''; box.style.display = '';
+    const done = r => { box.style.display = 'none'; yes.onclick = null; no.onclick = null; resolve(r); };
+    yes.onclick = () => done({ ok: true, reason: ta.value.trim().slice(0, 500) }); no.onclick = () => done({ ok: false });
+    ta.focus();
+  });
+}
 // does the construction already have actual figures? (then a change of the plan is written into the history)
 const devHasActual = list => (list || []).some(s => s.actualStart || Number(s.prog) > 0);
 
@@ -3767,7 +3864,13 @@ function devKpiHtml(model) {
 let devChartApi = null;   // what the drawn chart offers to the rest of the code: setModel(model) redraws the curve and the bars while a bar is being dragged
 const DEV_LAYOUT = { W: 1140, L: 190, R: 24, T: 14, topH: 250, gap: 46, rowH: 30, axisH: 30 };
 // onHighlight(ids): which stages the pointer is on. edit: { editable, onLive(i, patch), onDone(i, moved, ev) } for the project manager and admins.
-function devDrawChart(host, model, onHighlight, edit) {
+// the last comment of a stage for its tooltip (short), with the number of the others
+function devLastCommentHtml(st) {
+  const n = devCmCount(st); if (!n) return '';
+  const c = st.comments[n - 1], t = String(c.text || ''), short = t.length > 170 ? t.slice(0, 169) + '…' : t;
+  return `<div class="dv-tip-cm" data-no-i18n><div class="h">💬 ${esc(c.byName || '—')}${c.at ? ' · ' + esc(devCmWhen(c.at)) : ''}</div><div>${esc(short)}</div>${n > 1 ? `<div class="more">${n === 2 ? '+1' : '+' + (n - 1)}</div>` : ''}</div>`;
+}
+function devDrawChart(host, model, onHighlight, edit, onComments) {
   host.innerHTML = ''; devChartApi = null;
   if (model.empty) return;
   const { W, L, R, T, topH, gap, rowH, axisH } = DEV_LAYOUT;
@@ -3880,8 +3983,27 @@ function devDrawChart(host, model, onHighlight, edit) {
   rowBgs = rows.append('rect').attr('class', 'dv-row-bg').attr('fill', 'transparent').attr('x', 0).attr('y', 0).attr('width', W).attr('height', rowH);
   rows.append('line').attr('x1', 0).attr('x2', W).attr('y1', rowH).attr('y2', rowH).attr('stroke', 'var(--dv-grid)').attr('opacity', .6);
   const names = rows.append('text').attr('class', 'dv-row-name').attr('data-no-i18n', '').attr('x', 8).attr('y', 14).attr('font-size', 12).attr('fill', 'var(--dv-ink)').text(s => devShort(s.name || '(უსახელო)', 24));
+  // a long name is cut by its real width (not by the number of letters), so that it never runs into the comment icon at the right of the name column
+  const CM_NAME_MAX = L - 30 - 14, FULL_NAME_MAX = L - 14;
+  names.each(function (s) {
+    if (typeof this.getComputedTextLength !== 'function') return;
+    const t = d3.select(this), full = (s.name || '(უსახელო)').trim(), max = (devCmCount(s) > 0 || (edit && edit.editable)) ? CM_NAME_MAX : FULL_NAME_MAX;
+    if (!(this.getComputedTextLength() > 0)) return;          // not visible: nothing to measure
+    let txt = full; t.text(txt);
+    if (this.getComputedTextLength() <= max) return;
+    while (txt.length > 1 && this.getComputedTextLength() > max) { txt = txt.slice(0, -1); t.text(txt.trimEnd() + '…'); }
+  });
   names.append('title').text(s => s.name);
   rows.append('text').attr('x', 8).attr('y', 27).attr('font-size', 11).attr('fill', 'var(--dv-muted)').text(s => (Math.round(s.weight * 10) / 10) + '%');
+  // the comment icon of a stage (like the one of the issues): filled with the number when there are comments; an editor also sees a faint one on a stage without
+  const CM_X = L - 30;
+  const cmG = rows.append('g').attr('class', 'dv-cm').attr('transform', `translate(${CM_X},7)`).style('cursor', 'pointer')
+    .on('click', function (ev, s) { ev.stopPropagation(); if (onComments) onComments(cur.model.S.findIndex(z => z.id === s.id), ev); })
+    .on('pointerdown', ev => ev.stopPropagation());
+  cmG.append('rect').attr('x', -4).attr('y', -4).attr('width', 32).attr('height', 24).attr('fill', 'transparent');
+  cmG.append('path').attr('class', 'dv-cm-ico').attr('d', 'M2 2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-4 3v-3H2a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z').attr('stroke-width', 1.4).attr('stroke-linejoin', 'round');
+  cmG.append('text').attr('class', 'dv-cm-n').attr('x', 22).attr('y', 11).attr('font-size', 11).attr('font-weight', 600);
+  cmG.append('title').text('კომენტარები');
   // the bars: the plan (a dashed outline, above) and the actual work (filled, below)
   const planBar = rows.append('rect').attr('class', 'dv-plan-bar').attr('y', 4).attr('height', 8).attr('rx', 3).attr('fill', 'var(--dv-surface)').attr('fill-opacity', .01).attr('stroke', 'var(--dv-plan)').attr('stroke-width', 1.5).attr('stroke-dasharray', '4 3');
   const actBase = rows.append('rect').attr('class', 'dv-act-bar').attr('y', 15).attr('height', 9).attr('rx', 3).attr('fill', 'var(--dv-actual)');
@@ -3909,6 +4031,10 @@ function devDrawChart(host, model, onHighlight, edit) {
       r.select('.dv-plan-bar').style('display', s.ps && s.pe ? null : 'none').attr('x', g.px).attr('width', g.pw);
       r.select('.dv-act-bar').style('display', s.as ? null : 'none').attr('x', g.ax).attr('width', g.aw).attr('opacity', s.ae ? 1 : .35);
       r.select('.dv-act-fill').style('display', s.as && !s.ae ? null : 'none').attr('x', g.ax).attr('width', Math.max(0, g.aw * s.prog / 100));
+      const cmN = devCmCount(s), cmShow = cmN > 0 || (edit && edit.editable);
+      r.select('.dv-cm').style('display', cmShow ? null : 'none');
+      r.select('.dv-cm-ico').attr('fill', cmN ? 'var(--dv-actual)' : 'none').attr('stroke', cmN ? 'var(--dv-actual)' : 'var(--dv-axis)');
+      r.select('.dv-cm-n').text(cmN || '').attr('fill', 'var(--dv-actual)');
       const late = devStageLate(s), lab = r.select('.dv-act-label');
       if (!s.as) lab.text(''); else if (s.ae) lab.attr('x', g.aend + 6).attr('fill', late > 0 ? 'var(--dv-bad)' : late < 0 ? 'var(--dv-good-text)' : 'var(--dv-ink2)').text(late > 0 ? `+${late} დღე გვიან` : late < 0 ? `${-late} დღით ადრე` : 'ვადაში');
       else lab.attr('x', g.aend + 6).attr('fill', 'var(--dv-actual)').text(Math.round(s.prog) + '%');
@@ -3937,7 +4063,7 @@ function devDrawChart(host, model, onHighlight, edit) {
       <div class="row"><span class="k">წილი</span><b class="num">${devFmtP(st.weight)}</b></div>
       <div class="row"><span class="k"><i class="dv-sw-line" style="border-color:var(--dv-plan);border-top-style:dashed"></i>გეგმა</span><span class="num">${range(st.ps, st.pe, '…')}</span></div>
       <div class="row"><span class="k"><i class="dv-sw-line" style="border-color:var(--dv-actual)"></i>ფაქტი</span><span class="num">${range(st.as, st.ae, '…')}</span></div>
-      <div class="st">${devStatusText(st, m.TODAY)}</div>`;
+      <div class="st">${devStatusText(st, m.TODAY)}</div>${devLastCommentHtml(st)}`;
     tip.style.opacity = 1; placeTip(mx, ganttY + m.S.indexOf(st) * rowH);
     d3.select(this).select('.dv-row-bg').classed('on', true); if (onHighlight) onHighlight([st.id]);
   }).on('pointerleave', function () { if (dragging) return; tip.style.opacity = 0; d3.select(this).select('.dv-row-bg').classed('on', false); if (onHighlight) onHighlight([]); });
@@ -3998,14 +4124,25 @@ const devAddDays = (d, n) => { const r = new Date(d.getFullYear(), d.getMonth(),
 
 // ── The window ──
 // state: the document on the server (what everybody sees) and the draft (what the project manager is editing; the chart follows the draft while editing)
-const devState = { pid: null, project: null, canEdit: false, isAdmin: false, exists: false, server: [], log: [], updatedAt: null, draft: [], todayOverride: null, dirty: false, popIdx: -1 };
+const devState = { pid: null, project: null, canEdit: false, isAdmin: false, exists: false, server: [], log: [], updatedAt: null, draft: [], todayOverride: null, dirty: false, popIdx: -1, cmId: null };
 const devTodayNow = () => devState.todayOverride || devTodayLocal();
 const canReadDevelopment = () => currentGlobalRole !== 'contractor' || isAdminLike();     // everybody but contractors
 const isProjectPmOf = project => !!project && !!currentUser && project.pmUid === currentUser.uid && currentGlobalRole === 'viewer' && currentUserIsProjectManager === true;
 const canEditDevelopment = project => isAdminLike() || isProjectPmOf(project);
 const devClone = o => JSON.parse(JSON.stringify(o));
 const devNewId = () => 's' + Math.random().toString(36).slice(2, 9);
-const devCleanStage = s => ({ id: String(s.id), name: String(s.name || '').trim(), weight: Number(s.weight) || 0, planStart: s.planStart || '', planEnd: s.planEnd || '', actualStart: s.actualStart || '', actualEnd: s.actualEnd || '', prog: devClamp(s.prog) });
+// The comments of a stage (explanations: why a stage started late, ...): stage.comments = [{ id, text, by (uid), byName, at (ISO time) }], oldest first. At most DEV_CM_MAX per stage
+// and DEV_CM_TOTAL in the whole chart (the document may not grow too large), each at most DEV_CM_LEN characters. They are saved together with the chart.
+const DEV_CM_LEN = 600, DEV_CM_MAX = 30, DEV_CM_TOTAL = 300;
+const devCleanComments = list => (Array.isArray(list) ? list : []).filter(c => c && String(c.text || '').trim()).slice(-DEV_CM_MAX).map(c => ({ id: String(c.id || ''), text: String(c.text).trim().slice(0, DEV_CM_LEN), by: String(c.by || ''), byName: String(c.byName || ''), at: String(c.at || '') }));
+const devCleanStage = s => ({ id: String(s.id), name: String(s.name || '').trim(), weight: Number(s.weight) || 0, planStart: s.planStart || '', planEnd: s.planEnd || '', actualStart: s.actualStart || '', actualEnd: s.actualEnd || '', prog: devClamp(s.prog), comments: devCleanComments(s.comments) });
+const devCmCount = s => (s && Array.isArray(s.comments)) ? s.comments.length : 0;
+const devCmTotal = list => (list || []).reduce((t, s) => t + devCmCount(s), 0);
+// The length of a stage in the PLAN in calendar days (plan end − plan start; 0 = the same day): the editors may type it instead of the end date ("starts on 1 January and lasts 45
+// days"). '' when the start or the end is missing or the range is wrong.
+const devDays = s => { const a = devParseDate(s.planStart), e = devParseDate(s.planEnd); return (!a || !e || e < a) ? '' : Math.round((e - a) / DEV_DAY); };
+const devNewCmId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const devCmWhen = at => { const d = at ? new Date(at) : null; return d && !isNaN(d) ? `${devFmtDate(d)} ${d.toTimeString().slice(0, 5)}` : ''; };
 
 function devRender() {   // everything that follows the draft
   const stages = devState.canEdit ? devState.draft : devState.server;
@@ -4018,8 +4155,9 @@ function devRender() {   // everything that follows the draft
   document.getElementById('devKpis').innerHTML = devKpiHtml(model);
   devDrawChart(document.getElementById('devChart'), model, ids => {
     document.querySelectorAll('#devTable tbody tr').forEach((tr, i) => tr.classList.toggle('hl', !!stages[i] && ids.includes(stages[i].id)));
-  }, devState.canEdit ? { editable: true, onLive: devLive, onDone: devDone } : null);
+  }, devState.canEdit ? { editable: true, onLive: devLive, onDone: devDone } : null, devOpenComments);
   if (devState.canEdit) devRefreshEditor();
+  if (devState.cmId) devRenderComments();    // an open comments window follows the draft
 }
 function devUpdatedLine() {
   const el = document.getElementById('devUpdated');
@@ -4040,7 +4178,7 @@ window.openDevelopment = async pid => {
   document.getElementById('devTitle').textContent = 'პროექტის განვითარება · ' + (project.name || '');
   document.getElementById('devEditor').style.display = devState.canEdit ? '' : 'none';
   document.getElementById('devHint').style.display = devState.canEdit ? '' : 'none';
-  devClosePop();
+  devClosePop(); devCloseComments();
   if (devState.canEdit) devBuildEditor();
   devUpdatedLine();
   om('devModal');
@@ -4048,7 +4186,7 @@ window.openDevelopment = async pid => {
 };
 window.devClose = () => {
   if (devState.dirty && !confirm('შეუნახავი ცვლილებებია. დახურვა?')) return;
-  devState.dirty = false; devClosePop();
+  devState.dirty = false; devClosePop(); devCloseComments();
   cm('devModal');
 };
 
@@ -4056,6 +4194,12 @@ window.devClose = () => {
 function devMarkDirty() { devState.dirty = JSON.stringify(devState.draft) !== JSON.stringify(devState.server); }
 function devSetField(i, f, value) {
   const s = devState.draft[i]; if (!s) return;
+  if (f === 'planDays') {   // typing the days: the plan end becomes the plan start + that many days (an empty field clears the end)
+    const st = devParseDate(s.planStart); if (!st) { devSyncTable(); devSyncPop(); return; }
+    if (value === '' || value == null) s.planEnd = '';
+    else { const n = Math.round(Number(value)); if (!Number.isFinite(n)) return; s.planEnd = devIso(devAddDays(st, Math.max(0, Math.min(3650, n)))); }
+    devMarkDirty(); devRender(); devSyncTable(); devSyncPop(); return;
+  }
   if (f === 'prog') s.prog = devClamp(value);
   else if (f === 'weight') s.weight = value === '' ? 0 : Number(value);
   else s[f] = f === 'name' ? value : (value || '');
@@ -4079,13 +4223,14 @@ const DEV_FIELDS = ['planStart', 'planEnd', 'actualStart', 'actualEnd'];
 function devSyncTable() {   // the table's fields show the draft (except the one being typed in)
   document.querySelectorAll('#devTable tbody tr').forEach(tr => {
     const s = devState.draft[+tr.dataset.i]; if (!s) return;
-    tr.querySelectorAll('[data-f]').forEach(el => { if (document.activeElement === el) return; const v = s[el.dataset.f]; el.value = el.dataset.f === 'weight' ? (v || '') : el.dataset.f === 'prog' ? Math.round(v || 0) : (v == null ? '' : v); });
+    tr.querySelectorAll('[data-f]').forEach(el => { if (document.activeElement === el) return; const v = el.dataset.f === 'planDays' ? devDays(s) : s[el.dataset.f]; el.value = el.dataset.f === 'weight' ? (v || '') : el.dataset.f === 'prog' ? Math.round(v || 0) : (v == null ? '' : v); });
   });
 }
 
 // ── The small window of one stage's dates (opened by a click on a bar or on a name; editors only) ──
 function devOpenPop(i, ev) {
   const s = devState.draft[i]; if (!s || !devState.canEdit) return;
+  devCloseComments();
   devState.popIdx = i;
   const pop = document.getElementById('devPop'), body = document.querySelector('#devModal .dev-wrap'), r = body.getBoundingClientRect();
   document.getElementById('devPopTitle').textContent = s.name || '(უსახელო)';
@@ -4103,33 +4248,97 @@ function devSyncPop() {
   document.getElementById('devPopTitle').textContent = s.name || '(უსახელო)';
   pop.querySelectorAll('[data-pf]').forEach(el => {
     if (document.activeElement === el) return;
-    el.value = el.dataset.pf === 'prog' ? Math.round(s.prog || 0) : (s[el.dataset.pf] || '');
+    el.value = el.dataset.pf === 'prog' ? Math.round(s.prog || 0) : el.dataset.pf === 'planDays' ? devDays(s) : (s[el.dataset.pf] || '');
   });
   const ongoing = !!(s.actualStart && !s.actualEnd);
   pop.querySelector('[data-pf=prog]').disabled = !ongoing;
   pop.querySelector('[data-pf=actualEnd]').disabled = !s.actualStart;
+  pop.querySelector('[data-pf=planDays]').disabled = !s.planStart;
 }
 document.getElementById('devPop').addEventListener('input', e => { const f = e.target.dataset.pf; if (f && devState.popIdx >= 0) devSetField(devState.popIdx, f, e.target.value); });
 document.getElementById('devPop').addEventListener('click', e => { const c = e.target.closest('[data-pc]'); if (c && devState.popIdx >= 0) devSetField(devState.popIdx, c.dataset.pc, ''); });
 window.devClosePop = devClosePop;
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && devState.popIdx >= 0) devClosePop(); });
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (devState.cmId) devCloseComments(); else if (devState.popIdx >= 0) devClosePop(); });
+
+// ── The comments of a stage: everybody who sees the chart can read them, the admin / the super-reviewer / the project manager write (the chart's editors) ──
+// A comment is part of the stage, so it is saved by the same "შენახვა" as the rest of the chart. The author (and an admin) can delete a comment, nobody can change one.
+const DEV_CM_ICON = '<svg viewBox="0 0 20 18" width="15" height="13" aria-hidden="true"><path d="M2 2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-4 3v-3H2a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/></svg>';
+const devCmStages = () => devState.canEdit ? devState.draft : devState.server;   // what is shown: the draft for the editors
+function devOpenComments(i, ev) {   // i = the place of the stage in the list (the chart's rows follow the list)
+  const s = devCmStages()[i]; if (!s) return;
+  devClosePop(); devState.cmId = s.id;
+  const pop = document.getElementById('devCmPop'), box = document.querySelector('#devModal .dev-wrap'), r = box.getBoundingClientRect();
+  pop.style.display = '';
+  const w = pop.offsetWidth || 350;
+  const cx = ev && ev.clientX != null ? ev.clientX - r.left : 60, cy = ev && ev.clientY != null ? ev.clientY - r.top : 60;
+  pop.style.left = Math.max(8, Math.min(cx + 12, (r.width || 800) - w - 8)) + 'px'; pop.style.top = Math.max(8, cy + 12) + 'px';
+  devRenderComments();
+  if (devState.canEdit) { const t = document.getElementById('devCmText'); t.value = ''; t.focus(); devSyncCommentButtons(); }
+}
+function devCloseComments() { devState.cmId = null; const pop = document.getElementById('devCmPop'); if (pop) pop.style.display = 'none'; }
+window.devCloseComments = devCloseComments;
+function devRenderComments() {
+  const pop = document.getElementById('devCmPop'); if (!pop || !devState.cmId) return;
+  const s = devCmStages().find(z => z.id === devState.cmId);
+  if (!s) { devCloseComments(); return; }
+  document.getElementById('devCmTitle').textContent = s.name || '(უსახელო)';
+  const items = s.comments || [], me = currentUser && currentUser.uid;
+  document.getElementById('devCmList').innerHTML = items.length
+    ? items.map(c => `<div class="dv-cm-item"><div class="h"><span data-no-i18n><b>${esc(c.byName || '—')}</b>${c.at ? ' · ' + esc(devCmWhen(c.at)) : ''}</span>${devState.canEdit && (c.by === me || isAdminLike()) ? `<button type="button" class="x" data-del="${esc(c.id)}" title="წაშლა">✕</button>` : ''}</div><div class="t" data-no-i18n>${esc(c.text)}</div></div>`).join('')
+    : '<div class="dv-cm-empty">კომენტარები ჯერ არ არის</div>';
+  document.getElementById('devCmAdd').style.display = devState.canEdit ? '' : 'none';
+  const list = document.getElementById('devCmList'); list.scrollTop = list.scrollHeight;
+  devSyncCommentButtons();
+}
+function devSyncCommentButtons() {
+  if (!devState.canEdit || !devState.cmId) return;
+  const t = document.getElementById('devCmText'), n = t.value.trim().length, s = devState.draft.find(z => z.id === devState.cmId);
+  const full = !!s && devCmCount(s) >= DEV_CM_MAX;
+  document.getElementById('devCmCount').textContent = full ? `${DEV_CM_MAX} კომენტარია, ზღვარია` : `${n} / ${DEV_CM_LEN}`;
+  document.getElementById('devCmAddBtn').disabled = !n || full;
+  document.getElementById('devCmNote').style.display = devState.dirty ? '' : 'none';
+  const sv = document.getElementById('devCmSave'); sv.style.display = devState.dirty ? '' : 'none'; sv.disabled = !devState.dirty || !devValidate(devState.draft, devTodayNow()).ok;
+}
+function devAddComment(text) {
+  const t = String(text || '').trim(); if (!t || !devState.canEdit) return false;
+  const s = devState.draft.find(z => z.id === devState.cmId); if (!s) return false;
+  s.comments = Array.isArray(s.comments) ? s.comments : [];
+  if (s.comments.length >= DEV_CM_MAX) { alert(`ამ ეტაპზე ${DEV_CM_MAX} კომენტარია, მეტის დამატება არ შეიძლება`); return false; }
+  if (devCmTotal(devState.draft) >= DEV_CM_TOTAL) { alert(`გრაფიკში კომენტარების საერთო რაოდენობა ${DEV_CM_TOTAL}-ს აღწევს`); return false; }
+  s.comments.push({ id: devNewCmId(), text: t.slice(0, DEV_CM_LEN), by: currentUser.uid, byName: currentUserName || '', at: new Date().toISOString() });
+  devMarkDirty(); devRender(); return true;
+}
+function devDeleteComment(cid) {
+  const s = devState.draft.find(z => z.id === devState.cmId); if (!s || !devState.canEdit) return;
+  const c = (s.comments || []).find(x => x.id === cid); if (!c) return;
+  if (!(c.by === (currentUser && currentUser.uid) || isAdminLike())) return;     // the author or an admin
+  if (!confirm('წავშალო კომენტარი?')) return;
+  s.comments = s.comments.filter(x => x.id !== cid);
+  devMarkDirty(); devRender();
+}
+document.getElementById('devCmText').addEventListener('input', devSyncCommentButtons);
+document.getElementById('devCmText').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); document.getElementById('devCmAddBtn').click(); } });
+document.getElementById('devCmAddBtn').addEventListener('click', () => { const t = document.getElementById('devCmText'); if (devAddComment(t.value)) { t.value = ''; devSyncCommentButtons(); t.focus(); } });
+document.getElementById('devCmList').addEventListener('click', e => { const b = e.target.closest('[data-del]'); if (b) devDeleteComment(b.dataset.del); });
+document.getElementById('devCmSave').addEventListener('click', () => devSave());
 
 // ── The editor (project manager and admin) ──
 function devBuildEditor() {
   devClosePop();
   const tbl = document.getElementById('devTable');
-  tbl.innerHTML = `<thead><tr><th></th><th>ეტაპი</th><th class="num">წილი %</th><th>გეგმა: დაწყება</th><th>გეგმა: დასრულება</th><th>ფაქტ. დაწყება</th><th>ფაქტ. დასრულება</th><th>შესრულება</th><th>სტატუსი</th><th></th></tr></thead>
+  tbl.innerHTML = `<thead><tr><th></th><th>ეტაპი</th><th class="num">წილი %</th><th>გეგმა: დაწყება</th><th>გეგმა: დასრულება</th><th>ფაქტ. დაწყება</th><th>ფაქტ. დასრულება</th><th>შესრულება</th><th>სტატუსი</th><th></th><th></th></tr></thead>
     <tbody>${devState.draft.map((s, i) => `
       <tr data-i="${i}">
         <td class="mv"><button type="button" data-act="up" title="ზევით">↑</button><button type="button" data-act="down" title="ქვევით">↓</button></td>
         <td><input type="text" data-f="name" maxlength="80" value="${esc(s.name)}" placeholder="ეტაპის სახელი"></td>
         <td class="num"><input type="number" data-f="weight" min="0" max="100" step="any" value="${s.weight || ''}"></td>
         <td class="dt"><input type="date" data-f="planStart" value="${esc(s.planStart)}"></td>
-        <td class="dt"><input type="date" data-f="planEnd" value="${esc(s.planEnd)}"></td>
+        <td class="dt"><input type="date" data-f="planEnd" value="${esc(s.planEnd)}"><input type="number" class="days" data-f="planDays" min="0" max="3650" step="1" value="${devDays(s)}" placeholder="დღე" title="ხანგრძლივობა დღეებში (გეგმის დაწყებიდან)"></td>
         <td class="dt"><input type="date" data-f="actualStart" value="${esc(s.actualStart)}"><button type="button" class="clear" data-c="actualStart" title="გასუფთავება">×</button></td>
         <td class="dt"><input type="date" data-f="actualEnd" value="${esc(s.actualEnd)}"><button type="button" class="clear" data-c="actualEnd" title="გასუფთავება">×</button></td>
         <td><span class="prog"><input type="range" min="0" max="100" step="1" data-f="prog"><input type="number" min="0" max="100" step="1" data-f="prog"></span></td>
         <td><span class="tag" data-status></span></td>
+        <td><button type="button" class="dv-cm-btn" data-act="cm" title="კომენტარები">${DEV_CM_ICON}<span class="n"></span></button></td>
         <td><button type="button" data-act="del" title="ეტაპის წაშლა">✕</button></td>
       </tr>`).join('')}</tbody>`;
   tbl.querySelectorAll('tbody tr').forEach(tr => {
@@ -4143,7 +4352,7 @@ function devBuildEditor() {
 function devRenderLog() {
   const box = document.getElementById('devLog');
   const items = (devState.log || []).slice().reverse();
-  box.innerHTML = items.length ? items.map(e => `<div class="dv-log-item"><div class="h">${esc(e.byName || '—')} · ${esc(e.at ? devFmtDate(new Date(e.at)) + ' ' + new Date(e.at).toTimeString().slice(0, 5) : '')}</div>${(e.changes || []).map(c => `<div>${esc(c)}</div>`).join('')}</div>`).join('') : '<div class="dv-muted">ცვლილება ჯერ არ ყოფილა</div>';
+  box.innerHTML = items.length ? items.map(e => `<div class="dv-log-item"><div class="h">${esc(e.byName || '—')} · ${esc(e.at ? devFmtDate(new Date(e.at)) + ' ' + new Date(e.at).toTimeString().slice(0, 5) : '')}</div>${(e.changes || []).map(c => `<div>${esc(c)}</div>`).join('')}${e.reason ? `<div style="margin-top:3px"><b>მიზეზი:</b> ${esc(e.reason)}</div>` : ''}</div>`).join('') : '<div class="dv-muted">ცვლილება ჯერ არ ყოფილა</div>';
 }
 function devRefreshEditor() {
   const tbl = document.getElementById('devTable');
@@ -4158,10 +4367,13 @@ function devRefreshEditor() {
     en.classList.toggle('bad', badRange); en.title = badRange ? 'დასრულება დაწყებამდეა' : '';
     st.classList.toggle('bad', future); st.title = future ? 'დაწყება დღევანდელ თარიღზე გვიანია' : '';
     en.disabled = !raw.actualStart;
+    const dys = tr.querySelector('[data-f=planDays]'); if (dys) dys.disabled = !raw.planStart;
     const pe2 = devParseDate(raw.planEnd), ps2 = devParseDate(raw.planStart);
     tr.querySelector('[data-f=planEnd]').classList.toggle('bad', !!(ps2 && pe2 && pe2 < ps2));
     const ongoing = !!(s.as && !s.ae);
     tr.querySelectorAll('[data-f=prog]').forEach(o => { o.disabled = !ongoing; if (document.activeElement !== o) o.value = Math.round(s.prog); });
+    const cmb = tr.querySelector('[data-act=cm]'), cmN = devCmCount(raw);
+    if (cmb) { cmb.classList.toggle('has', cmN > 0); cmb.querySelector('.n').textContent = cmN || ''; }
     const tag = tr.querySelector('[data-status]'); tag.className = 'tag';
     tag.textContent = devStatusText(s, now);
     if (s.ae) tag.classList.add(devStageLate(s) > 0 ? 'late' : 'early');
@@ -4188,6 +4400,7 @@ document.getElementById('devTable').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   const tr = b.closest('tr'), i = tr ? +tr.dataset.i : -1, list = devState.draft;
   if (b.dataset.c) { devSetField(i, b.dataset.c, ''); return; }   // × clears a date
+  if (b.dataset.act === 'cm') { devOpenComments(i, e); return; }
   if (b.dataset.act === 'up' && i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; }
   else if (b.dataset.act === 'down' && i >= 0 && i < list.length - 1) { [list[i + 1], list[i]] = [list[i], list[i + 1]]; }
   else if (b.dataset.act === 'del') { if (!confirm(`ეტაპის წაშლა: ${list[i].name || '(უსახელო)'}?`)) return; list.splice(i, 1); }
@@ -4196,7 +4409,7 @@ document.getElementById('devTable').addEventListener('click', e => {
 });
 window.devAddStage = () => {
   if (devState.draft.length >= 60) { alert('ეტაპი 60-ზე მეტი ვერ იქნება'); return; }
-  devState.draft.push({ id: devNewId(), name: '', weight: 0, planStart: '', planEnd: '', actualStart: '', actualEnd: '', prog: 0 });
+  devState.draft.push({ id: devNewId(), name: '', weight: 0, planStart: '', planEnd: '', actualStart: '', actualEnd: '', prog: 0, comments: [] });
   devMarkDirty(); devBuildEditor(); devRender();
   const inputs = document.querySelectorAll('#devTable tbody tr:last-child [data-f=name]'); if (inputs[0]) inputs[0].focus();
 };
@@ -4211,9 +4424,17 @@ window.devSave = async () => {
   if (!v.ok) { alert(v.errors.join('\n')); return; }
   const lines = devPlanDiff(devState.server, stages), hadActual = devHasActual(devState.server);
   let entry = null;
-  if (hadActual && lines.length) {   // the plan changes although the work has started: ask first and write it into the history
-    if (!confirm('მშენებლობა უკვე დაწყებულია. გეგმის ცვლილება ჩაიწერება ისტორიაში:\n\n' + lines.slice(0, 12).join('\n') + (lines.length > 12 ? `\n… და კიდევ ${lines.length - 12}` : '') + '\n\nშევინახო?')) return;
-    entry = { at: new Date().toISOString(), by: currentUser.uid, byName: currentUserName || '', changes: lines.slice(0, 30) };
+  if (hadActual && lines.length) {   // the plan changes although the work has started: ask first (with a place for the reason) and write it into the history
+    const ans = await devAskPlanChange(lines);
+    if (!ans.ok) return;
+    entry = { at: new Date().toISOString(), by: currentUser.uid, byName: currentUserName || '', changes: lines.slice(0, 30), ...(ans.reason ? { reason: ans.reason } : {}) };
+    if (ans.reason) {   // the reason becomes a comment on every stage whose plan changed
+      const byStage = devPlanDiffByStage(devState.server, stages), now = entry.at;
+      stages.forEach(st => {
+        const ls = byStage.get(st.id); if (!ls || devCmTotal(stages) >= DEV_CM_TOTAL) return;
+        st.comments = devCleanComments([...(st.comments || []), { id: devNewCmId(), text: `გეგმის ცვლილება: ${ls.join('; ')}.\nმიზეზი: ${ans.reason}`.slice(0, DEV_CM_LEN), by: currentUser.uid, byName: currentUserName || '', at: now }]);
+      });
+    }
   }
   const planLog = entry ? [...(devState.log || []), entry].slice(-30) : (devState.log || []);
   const btn = document.getElementById('devSave'); btn.disabled = true; btn.textContent = 'ინახება...';
