@@ -124,7 +124,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .project-card-creator{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px;margin-bottom:6px}
 .project-card-role{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:auto;align-self:flex-start;width:fit-content}
 .project-card-bare{min-height:70px;justify-content:center;align-items:center}
-.project-card-pill{border-radius:999px;aspect-ratio:984/323;min-height:0;padding:16px 32px;border-color:var(--primary);background:color-mix(in srgb, var(--primary) var(--activity-pct, 0%), transparent)}
+.project-card-pill{border-radius:999px;aspect-ratio:984/323;min-height:0;padding:16px 32px;border-color:var(--primary);background:transparent}   /* all the cards are transparent; on hover the card fills with the project's colour (.project-card:hover) */
 .project-card-compact{aspect-ratio:984/260}
 .project-card-bare.project-card-compact .project-card-name{font-size:21px}
 .project-card-pill:hover{border-color:var(--card-color)}
@@ -2472,17 +2472,6 @@ function showAuth() {
 }
 
 // ── SHOW PROJECTS ──
-// Maps a project's total issue count (both sections, any status — kept up
-// to date incrementally on create/duplicate/delete, see saveIssue/copyIssueTo/
-// confirmDelete) to a background-opacity tier for the main project card.
-function issueCountToActivityPct(count) {
-  const n = count || 0;
-  if (n <= 0) return 0;
-  if (n < 10) return 15;
-  if (n < 20) return 30;
-  if (n < 30) return 45;
-  return 60;
-}
 
 // ── DM → PROJECT → REVIEWER → PM SANKEY (main projects list) ──
 // "ნინო ორმოცაძე" -> "ნინო" (first word of a full name).
@@ -3710,8 +3699,7 @@ async function showProjects() {
     ];
     projects.forEach(p => {
       const brandColor = p.color || DEFAULT_CARD_COLOR;
-      const activityPct = issueCountToActivityPct(p.issueCount);
-      const cardStyle = brandColor ? `style="--card-color:${brandColor};--activity-pct:${activityPct}%"` : '';
+      const cardStyle = brandColor ? `style="--card-color:${brandColor}"` : '';
       // Logos temporarily disabled — sizes didn't match design standards yet.
       // Re-enable by restoring the PROJECT_LOGOS lookup once exact SVGs are ready.
       // The project's logo (its own, or the Biograpi spiral) in light cream in front of the name. Only a real SVG picture is accepted as the logo.
