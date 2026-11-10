@@ -448,6 +448,15 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .dv-ask-box label{display:block;font-size:12.5px;color:#52514e}
 .dv-ask-box textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;border:1px solid rgba(11,11,11,.2);border-radius:8px;padding:6px 8px;margin-top:4px;resize:vertical}
 .dv-ask-box .dv-muted{color:#898781;font-size:12.5px}
+.dv-imp-wrap{max-height:290px;overflow:auto;border:1px solid rgba(11,11,11,.12);border-radius:8px;margin:8px 0 10px}
+.dv-imp-wrap table{width:100%;border-collapse:collapse;font-size:12.5px}
+.dv-imp-wrap th,.dv-imp-wrap td{text-align:left;padding:4px 8px;border-bottom:1px solid #e1e0d9;white-space:nowrap}
+.dv-imp-wrap th{position:sticky;top:0;background:#f1f0ea;font-weight:600;color:#52514e}
+.dv-imp-wrap td.n,.dv-imp-wrap th.n{text-align:right}
+.dv-imp-wrap td.nm{white-space:normal;min-width:260px}
+.dv-imp-wrap tr.bad td{background:#fdecec}
+.dv-imp-prob{font-size:12.5px;color:#d03b3b;margin:2px 0}
+.dv-imp-mode label{display:block;font-size:13px;margin:3px 0}
 .dv-ask-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}
 .dv-ask-actions button{font:inherit;font-size:13px;border:1px solid rgba(11,11,11,.2);background:#fff;border-radius:8px;padding:6px 14px;cursor:pointer}
 .dv-ask-actions button.primary{background:#2a78d6;color:#fff;border-color:#2a78d6}
@@ -869,6 +878,18 @@ body.has-footer .site-footer{display:flex}
 <div class="dv-ask-actions"><button type="button" id="devAskNo">გაუქმება</button><button type="button" class="primary" id="devAskYes">შენახვა</button></div>
 </div>
 </div>
+<div class="dv-ask" id="devImport" style="display:none">
+<div class="dv-ask-box" style="width:min(900px,100%)">
+<h4>CSV-ის ატვირთვა</h4>
+<p id="devImportSummary"></p>
+<div id="devImportProblems"></div>
+<div class="dv-imp-wrap"><table id="devImportTable"></table></div>
+<div id="devImportMode" style="display:none"></div>
+<label id="devImportScaleRow" style="display:none"><input type="checkbox" id="devImportScale"> წილები პროპორციულად 100%-მდე</label>
+<p class="dv-muted">ეტაპები ფაილის რიგით დარჩება. ჩატვირთვის შემდეგ გადახედე ცხრილსა და გრაფიკს: ბაზაში ცვლილება მხოლოდ „შენახვის“ შემდეგ ჩაიწერება.</p>
+<div class="dv-ask-actions"><button type="button" id="devImportTemplate" style="margin-right:auto">ნიმუშის გადმოწერა</button><button type="button" id="devImportNo">გაუქმება</button><button type="button" class="primary" id="devImportYes">ჩატვირთვა გრაფიკში</button></div>
+</div>
+</div>
 <div class="dv-card dv-empty" id="devEmpty" style="display:none"></div>
       <div id="devEditor" style="display:none">
         <div class="dv-ed-head">
@@ -880,6 +901,8 @@ body.has-footer .site-footer{display:flex}
         <div id="devProblems"></div>
         <div class="dv-actions">
           <button type="button" onclick="devAddStage()">+ ეტაპის დამატება</button>
+          <button type="button" id="devImportBtn" title="ეტაპები CSV ფაილიდან: სახელი; წილი; გეგმა დაწყება; გეგმა დასრულება">CSV-ის ატვირთვა</button>
+          <input type="file" id="devCsvInput" accept=".csv,text/csv,text/plain" style="display:none">
           <button type="button" class="primary" id="devSave" onclick="devSave()">შენახვა</button>
           <button type="button" id="devCancel" onclick="devCancelEdits()">ცვლილებების გაუქმება</button>
           <button type="button" class="dv-danger" id="devDelete" style="display:none" onclick="devDeleteAll()">გრაფიკის სრულად წაშლა</button>
@@ -1324,6 +1347,21 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"CSV-ის ატვირთვა": "Upload CSV",
+"ეტაპები CSV ფაილიდან: სახელი; წილი; გეგმა დაწყება; გეგმა დასრულება": "Stages from a CSV file: name; share; plan start; plan end",
+"ნიმუშის გადმოწერა": "Download a sample",
+"ჩატვირთვა გრაფიკში": "Load into the chart",
+"წილები პროპორციულად 100%-მდე": "Shares in proportion, up to 100%",
+"ეტაპები ფაილის რიგით დარჩება. ჩატვირთვის შემდეგ გადახედე ცხრილსა და გრაფიკს: ბაზაში ცვლილება მხოლოდ „შენახვის“ შემდეგ ჩაიწერება.": "The stages stay in the order of the file. After loading, look at the table and the chart: the change is written to the database only after \"Save\".",
+"ჩატვირთვის შემდეგ ისინი ცხრილში გასასწორებელია": "after loading they have to be corrected in the table",
+"ჩანაცვლება (არსებული ეტაპები და კომენტარები ამოიშლება, სანამ „შენახვას“ არ დააჭერ, ბაზაში არაფერი იცვლება)": "Replace (the existing stages and comments are removed; nothing changes in the database until you press \"Save\")",
+"დამატება ბოლოს (არსებული ეტაპები უცვლელი რჩება)": "Add at the end (the existing stages stay as they are)",
+"ფაილი ძალიან დიდია (1 მბ-მდე)": "The file is too large (up to 1 MB)",
+"ფაილის წაკითხვა ვერ მოხერხდა": "The file could not be read",
+"ფაილში არასწორი სიმბოლოებია: შეინახე ის როგორც „CSV UTF-8“ (Excel-ში: Save As → CSV UTF-8)": "The file has wrong characters: save it as \"CSV UTF-8\" (in Excel: Save As → CSV UTF-8)",
+"ფაილში ეტაპები ვერ ვიპოვე": "No stages found in the file",
+"ფაილში მონაცემები არ არის: პირველი სტრიქონი სათაურებია, შემდეგ ეტაპები": "The file has no data: the first row is the headings, then the stages",
+"სათაურები ვერ ამოვიცანი. პირველ სტრიქონში უნდა იყოს: სახელი; წილი; გეგმა დაწყება; გეგმა დასრულება": "I could not recognise the headings. The first row should have: name; share; plan start; plan end",
 "ხანგრძლივობა დღეებში (გეგმის დაწყებიდან)": "Duration in days (from the plan start)",
 "გეგმა: ხანგრძლივობა, დღე": "Plan: duration, days",
 "დღე": "days",
@@ -1811,6 +1849,28 @@ body.has-footer .site-footer{display:flex}
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^ფაილი: ([\s\S]+) · ეტაპი: (\d+) · წილების ჯამი: ([\d.]+)%( ✓)?$/, function (m) { return 'File: ' + m[1] + ' · stages: ' + m[2] + ' · sum of the shares: ' + m[3] + '%' + (m[4] || ''); }],
+    [/^პრობლემები \((\d+)\):$/, function (m) { return 'Problems (' + m[1] + '):'; }],
+    [/^… და კიდევ (\d+)$/, function (m) { return '… and ' + m[1] + ' more'; }],
+    [/^სტრიქონი (\d+): ([\s\S]+)$/, function (m) {
+      var lab = { 'გეგმის დაწყება': 'plan start', 'გეგმის დასრულება': 'plan end', 'ფაქტ. დაწყება': 'actual start', 'ფაქტ. დასრულება': 'actual end' };
+      var one = function (t) {
+        var x;
+        if (t === 'სახელი არ არის') return 'the name is missing';
+        if (t === 'სახელი 80 ასოზე გრძელია') return 'the name is longer than 80 letters';
+        if (t === 'წილი არ არის') return 'the share is missing';
+        if (t === 'გეგმის დაწყება არ არის') return 'the plan start is missing';
+        if (t === 'გეგმის დასრულება არ არის') return 'the plan end is missing';
+        if ((x = t.match(/^წილი არასწორია \(„([\s\S]*)“\)$/))) return 'the share is wrong ("' + x[1] + '")';
+        if ((x = t.match(/^შესრულება არასწორია \(„([\s\S]*)“\)$/))) return 'the progress is wrong ("' + x[1] + '")';
+        if ((x = t.match(/^(გეგმის დაწყება|გეგმის დასრულება|ფაქტ\. დაწყება|ფაქტ\. დასრულება): თარიღი არასწორია \(„([\s\S]*)“\)$/))) return lab[x[1]] + ': the date is wrong ("' + x[2] + '")';
+        return t;
+      };
+      return 'Row ' + m[1] + ': ' + m[2].split('; ').map(one).join('; ');
+    }],
+    [/^ფაილში (\d+) ეტაპია, მაქსიმუმ 60 შეიძლება$/, function (m) { return 'The file has ' + m[1] + ' stages, at most 60 are allowed'; }],
+    [/^ჩაიტვირთა (\d+) ეტაპი\. გადახედე და დააჭირე „შენახვას“$/, function (m) { return m[1] + ' stages loaded. Look at them and press \"Save\"'; }],
+    [/^გრაფიკში უკვე არის (\d+) ეტაპი(?: და (\d+) კომენტარი)?:$/, function (m) { return 'The chart already has ' + m[1] + ' stages' + (m[2] ? ' and ' + m[2] + ' comments' : '') + ':'; }],
     [/^(\d+) კომენტარია, ზღვარია$/, function (m) { return m[1] + ' comments, the limit'; }],
     [/^ამ ეტაპზე (\d+) კომენტარია, მეტის დამატება არ შეიძლება$/, function (m) { return 'This stage already has ' + m[1] + ' comments, no more can be added'; }],
     [/^გრაფიკში კომენტარების საერთო რაოდენობა (\d+)-ს აღწევს$/, function (m) { return 'The chart has reached ' + m[1] + ' comments in total'; }],
@@ -3823,6 +3883,138 @@ function devAskPlanChange(lines) {
     ta.focus();
   });
 }
+// ── Importing the stages from a CSV file (the chart's editors) ──
+// The first row names the columns (Georgian or English names, any order; unknown columns, like "შენიშვნა", are ignored): სახელი; წილი; გეგმა დაწყება; გეგმა დასრულება; and, if there are
+// any, ფაქტ. დაწყება; ფაქტ. დასრულება; შესრულება; დღე (a row with a plan start and a number of days but without a plan end gets its end from them). The columns may be separated by
+// ; , or a tab; dates: 2026-05-01 or 01.05.2026; numbers: 1.5 or 1,5. The stages stay in the ORDER OF THE FILE. Nothing is saved here: the stages go into the draft, to be looked at
+// (the table and the chart follow) and saved with "შენახვა".
+const DEV_CSV_ALIASES = {
+  name: ['სახელი', 'ეტაპი', 'ეტაპისსახელი', 'დასახელება', 'name', 'stage'], weight: ['წილი', 'წონა', 'weight', 'share'],
+  planStart: ['გეგმადაწყება', 'გეგმისდაწყება', 'გეგმადაწყებისთარიღი', 'დაწყება', 'planstart', 'start'], planEnd: ['გეგმადასრულება', 'გეგმისდასრულება', 'გეგმადასრულებისთარიღი', 'დასრულება', 'planend', 'end'],
+  actualStart: ['ფაქტდაწყება', 'ფაქტიურიდაწყება', 'actualstart'], actualEnd: ['ფაქტდასრულება', 'ფაქტიურიდასრულება', 'actualend'],
+  prog: ['შესრულება', 'პროგრესი', 'progress'], days: ['დღე', 'დღეები', 'ხანგრძლივობა', 'ხანგრძლივობადღე', 'days', 'duration'],
+};
+const DEV_CSV_LABEL = { planStart: 'გეგმის დაწყება', planEnd: 'გეგმის დასრულება', actualStart: 'ფაქტ. დაწყება', actualEnd: 'ფაქტ. დასრულება' };
+const devHeadKey = h => String(h == null ? '' : h).toLowerCase().replace(/[\s._:()%\-]+/g, '');
+function devParseCsv(text) {
+  text = String(text).replace(/^\uFEFF/, '');
+  const first = text.split(/\r?\n/, 1)[0] || '';
+  const delim = [';', ',', '\t'].map(d => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"' && cell === '') q = true;
+    else if (c === delim) { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); cell = ''; rows.push(row); row = []; }
+    else cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(x => String(x).trim() !== ''));
+}
+function devCsvNum(v) {   // null = empty, NaN = not a number
+  const t = String(v == null ? '' : v).trim().replace('%', '').replace(/\s/g, '').replace(',', '.');
+  if (t === '') return null; const n = Number(t); return Number.isFinite(n) ? n : NaN;
+}
+function devCsvDate(v) {   // { iso } (iso '' for empty) or { bad: true }
+  const t = String(v == null ? '' : v).trim(); if (!t) return { iso: '' };
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/), y, mo, d;
+  if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+  else if ((m = t.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/))) { d = +m[1]; mo = +m[2]; y = +m[3]; }
+  else return { bad: true };
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return { bad: true };
+  return { iso: devIso(dt) };
+}
+// the text of a file → { stages, problems: [{ line, text }] } or { error }
+function devCsvToStages(text) {
+  const rows = devParseCsv(text);
+  if (rows.length < 2) return { error: 'ფაილში მონაცემები არ არის: პირველი სტრიქონი სათაურებია, შემდეგ ეტაპები' };
+  const head = rows[0].map(devHeadKey), col = {};
+  Object.entries(DEV_CSV_ALIASES).forEach(([k, names]) => { const i = head.findIndex(h => names.includes(h)); if (i >= 0) col[k] = i; });
+  if (col.name == null || col.planStart == null || (col.planEnd == null && col.days == null)) return { error: 'სათაურები ვერ ამოვიცანი. პირველ სტრიქონში უნდა იყოს: სახელი; წილი; გეგმა დაწყება; გეგმა დასრულება' };
+  const stages = [], problems = [];
+  rows.slice(1).forEach((r, k) => {
+    const line = k + 2, get = key => col[key] == null ? '' : String(r[col[key]] == null ? '' : r[col[key]]).trim(), probs = [];
+    const name = get('name');
+    if (!name) probs.push('სახელი არ არის'); else if (name.length > 80) probs.push('სახელი 80 ასოზე გრძელია');
+    const w = devCsvNum(get('weight')); let weight = 0;
+    if (w === null) probs.push('წილი არ არის'); else if (Number.isNaN(w)) probs.push(`წილი არასწორია („${get('weight')}“)`); else weight = w;
+    const dt = {};
+    ['planStart', 'planEnd', 'actualStart', 'actualEnd'].forEach(key => { const d = devCsvDate(get(key)); if (d.bad) { probs.push(`${DEV_CSV_LABEL[key]}: თარიღი არასწორია („${get(key)}“)`); dt[key] = ''; } else dt[key] = d.iso; });
+    const dys = devCsvNum(get('days'));
+    if (!dt.planEnd && dt.planStart && dys != null && !Number.isNaN(dys)) dt.planEnd = devIso(devAddDays(devParseDate(dt.planStart), Math.max(0, Math.min(3650, Math.round(dys)))));
+    if (!dt.planStart && !probs.some(x => x.startsWith('გეგმის დაწყება'))) probs.push('გეგმის დაწყება არ არის');
+    if (!dt.planEnd && !probs.some(x => x.startsWith('გეგმის დასრულება'))) probs.push('გეგმის დასრულება არ არის');
+    const pr = devCsvNum(get('prog')); let prog = 0;
+    if (pr != null && Number.isNaN(pr)) probs.push(`შესრულება არასწორია („${get('prog')}“)`); else if (pr != null) prog = devClamp(pr);
+    stages.push({ id: devNewId(), name, weight, planStart: dt.planStart, planEnd: dt.planEnd, actualStart: dt.actualStart, actualEnd: dt.actualEnd, prog, comments: [] });
+    if (probs.length) problems.push({ line, text: probs.join('; ') });
+  });
+  return { stages, problems };
+}
+const devImp = { stages: [], problems: [], fileName: '' };
+const devFmtIso = iso => { const d = devParseDate(iso); return d ? devFmtDate(d) : ''; };
+function devImportRender() {
+  const list = devImp.stages, sum = Math.round(list.reduce((t, s) => t + (Number(s.weight) || 0), 0) * 1000) / 1000, have = devState.draft.length;
+  const mode = have ? ((document.querySelector('input[name=devImportMode]:checked') || {}).value || 'replace') : 'replace';
+  document.getElementById('devImportSummary').textContent = `ფაილი: ${devImp.fileName} · ეტაპი: ${list.length} · წილების ჯამი: ${sum}%${Math.abs(sum - 100) < 0.001 ? ' ✓' : ''}`;
+  const pr = devImp.problems;
+  document.getElementById('devImportProblems').innerHTML = pr.length ? `<div class="dv-imp-prob"><b>პრობლემები (${pr.length}):</b> ჩატვირთვის შემდეგ ისინი ცხრილში გასასწორებელია</div>` + pr.slice(0, 8).map(x => `<div class="dv-imp-prob">სტრიქონი ${x.line}: ${esc(x.text)}</div>`).join('') + (pr.length > 8 ? `<div class="dv-imp-prob">… და კიდევ ${pr.length - 8}</div>` : '') : '';
+  const anyActual = list.some(s => s.actualStart || s.actualEnd || s.prog), bad = new Set(pr.map(x => x.line));
+  document.getElementById('devImportTable').innerHTML = `<thead><tr><th class="n">#</th><th>ეტაპი</th><th class="n">წილი %</th><th>გეგმა: დაწყება</th><th>გეგმა: დასრულება</th><th class="n">დღე</th>${anyActual ? '<th>ფაქტ. დაწყება</th><th>ფაქტ. დასრულება</th><th class="n">შესრულება</th>' : ''}</tr></thead><tbody>${list.map((s, i) => `<tr class="${bad.has(i + 2) ? 'bad' : ''}"><td class="n">${i + 1}</td><td class="nm" data-no-i18n>${esc(s.name) || '—'}</td><td class="n">${esc(s.weight)}</td><td>${devFmtIso(s.planStart) || '—'}</td><td>${devFmtIso(s.planEnd) || '—'}</td><td class="n">${devDays(s)}</td>${anyActual ? `<td>${devFmtIso(s.actualStart)}</td><td>${devFmtIso(s.actualEnd)}</td><td class="n">${s.prog ? Math.round(s.prog) : ''}</td>` : ''}</tr>`).join('')}</tbody>`;
+  const m = document.getElementById('devImportMode');
+  m.style.display = have ? '' : 'none'; m.className = 'dv-imp-mode';
+  if (have) m.innerHTML = `<p style="margin:6px 0 2px">გრაფიკში უკვე არის ${have} ეტაპი${devCmTotal(devState.draft) ? ` და ${devCmTotal(devState.draft)} კომენტარი` : ''}:</p><label><input type="radio" name="devImportMode" value="replace" ${mode === 'replace' ? 'checked' : ''}> ჩანაცვლება (არსებული ეტაპები და კომენტარები ამოიშლება, სანამ „შენახვას“ არ დააჭერ, ბაზაში არაფერი იცვლება)</label><label><input type="radio" name="devImportMode" value="append" ${mode === 'append' ? 'checked' : ''}> დამატება ბოლოს (არსებული ეტაპები უცვლელი რჩება)</label>`;
+  const scale = document.getElementById('devImportScaleRow');
+  scale.style.display = (mode === 'replace' && sum > 0 && Math.abs(sum - 100) > 0.001) ? '' : 'none';
+  if (scale.style.display === 'none') document.getElementById('devImportScale').checked = false;
+}
+function devCloseImport() { document.getElementById('devImport').style.display = 'none'; }
+function devApplyImport() {
+  const have = devState.draft.length, mode = have ? ((document.querySelector('input[name=devImportMode]:checked') || {}).value || 'replace') : 'replace';
+  const list = devImp.stages.map(s => ({ ...s }));
+  if (mode === 'replace' && document.getElementById('devImportScale').checked) {   // all the shares in proportion, so that they add up to exactly 100% (the rounding leftover goes to the biggest)
+    const sum = list.reduce((t, s) => t + (Number(s.weight) || 0), 0);
+    if (sum > 0) {
+      list.forEach(s => { s.weight = Math.round((Number(s.weight) || 0) * 100 / sum * 100) / 100; });
+      const diff = Math.round((100 - list.reduce((t, s) => t + s.weight, 0)) * 100) / 100;
+      if (diff) { const big = list.reduce((m, s) => s.weight > m.weight ? s : m, list[0]); big.weight = Math.round((big.weight + diff) * 100) / 100; }
+    }
+  }
+  const merged = mode === 'append' ? [...devState.draft, ...list] : list;
+  if (merged.length > 60) { alert('ეტაპი 60-ზე მეტი ვერ იქნება'); return; }
+  devState.draft = merged; devClosePop(); devCloseComments(); devCloseImport();
+  devMarkDirty(); devBuildEditor(); devRender();
+  showToast(`ჩაიტვირთა ${list.length} ეტაპი. გადახედე და დააჭირე „შენახვას“`);
+}
+function devReadFile(file) {
+  return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result || '')); r.onerror = () => reject(r.error); r.readAsText(file, 'UTF-8'); });
+}
+async function devImportFile(file) {
+  if (!devState.canEdit) return;
+  if (file.size > 1024 * 1024) { alert('ფაილი ძალიან დიდია (1 მბ-მდე)'); return; }
+  let text; try { text = await devReadFile(file); } catch (e) { alert('ფაილის წაკითხვა ვერ მოხერხდა'); return; }
+  if ((text.match(/\uFFFD/g) || []).length > 2) { alert('ფაილში არასწორი სიმბოლოებია: შეინახე ის როგორც „CSV UTF-8“ (Excel-ში: Save As → CSV UTF-8)'); return; }
+  const res = devCsvToStages(text);
+  if (res.error) { alert(res.error); return; }
+  if (!res.stages.length) { alert('ფაილში ეტაპები ვერ ვიპოვე'); return; }
+  if (res.stages.length > 60) { alert(`ფაილში ${res.stages.length} ეტაპია, მაქსიმუმ 60 შეიძლება`); return; }
+  devImp.stages = res.stages; devImp.problems = res.problems; devImp.fileName = file.name || '';
+  devImportRender(); document.getElementById('devImport').style.display = '';
+}
+function devDownloadTemplate() {
+  const text = '\uFEFFსახელი;წილი;გეგმა დაწყება;გეგმა დასრულება;ფაქტ. დაწყება;ფაქტ. დასრულება;შესრულება;დღე\r\nმოსამზადებელი სამუშაოები;10;2026-01-01;2026-01-31;;;;\r\nკონსტრუქცია;60;2026-01-31;;;;;120\r\nდასრულება;30;2026-06-01;2026-09-01;;;;\r\n';
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(text); a.download = 'ganvitareba-nimushi.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+document.getElementById('devImportBtn').addEventListener('click', () => { const i = document.getElementById('devCsvInput'); i.value = ''; i.click(); });
+document.getElementById('devCsvInput').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) devImportFile(f); });
+document.getElementById('devImportYes').addEventListener('click', devApplyImport);
+document.getElementById('devImportNo').addEventListener('click', devCloseImport);
+document.getElementById('devImportTemplate').addEventListener('click', devDownloadTemplate);
+document.getElementById('devImportMode').addEventListener('change', devImportRender);
+
 // does the construction already have actual figures? (then a change of the plan is written into the history)
 const devHasActual = list => (list || []).some(s => s.actualStart || Number(s.prog) > 0);
 
@@ -4258,7 +4450,7 @@ function devSyncPop() {
 document.getElementById('devPop').addEventListener('input', e => { const f = e.target.dataset.pf; if (f && devState.popIdx >= 0) devSetField(devState.popIdx, f, e.target.value); });
 document.getElementById('devPop').addEventListener('click', e => { const c = e.target.closest('[data-pc]'); if (c && devState.popIdx >= 0) devSetField(devState.popIdx, c.dataset.pc, ''); });
 window.devClosePop = devClosePop;
-document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (devState.cmId) devCloseComments(); else if (devState.popIdx >= 0) devClosePop(); });
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (document.getElementById('devImport').style.display !== 'none') { devCloseImport(); return; } if (devState.cmId) devCloseComments(); else if (devState.popIdx >= 0) devClosePop(); });
 
 // ── The comments of a stage: everybody who sees the chart can read them, the admin / the super-reviewer / the project manager write (the chart's editors) ──
 // A comment is part of the stage, so it is saved by the same "შენახვა" as the rest of the chart. The author (and an admin) can delete a comment, nobody can change one.
