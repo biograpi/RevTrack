@@ -1347,6 +1347,10 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"ხარისხის ინსპექტორი": "Quality inspector",
+"წერს ხარისხის ოქმებს ყველა პროექტზე": "Writes quality reports on every project",
+"ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში); ხარისხის ოქმს ხარისხის ინსპექტორიც წერს": "Only the site manager or the project manager of this project can write a new report (set in the project's management); a quality report can also be written by a quality inspector",
+"ყოველკვირეული და ყოველდღიური ოქმი იწერება ამ პროექტის საიტ მენეჯერის ან პროექტ მენეჯერის მიერ; ხარისხის ინსპექტორს ხარისხის ოქმების წერა შეუძლია": "Weekly and daily reports are written by this project's site manager or project manager; a quality inspector can write quality reports",
 "CSV-ის ატვირთვა": "Upload CSV",
 "ეტაპები CSV ფაილიდან: სახელი; წილი; გეგმა დაწყება; გეგმა დასრულება": "Stages from a CSV file: name; share; plan start; plan end",
 "ნიმუშის გადმოწერა": "Download a sample",
@@ -2165,12 +2169,17 @@ function canOpenMepAsUser() { return currentGlobalRole === 'viewer' && currentUs
 // who is one of the project's site managers (the list siteManagers / siteMgrUids). `project` = the project's data.
 let currentUserIsSiteManager = false;
 let currentUserIsProjectManager = false;   // users/{uid}.projectManager: marked as a project manager by an admin
+let currentUserIsQualityInspector = false; // users/{uid}.qualityInspector: marked as a QUALITY INSPECTOR by an admin: writes quality reports on EVERY project
+const isQualityInspector = () => currentGlobalRole === 'viewer' && currentUserIsQualityInspector === true;
 const isSiteManagerOf = project => !!project && !!currentUser && projectSiteManagerEntries(project).some(e => e.uid && e.uid === currentUser.uid) && currentGlobalRole === 'viewer' && currentUserIsSiteManager === true;
 const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project) || isProjectPmOf(project);   // the site managers and the project manager of this project
+// A QUALITY report is written by them too and, on EVERY project, by a quality inspector (who writes no other kind of report).
+const canWriteQualityReportsOn = project => canWriteReportsOn(project) || isQualityInspector();
 // Changing or deleting a report: an admin always; a site manager or the project manager only their OWN report and only during the first 24 hours after it was created.
 const REPORT_EDIT_WINDOW_MS = 24 * 3600 * 1000;
 const reportEditable = r => !(r && r.createdAt && r.createdAt.toDate) || (Date.now() - r.createdAt.toDate().getTime() <= REPORT_EDIT_WINDOW_MS);   // no time yet (just created, still being saved) counts as new
-const canEditReport = (r, project) => isAdminLike() || ((isSiteManagerOf(project) || isProjectPmOf(project)) && r.authorId === currentUser?.uid && reportEditable(r));
+const canEditReport = (r, project) => isAdminLike() || ((isSiteManagerOf(project) || isProjectPmOf(project)) && r.authorId === currentUser?.uid && reportEditable(r))
+  || (isQualityInspector() && reportKind(r) === 'quality' && r.authorId === currentUser?.uid && reportEditable(r));   // a quality inspector: his own QUALITY report, first 24 hours
 // ── The person's MARKS, shown in the headers next to the name (there used to be a free-text label): a site manager / project manager mark with the projects the person is chosen
 // on ("საიტ მენეჯერი: ბარე", "პროექტ მენეჯერი: ბარე, ბოჰემა, ჰისნი"), and the two marks that belong to no project (interior designer, MEP reviewer). A User who has any mark
 // no longer gets the grey "User" badge: the marks are shown instead. ──
@@ -2187,6 +2196,7 @@ function userMarks() {   // [{ text, title }]: the marks of the signed-in person
   withProjects('პროექტ მენეჯერი', currentUserIsProjectManager, myMarkProjects.pm);
   if (currentUserCanOpenDmIssues) out.push({ text: 'ინტერიერის დიზაინერი', title: '' });
   if (currentUserCanOpenMepIssues) out.push({ text: 'MEP რევიზორი', title: '' });
+  if (currentUserIsQualityInspector) out.push({ text: 'ხარისხის ინსპექტორი', title: '' });
   return out;
 }
 // The name in a header, followed by the marks; roleBadgeId (if the header has one): the grey role badge is hidden when there are marks to show instead.
@@ -2197,7 +2207,7 @@ function renderHeaderUser(nameId, roleBadgeId) {
   if (roleBadgeId) document.getElementById(roleBadgeId).style.display = marks.length ? 'none' : '';
 }
 // A QUALITY report can no longer be changed after 24 hours, but anybody who may write reports on the project can still add "defect corrected" entries to its issues.
-const canAddReportFix = (r, project) => reportKind(r) === 'quality' && canWriteReportsOn(project);
+const canAddReportFix = (r, project) => reportKind(r) === 'quality' && canWriteQualityReportsOn(project);
 const canReadReports = () => currentGlobalRole !== 'contractor' || isAdminLike(); // everybody but contractors
 function canOpenInSectionAsUser(section) { return (section === 'internal' && canOpenDmAsUser()) || (section === 'mep' && canOpenMepAsUser()); }
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
@@ -2445,6 +2455,7 @@ onAuthStateChanged(auth, async user => {
     currentUserCanOpenMepIssues = d.canOpenMepIssues === true;
     currentUserIsSiteManager = d.siteManager === true;
     currentUserIsProjectManager = d.projectManager === true;
+    currentUserIsQualityInspector = d.qualityInspector === true;
   } else {
     showToast('მომხმარებელი ვერ მოიძებნა — გაიარეთ რეგისტრაცია'); await signOut(auth); return;
   }
@@ -7177,11 +7188,13 @@ window.openReports = async pid => {
     const pd = await getDoc(doc(db, 'projects', pid));
     reportsProject = pd.exists() ? pd.data() : {};
     document.getElementById('reportsHdrProject').textContent = (reportsProject.name || 'პროექტი') + ' — რეპორტი';
-    const mayWrite = canWriteReportsOn(reportsProject);
+    const mayWrite = canWriteReportsOn(reportsProject), mayQuality = canWriteQualityReportsOn(reportsProject);   // a quality inspector: only the quality report, on every project
     document.getElementById('btnNewReport').style.display = mayWrite ? '' : 'none';
     document.getElementById('btnNewDailyReport').style.display = mayWrite ? '' : 'none';
-    document.getElementById('btnNewQualityReport').style.display = mayWrite ? '' : 'none';
-    document.getElementById('reportsHint').textContent = mayWrite ? '' : 'ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში)';
+    document.getElementById('btnNewQualityReport').style.display = mayQuality ? '' : 'none';
+    document.getElementById('reportsHint').textContent = mayWrite ? '' : mayQuality
+      ? 'ყოველკვირეული და ყოველდღიური ოქმი იწერება ამ პროექტის საიტ მენეჯერის ან პროექტ მენეჯერის მიერ; ხარისხის ინსპექტორს ხარისხის ოქმების წერა შეუძლია'
+      : 'ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში); ხარისხის ოქმს ხარისხის ინსპექტორიც წერს';
     await loadReports();
   } catch (e) { document.getElementById('reportsTbody').textContent = 'შეცდომა: ' + e.message; }
 };
@@ -7258,9 +7271,10 @@ document.getElementById('btnReportViewEdit').addEventListener('click', () => { c
 // The form. A new report starts with three empty photo places, one empty line in each list, the next number in line (the very first
 // report: the number is typed by hand, e.g. 55) and the object's details copied from the project.
 window.openReportForm = (id, type) => {
-  if (!canWriteReportsOn(reportsProject)) return;
   editingReport = id ? reportsList.find(r => r.id === id) : null;
   if (id && !editingReport) return;
+  // who may open it: the writers of the project any report; a quality inspector only a QUALITY one
+  if (!((editingReport ? reportKind(editingReport) === 'quality' : type === 'quality') ? canWriteQualityReportsOn(reportsProject) : canWriteReportsOn(reportsProject))) { editingReport = null; return; }
   // an old QUALITY report that can no longer be changed still opens, only to add "defect corrected" entries to its issues
   reportFixOnly = !!(editingReport && !canEditReport(editingReport, reportsProject));
   if (reportFixOnly && !canAddReportFix(editingReport, reportsProject)) { reportFixOnly = false; return; }
@@ -7991,6 +8005,12 @@ function renderUsersPanel() {
         </label>
       </div>
       <div class="user-label-row">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px" title="წერს ხარისხის ოქმებს ყველა პროექტზე">
+          <input type="checkbox" ${u.qualityInspector?'checked':''} onchange="toggleUserQualityInspector('${u.id}',this.checked)">
+          ხარისხის ინსპექტორი
+        </label>
+      </div>
+      <div class="user-label-row">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
           <input type="checkbox" ${u.siteManager?'checked':''} onchange="toggleUserSiteManager('${u.id}',this.checked)">
           საიტ მენეჯერი (წერს ოქმებს)
@@ -8077,6 +8097,13 @@ window.toggleUserMepPermission = async (uid, checked) => {
   try {
     await updateDoc(doc(db,'users',uid), {canOpenMepIssues: checked});
     if (allUsers[uid]) allUsers[uid].canOpenMepIssues = checked;
+  } catch(e) { alert('შეცდომა: '+e.message); renderUsersPanel(); }
+};
+// Marks a User account as a QUALITY INSPECTOR (users/{uid}.qualityInspector): he may write quality reports on every project (the rules check the mark).
+window.toggleUserQualityInspector = async (uid, checked) => {
+  try {
+    await updateDoc(doc(db,'users',uid), {qualityInspector: checked});
+    if (allUsers[uid]) allUsers[uid].qualityInspector = checked;
   } catch(e) { alert('შეცდომა: '+e.message); renderUsersPanel(); }
 };
 // Marks a User account as a site manager (users/{uid}.siteManager): it can then be chosen as a project's site manager and write that
