@@ -1188,10 +1188,10 @@ body.has-footer .site-footer{display:flex}
           <input id="pPmName" placeholder="სახელი გვარი">
         </div>
         <div class="field form-full">
-          <label>საიტ მენეჯერები (წერს ამ პროექტის ოქმებს)</label>
+          <label>საიტ მენეჯერები</label>
           <div id="pSiteList"></div>
           <button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px;align-self:flex-start" onclick="addSiteManager()">+ საიტ მენეჯერის დამატება</button>
-          <div class="auth-hint">სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“</div>
+          <div class="auth-hint">სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“. ოქმებს წერს ყველა მონიშნული საიტ მენეჯერი ნებისმიერ პროექტზე; ეს სია მხოლოდ ჩვენებისთვისაა (პროექტის ბარათზე და სქემაზე)</div>
         </div>
         <div class="field">
           <label>MP რევიზორი</label>
@@ -1397,6 +1397,15 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"დამტკიცების ველი არასწორადაა ჩაწერილი (უნდა იყოს true). მიმართე ადმინისტრატორს": "The approval field is written wrongly (it must be true). Contact the administrator",
+"ხარისხის ინსპექტორი (წერს ოქმებს ყველა პროექტზე)": "Quality inspector (writes reports on every project)",
+"პროექტ მენეჯერი (წერს ოქმებს ყველა პროექტზე და გეგმავს თავის პროექტს)": "Project manager (writes reports on every project and plans his own project)",
+"ახალი ოქმის დაწერა შეუძლია საიტ მენეჯერს, პროექტ მენეჯერს და ხარისხის ინსპექტორს": "A new report can be written by a site manager, a project manager or a quality inspector",
+"საიტ მენეჯერი (წერს ოქმებს ყველა პროექტზე)": "Site manager (writes reports on every project)",
+"წერს ოქმებს ყველა პროექტზე": "Writes reports on every project",
+"ყოველკვირეული და ყოველდღიური ოქმი იწერება საიტ მენეჯერის ან ამ პროექტის პროექტ მენეჯერის მიერ; ხარისხის ინსპექტორს ხარისხის ოქმების წერა შეუძლია": "Weekly and daily reports are written by a site manager or this project's project manager; a quality inspector can write quality reports",
+"ახალი ოქმის დაწერა შეუძლია საიტ მენეჯერს ან ამ პროექტის პროექტ მენეჯერს; ხარისხის ოქმს ხარისხის ინსპექტორიც წერს": "A new report can be written by a site manager or this project's project manager; a quality report can also be written by a quality inspector",
+"სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“. ოქმებს წერს ყველა მონიშნული საიტ მენეჯერი ნებისმიერ პროექტზე; ეს სია მხოლოდ ჩვენებისთვისაა (პროექტის ბარათზე და სქემაზე)": "Only a User marked as \\\"Site manager\\\" in the users list appears here. Every marked site manager writes reports on any project; this list is only for showing (on the project card and the diagram)",
 "სურათი ვერ აიტვირთა: ინტერნეტი შეწყდა ან ძალიან ნელია. სცადე ხელახლა.": "The picture could not be uploaded: the internet was interrupted or is too slow. Try again.",
 "ოქმები": "Reports",
 "სამუშაოების გრაფიკი": "Work chart",
@@ -2255,14 +2264,15 @@ let currentUserIsProjectManager = false;   // users/{uid}.projectManager: marked
 let currentUserIsQualityInspector = false; // users/{uid}.qualityInspector: marked as a QUALITY INSPECTOR by an admin: writes quality reports on EVERY project
 const isQualityInspector = () => currentGlobalRole === 'viewer' && currentUserIsQualityInspector === true;
 const isSiteManagerOf = project => !!project && !!currentUser && projectSiteManagerEntries(project).some(e => e.uid && e.uid === currentUser.uid) && currentGlobalRole === 'viewer' && currentUserIsSiteManager === true;
-const canWriteReportsOn = project => isAdminLike() || isSiteManagerOf(project) || isProjectPmOf(project);   // the site managers and the project manager of this project
-// A QUALITY report is written by them too and, on EVERY project, by a quality inspector (who writes no other kind of report).
-const canWriteQualityReportsOn = project => canWriteReportsOn(project) || isQualityInspector();
+// A REPORT WRITER: a User account marked as a site manager, a project manager or a quality inspector (any ONE of the three tick-boxes). He writes ALL the reports (weekly, daily and
+// quality) of EVERY project, named in it or not. (The project's own lists of site managers and its PM only show names; the PM of a project also changes that project's development chart.)
+const isReportWriterMark = () => currentGlobalRole === 'viewer' && (currentUserIsSiteManager === true || currentUserIsProjectManager === true || currentUserIsQualityInspector === true);
+const canWriteReportsOn = project => isAdminLike() || isReportWriterMark();
+const canWriteQualityReportsOn = project => canWriteReportsOn(project);
 // Changing or deleting a report: an admin always; a site manager or the project manager only their OWN report and only during the first 24 hours after it was created.
 const REPORT_EDIT_WINDOW_MS = 24 * 3600 * 1000;
 const reportEditable = r => !(r && r.createdAt && r.createdAt.toDate) || (Date.now() - r.createdAt.toDate().getTime() <= REPORT_EDIT_WINDOW_MS);   // no time yet (just created, still being saved) counts as new
-const canEditReport = (r, project) => isAdminLike() || ((isSiteManagerOf(project) || isProjectPmOf(project)) && r.authorId === currentUser?.uid && reportEditable(r))
-  || (isQualityInspector() && reportKind(r) === 'quality' && r.authorId === currentUser?.uid && reportEditable(r));   // a quality inspector: his own QUALITY report, first 24 hours
+const canEditReport = (r, project) => isAdminLike() || (isReportWriterMark() && r.authorId === currentUser?.uid && reportEditable(r));   // a report writer: his own report, first 24 hours
 // ── The person's MARKS, shown in the headers next to the name (there used to be a free-text label): a site manager / project manager mark with the projects the person is chosen
 // on ("საიტ მენეჯერი: ბარე", "პროექტ მენეჯერი: ბარე, ბოჰემა, ჰისნი"), and the two marks that belong to no project (interior designer, MEP reviewer). A User who has any mark
 // no longer gets the grey "User" badge: the marks are shown instead. ──
@@ -2275,7 +2285,7 @@ function computeMyMarkProjects(projects) {
 function userMarks() {   // [{ text, title }]: the marks of the signed-in person, for a User account only
   if (currentGlobalRole !== 'viewer') return [];
   const out = [], withProjects = (label, on, names) => { if (on) out.push({ text: `${label}: ${names.length ? names.join(', ') : '—'}`, title: names.length ? '' : 'ჯერ არც ერთ პროექტზე ხარ არჩეული' }); };
-  withProjects('საიტ მენეჯერი', currentUserIsSiteManager, myMarkProjects.site);
+  if (currentUserIsSiteManager) out.push({ text: 'საიტ მენეჯერი', title: 'წერს ოქმებს ყველა პროექტზე' });
   withProjects('პროექტ მენეჯერი', currentUserIsProjectManager, myMarkProjects.pm);
   if (currentUserCanOpenDmIssues) out.push({ text: 'ინტერიერის დიზაინერი', title: '' });
   if (currentUserCanOpenMepIssues) out.push({ text: 'MEP რევიზორი', title: '' });
@@ -2543,6 +2553,8 @@ onAuthStateChanged(auth, async user => {
       try { await updateDoc(doc(db,'users',user.uid), { emailVerified: true }); } catch(e) {}
     }
     if (!d.approved) { showToast('ექაუნთი ჯერ არ არის დამტკიცებული ადმინისტრატორის მიერ'); await signOut(auth); return; }
+    // the database rules take only the real value true (a text "true" or a number is refused everywhere), so say it plainly instead of letting every save fail for no visible reason
+    if (d.approved !== true) { showToast('დამტკიცების ველი არასწორადაა ჩაწერილი (უნდა იყოს true). მიმართე ადმინისტრატორს'); await signOut(auth); return; }
     role = d.role || 'contractor';
     name = d.name || name;
     currentUserCanOpenDmIssues = d.canOpenDmIssues === true;
@@ -7323,13 +7335,11 @@ window.openReports = async pid => {
     const pd = await getDoc(doc(db, 'projects', pid));
     reportsProject = pd.exists() ? pd.data() : {};
     document.getElementById('reportsHdrProject').textContent = (reportsProject.name || 'პროექტი') + ' — რეპორტი';
-    const mayWrite = canWriteReportsOn(reportsProject), mayQuality = canWriteQualityReportsOn(reportsProject);   // a quality inspector: only the quality report, on every project
+    const mayWrite = canWriteReportsOn(reportsProject);   // every site manager, project manager and quality inspector: all three kinds of report, on every project
     document.getElementById('btnNewReport').style.display = mayWrite ? '' : 'none';
     document.getElementById('btnNewDailyReport').style.display = mayWrite ? '' : 'none';
-    document.getElementById('btnNewQualityReport').style.display = mayQuality ? '' : 'none';
-    document.getElementById('reportsHint').textContent = mayWrite ? '' : mayQuality
-      ? 'ყოველკვირეული და ყოველდღიური ოქმი იწერება ამ პროექტის საიტ მენეჯერის ან პროექტ მენეჯერის მიერ; ხარისხის ინსპექტორს ხარისხის ოქმების წერა შეუძლია'
-      : 'ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში); ხარისხის ოქმს ხარისხის ინსპექტორიც წერს';
+    document.getElementById('btnNewQualityReport').style.display = mayWrite ? '' : 'none';
+    document.getElementById('reportsHint').textContent = mayWrite ? '' : 'ახალი ოქმის დაწერა შეუძლია საიტ მენეჯერს, პროექტ მენეჯერს და ხარისხის ინსპექტორს';
     await loadReports();
   } catch (e) { document.getElementById('reportsTbody').textContent = 'შეცდომა: ' + e.message; }
 };
@@ -8324,21 +8334,21 @@ function renderUsersPanel() {
         </label>
       </div>
       <div class="user-label-row">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px" title="წერს ხარისხის ოქმებს ყველა პროექტზე">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px" title="წერს ოქმებს ყველა პროექტზე">
           <input type="checkbox" ${u.qualityInspector?'checked':''} onchange="toggleUserQualityInspector('${u.id}',this.checked)">
-          ხარისხის ინსპექტორი
+          ხარისხის ინსპექტორი (წერს ოქმებს ყველა პროექტზე)
         </label>
       </div>
       <div class="user-label-row">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
           <input type="checkbox" ${u.siteManager?'checked':''} onchange="toggleUserSiteManager('${u.id}',this.checked)">
-          საიტ მენეჯერი (წერს ოქმებს)
+          საიტ მენეჯერი (წერს ოქმებს ყველა პროექტზე)
         </label>
       </div>
       <div class="user-label-row">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
           <input type="checkbox" ${u.projectManager?'checked':''} onchange="toggleUserProjectManager('${u.id}',this.checked)">
-          პროექტ მენეჯერი (წერს ოქმებს და გეგმავს განვითარებას)
+          პროექტ მენეჯერი (წერს ოქმებს ყველა პროექტზე და გეგმავს თავის პროექტს)
         </label>
       </div>`:''}
     </div>`).join('') : `<div style="padding:20px;color:var(--ink-light);font-size:13px">${allCount ? 'ძებნით ან ფილტრით არავინ მოიძებნა' : 'მომხმარებელი არ არის'}</div>`;
