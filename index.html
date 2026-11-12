@@ -1397,6 +1397,7 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"სურათი ვერ აიტვირთა: ინტერნეტი შეწყდა ან ძალიან ნელია. სცადე ხელახლა.": "The picture could not be uploaded: the internet was interrupted or is too slow. Try again.",
 "ოქმები": "Reports",
 "სამუშაოების გრაფიკი": "Work chart",
 "ნიშნული": "Mark",
@@ -1922,6 +1923,7 @@ body.has-footer .site-footer{display:flex}
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^სურათის ატვირთვის უფლება არ გაქვს\. თუ ეს შეცდომად მიგაჩნია, მისწერე ადმინს და მიუთითე: ([\s\S]*)$/, function (m) { return 'You are not allowed to upload this picture. If you think this is a mistake, write to the admin and mention: ' + m[1]; }],
     [/^საკითხი (\d+)$/, function (m) { return 'Item ' + m[1]; }],
     [/^წავშალო საკითხი (\d+)\?$/, function (m) { return 'Delete item ' + m[1] + '?'; }],
     [/^(\d+) საკითხი · (\d+) ადამიანი$/, function (m) { return m[1] + ' items · ' + m[2] + ' people'; }],
@@ -2348,6 +2350,14 @@ const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 const showToast = msg => { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); };
 // Today's date in the user's own time zone as yyyy.mm.dd. (new Date().toISOString() would give the UTC date, which here
 // is still yesterday's during the first hours after midnight.)
+// What a person is told when a photo does not upload: the cause in words, the technical code at the end for whoever has to look into it.
+function uploadErrorText(e) {
+  const code = (e && e.code) || '';
+  if (code === 'storage/quota-exceeded') return 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.';
+  if (code === 'storage/unauthorized') return `სურათის ატვირთვის უფლება არ გაქვს. თუ ეს შეცდომად მიგაჩნია, მისწერე ადმინს და მიუთითე: ${code}`;
+  if (code === 'storage/retry-limit-exceeded' || code === 'storage/canceled' || /network/i.test((e && e.message) || '')) return 'სურათი ვერ აიტვირთა: ინტერნეტი შეწყდა ან ძალიან ნელია. სცადე ხელახლა.';
+  return 'სურათის ატვირთვის შეცდომა: ' + ((e && e.message) || '') + (code ? ` (${code})` : '');
+}
 const todayDotted = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`; };
 // om(id) / cm(id): open / close a modal window by id (adds / removes its "open" class).
 window.cm = id => document.getElementById(id).classList.remove('open');
@@ -6715,7 +6725,7 @@ async function uploadPhotoFile(file) {
     pendingPhotos.push(url);
     renderPhotoThumbs();
   } catch(e) {
-    alert(e && e.code === 'storage/quota-exceeded' ? 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.' : 'სურათის ატვირთვის შეცდომა: '+e.message);
+    alert(uploadErrorText(e));
     spinnerEl.remove();
   } finally {
     photoUploadsInFlight--;
@@ -6758,7 +6768,7 @@ async function uploadCommentPhotoFile(file, issueId) {
     pendingCommentPhotos.push(url);
     renderCommentPhotoThumbs();
   } catch(e) {
-    alert(e && e.code === 'storage/quota-exceeded' ? 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.' : 'სურათის ატვირთვის შეცდომა: '+e.message);
+    alert(uploadErrorText(e));
     spinnerEl.remove();
   } finally {
     commentPhotoUploadsInFlight--;
@@ -7491,7 +7501,7 @@ async function uploadReportPhoto(slot, file) {
     if (slot.path) reportPhotosToDelete.push(slot.path);   // this place held another picture: that one goes when the report is saved
     slot.url = url; slot.path = path; reportUploadedThisSession.push(path);
   } catch (e) {
-    alert(e && e.code === 'storage/quota-exceeded' ? 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.' : 'სურათის ატვირთვის შეცდომა: ' + (e && e.message));
+    alert(uploadErrorText(e));
   } finally {
     slot.busy = false; reportUploads--;
     renderReportPhotos();
@@ -7914,7 +7924,7 @@ async function uploadQualityPhoto(slot, file, isFix) {
     if (slot.path) reportPhotosToDelete.push(slot.path);
     slot.url = url; slot.path = path; reportUploadedThisSession.push(path);
   } catch (e) {
-    alert(e && e.code === 'storage/quota-exceeded' ? 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.' : 'სურათის ატვირთვის შეცდომა: ' + (e && e.message));
+    alert(uploadErrorText(e));
   } finally {
     slot.busy = false; reportUploads--;
     renderQualityIssues();
