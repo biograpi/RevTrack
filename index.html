@@ -2354,7 +2354,10 @@ const showToast = msg => { const t=document.getElementById('toast'); t.textConte
 function uploadErrorText(e) {
   const code = (e && e.code) || '';
   if (code === 'storage/quota-exceeded') return 'სურათებთან წვდომა დროებით შეზღუდულია, ამიტომ სურათის ატვირთვა ახლა შეუძლებელია.';
-  if (code === 'storage/unauthorized') return `სურათის ატვირთვის უფლება არ გაქვს. თუ ეს შეცდომად მიგაჩნია, მისწერე ადმინს და მიუთითე: ${code}`;
+  if (code === 'storage/unauthorized') {   // which kind of photo was refused (reports / issues / comments / ifc), taken from the path in Firebase's own text: it tells the admin where to look
+    const m = /'(projects\/[^']+)'/.exec((e && e.message) || ''), segs = m ? m[1].split('/') : [], kind = segs.includes('comments') ? 'comments' : (segs[2] || '');
+    return `სურათის ატვირთვის უფლება არ გაქვს. თუ ეს შეცდომად მიგაჩნია, მისწერე ადმინს და მიუთითე: ${code}${kind ? ' · ' + kind : ''}`;
+  }
   if (code === 'storage/retry-limit-exceeded' || code === 'storage/canceled' || /network/i.test((e && e.message) || '')) return 'სურათი ვერ აიტვირთა: ინტერნეტი შეწყდა ან ძალიან ნელია. სცადე ხელახლა.';
   return 'სურათის ატვირთვის შეცდომა: ' + ((e && e.message) || '') + (code ? ` (${code})` : '');
 }
