@@ -373,6 +373,29 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .rq-sub.fix{color:#166534}
 .rq-sub small{font-weight:400;color:var(--ink-light);margin-left:6px}
 .rq-text{width:100%;min-height:66px;resize:vertical}
+.rd-item{border:1px solid var(--rule);border-radius:var(--r);padding:10px 14px 14px;margin:10px 0;background:#fbfbfa}
+.rd-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--accent)}
+.rd-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+.rd-grid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink-light);min-width:0}
+.rd-grid input,.rd-grid textarea{width:100%;box-sizing:border-box;border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;font-family:inherit;font-size:13px;color:var(--ink);background:white}
+.rd-grid input:focus,.rd-grid textarea:focus{outline:none;border-color:var(--accent)}
+.rd-grid .bad{border-color:#d03b3b;background:#fff4f4}
+.rd-title{grid-column:span 8}.rd-mark{grid-column:span 4}.rd-work{grid-column:span 6}.rd-people{grid-column:span 3}.rd-prog{grid-column:span 3}.rd-note{grid-column:1/-1}
+.rd-note textarea{min-height:52px;resize:vertical}
+@media (max-width:600px){.rd-title,.rd-mark,.rd-work,.rd-people,.rd-prog{grid-column:1/-1}}
+.rd-vitem{border-top:1px solid var(--rule);padding:10px 0}
+.rd-vhead{font-weight:700;font-size:13.5px;margin-bottom:3px}
+.rd-vhead .n{color:var(--accent);margin-right:6px}
+.rd-vline{font-size:13px;color:var(--ink-mid)}
+.rd-vbar{height:6px;border-radius:3px;background:var(--rule);margin:5px 0 2px;max-width:240px;overflow:hidden}
+.rd-vbar i{display:block;height:100%;background:var(--accent)}
+.rp-sub{font-size:11.5px;color:var(--ink-light);margin-top:1px}
+.rp-switch{display:inline-flex;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;flex:none}
+.rp-switch button{border:0;background:white;padding:7px 14px;font:inherit;font-size:13px;color:var(--ink-mid);cursor:pointer}
+.rp-switch button.active{background:var(--accent);color:white}
+.rp-chart-card{background:#1a1120;border-radius:12px;padding:18px 24px 22px;margin:14px 0}
+.rp-chart-box{position:relative;height:clamp(270px,36vw,430px)}   /* a phone gets a chart that is tall enough to read, a wide screen a comfortable one */
+.rp-chart-card .activity-chart-head{gap:14px;flex-wrap:wrap;justify-content:flex-start}
 .rq-issues-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 0}
 #rQNote,#rIssues textarea{width:100%;box-sizing:border-box;border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg);transition:border-color .15s}
 #rQNote{min-height:70px;resize:vertical}
@@ -421,6 +444,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .dev-wrap .dv-pop label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--dv-ink2);margin-top:6px}
 .dev-wrap .dv-pop input[type=date],.dev-wrap .dv-pop input[type=number]{width:150px}
 .dev-wrap .dv-hint{color:var(--dv-ink2);font-size:12.5px;margin:0 0 8px}
+.dev-wrap .dv-shift{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 10px;font-size:13px}
+.dev-wrap .dv-shift label{font-weight:600;display:flex;align-items:center;gap:8px}
+.dev-wrap .dv-shift input{font:inherit;font-size:13px;color:var(--dv-ink);background:var(--dv-field);border:1px solid var(--dv-border);border-radius:8px;padding:5px 8px}
+.dev-wrap .dv-shift input:disabled{opacity:.5}
+.dev-wrap .dv-shift span{color:var(--dv-muted);font-size:12.5px}
 .dev-wrap .dv-cm-pop{width:350px}
 .dev-wrap .dv-cm-list{max-height:260px;overflow:auto;margin:2px 0 8px}
 .dev-wrap .dv-cm-item{border-top:1px solid var(--dv-grid);padding:8px 0;font-size:13px}
@@ -785,6 +813,7 @@ body.has-footer .site-footer{display:flex}
 </header>
 <div class="toolbar">
   <div class="filter-group">
+    <div class="rp-switch" id="reportsSwitch"><button type="button" id="rpViewList" class="active" onclick="setReportsView('list')">ოქმები</button><button type="button" id="rpViewChart" onclick="setReportsView('chart')">სამუშაოების გრაფიკი</button></div>
     <input type="search" class="search-box" id="reportsSearch" placeholder="🔍  ძებნა" autocomplete="off">
     <select class="fsel" id="reportsTypeFilter">
       <option value="">ყველა ტიპი</option>
@@ -811,6 +840,19 @@ body.has-footer .site-footer{display:flex}
       <div></div>
     </div>
     <div id="reportsTbody"></div>
+  </div>
+  <!-- the chart of the work, made of the daily reports (instead of the list: the switch above) -->
+  <div class="rp-chart-card" id="reportsWorkChart" style="display:none">
+    <div class="activity-chart-head">
+      <h3>სამუშაოების გრაფიკი</h3>
+      <div class="activity-view-toggle" id="workChartRange">
+        <button type="button" class="view-toggle-btn active" id="workRangeMonth" onclick="setWorkChartRange('month')">1 თვე</button>
+        <button type="button" class="view-toggle-btn" id="workRangeAll" onclick="setWorkChartRange('all')">ყველა</button>
+      </div>
+      <span id="workChartStatus" style="font-size:12px;color:rgba(255,255,255,.6)"></span>
+    </div>
+    <div class="rp-chart-box"><canvas id="workChartCanvas"></canvas></div>
+    <div class="activity-chart-legend" id="workChartLegend"></div>
   </div>
 </div>
 </div>
@@ -896,6 +938,7 @@ body.has-footer .site-footer{display:flex}
           <div><h3>გეგმა და ფაქტიური მონაცემები</h3><p>ეტაპები შეიძლება პარალელურად მიმდინარეობდეს: წილების ჯამი 100% უნდა იყოს. შეცვლილი გრაფიკი მაშინვე ჩანს, ყველასთვის კი შენახვის შემდეგ. დასრულების თარიღის გარეშე ეტაპი მიმდინარედ ითვლება.</p></div>
           <div class="dv-tools" id="devTodayWrap" style="display:none"><label>თარიღი ჩვენებისთვის (ადმინის ტესტი, არ ინახება) <input type="date" id="devToday"></label><button type="button" onclick="devResetToday()">დღევანდელი</button></div>
         </div>
+        <div class="dv-shift"><label>გეგმის დაწყება <input type="date" id="devPlanStart"></label><span>თარიღის შეცვლა მთელ გეგმას იმავე რაოდენობის დღით გადაწევს; ფაქტიური თარიღები და შესრულება არ იცვლება</span></div>
         <div class="dv-card scroll" style="padding:12px"><table id="devTable"></table></div>
         <div class="dv-sum" id="devSum"></div>
         <div id="devProblems"></div>
@@ -1012,11 +1055,18 @@ body.has-footer .site-footer{display:flex}
         <div class="field"><label>თარიღი</label><input id="rDate" disabled></div>
         <div class="field form-full"><label>მოამზადა</label><input id="rAuthor" disabled></div>
       </div>
-      <div class="auth-hint" id="rDailyNote" style="display:none;margin-bottom:8px">ყოველდღიურ ოქმში არაფერია სავალდებულო</div>
+      <div class="auth-hint" id="rDailyNote" style="display:none;margin-bottom:8px">საკითხის ყველა ველი სავალდებულოა, შენიშვნის გარდა. ფოტო არასავალდებულოა.</div>
       <div class="auth-hint" id="rWindowNote" style="display:none;margin-bottom:8px">ოქმის შეცვლა და წაშლა შესაძლებელია მხოლოდ შექმნიდან 24 საათის განმავლობაში</div>
       <div class="rp-info" id="rInfoPreview"></div>
       <button type="button" class="btn-secondary" style="font-size:12px;padding:5px 10px" onclick="refreshReportInfo()">↻ ობიექტის ინფორმაციის განახლება პროექტიდან</button>
-      <div class="rp-section" id="rSecPhotos">ფოტომასალა</div>
+      <div class="rq-issues-head" id="rDItemsHead" style="display:none">
+      <div class="rp-section" style="margin:0">საკითხები</div>
+      <button type="button" class="btn-secondary" id="btnAddDailyItemTop" style="font-size:12px;padding:4px 10px" onclick="addDailyItem()">+ საკითხის დამატება</button>
+    </div>
+    <div id="rDItems" style="display:none"></div>
+    <button type="button" class="btn-secondary" id="btnAddDailyItem" style="display:none;margin-top:12px" onclick="addDailyItem()">+ საკითხის დამატება</button>
+    <datalist id="rWorkList"></datalist>
+    <div class="rp-section" id="rSecPhotos">ფოტომასალა</div>
       <div id="rPhotos"></div>
       <button type="button" class="btn-secondary" id="btnAddReportPhoto" onclick="addReportPhotoSlot()">+ ფოტოს დამატება</button>
       <input type="file" id="rPhotoInput" accept="image/*" multiple style="display:none">
@@ -1347,6 +1397,25 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"ოქმები": "Reports",
+"სამუშაოების გრაფიკი": "Work chart",
+"ნიშნული": "Mark",
+"სამუშაო": "Work",
+"ადამიანი": "People",
+"პროგრესი %": "Progress %",
+"შენიშვნა (არასავალდებულოა)": "Note (optional)",
+"სულ": "Total",
+"სულ ადამიანი:": "Total people:",
+"პროგრესი:": "Progress:",
+"ნიშნული:": "Mark:",
+"სამუშაო:": "Work:",
+"ადამიანი:": "People:",
+"შენიშვნა:": "Note:",
+"საკითხის ყველა ველი სავალდებულოა, შენიშვნის გარდა. ფოტო არასავალდებულოა.": "Every field of an item is required, except the note. The photo is optional.",
+"ყოველდღიური ოქმი ჯერ არ არის": "There is no daily report yet",
+"ამ პერიოდში ოქმი არ არის": "There is no report in this period",
+"გეგმის დაწყება": "Plan start",
+"თარიღის შეცვლა მთელ გეგმას იმავე რაოდენობის დღით გადაწევს; ფაქტიური თარიღები და შესრულება არ იცვლება": "Changing the date moves the whole plan by the same number of days; the actual dates and the progress do not change",
 "ხარისხის ინსპექტორი": "Quality inspector",
 "წერს ხარისხის ოქმებს ყველა პროექტზე": "Writes quality reports on every project",
 "ახალი ოქმის დაწერა შეუძლია ამ პროექტის საიტ მენეჯერს ან პროექტ მენეჯერს (მითითებულია პროექტის მართვაში); ხარისხის ოქმს ხარისხის ინსპექტორიც წერს": "Only the site manager or the project manager of this project can write a new report (set in the project's management); a quality report can also be written by a quality inspector",
@@ -1853,6 +1922,18 @@ body.has-footer .site-footer{display:flex}
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^საკითხი (\d+)$/, function (m) { return 'Item ' + m[1]; }],
+    [/^წავშალო საკითხი (\d+)\?$/, function (m) { return 'Delete item ' + m[1] + '?'; }],
+    [/^(\d+) საკითხი · (\d+) ადამიანი$/, function (m) { return m[1] + ' items · ' + m[2] + ' people'; }],
+    [/^საკითხი (\d+): ([\s\S]+)$/, function (m) {
+      var t = m[2], x, msg = {
+        'სათაური არ არის შევსებული': 'the title is empty', 'ნიშნული არ არის შევსებული': 'the mark is empty', 'სამუშაო არ არის შევსებული': 'the work is empty',
+        'ადამიანების რაოდენობა არ არის შევსებული': 'the number of people is empty', 'პროგრესი არ არის შევსებული': 'the progress is empty', 'პროგრესი უნდა იყოს 0-დან 100-მდე': 'the progress must be from 0 to 100' };
+      if (msg[t]) return 'Item ' + m[1] + ': ' + msg[t];
+      if ((x = t.match(/^ადამიანების რაოდენობა უნდა იყოს მთელი რიცხვი 1-დან (\d+)-მდე$/))) return 'Item ' + m[1] + ': the number of people must be a whole number from 1 to ' + x[1];
+      return m[0];
+    }],
+    [/^მთელი გეგმა გადაიწია ([+−]\d+) დღით: ([\d.—]+) → ([\d.—]+)$/, function (m) { return 'The whole plan was moved by ' + m[1].replace('−', '-') + ' days: ' + m[2] + ' → ' + m[3]; }],
     [/^ფაილი: ([\s\S]+) · ეტაპი: (\d+) · წილების ჯამი: ([\d.]+)%( ✓)?$/, function (m) { return 'File: ' + m[1] + ' · stages: ' + m[2] + ' · sum of the shares: ' + m[3] + '%' + (m[4] || ''); }],
     [/^პრობლემები \((\d+)\):$/, function (m) { return 'Problems (' + m[1] + '):'; }],
     [/^… და კიდევ (\d+)$/, function (m) { return '… and ' + m[1] + ' more'; }],
@@ -3856,6 +3937,39 @@ function devPlanDiff(oldList, newList) {
   if (keptOld !== keptNew) lines.push('ეტაპების რიგი შეიცვალა');
   return lines;
 }
+// ── The START OF THE PLAN: one date to which the whole plan is tied. Change it and every plan date (start and end) of every stage moves by the same number of days, so the
+// lengths of the stages and their places relative to each other stay as they are. The actual dates and the progress do not move: they are what happened. ──
+function devPlanStartMin(list) { let m = null; (list || []).forEach(s => { const d = devParseDate(s.planStart); if (d && (!m || d < m)) m = d; }); return m; }
+function devShiftPlan(newIso) {
+  const to = devParseDate(newIso); if (!to || !devState.canEdit) return;
+  const y = to.getFullYear(); if (y < 2000 || y > 2100) return;   // a year that is still being typed (0202 ...) is not a date to move the plan to
+  const cur = devPlanStartMin(devState.draft); if (!cur) return;
+  const delta = Math.round((to - cur) / DEV_DAY); if (!delta) return;
+  devState.draft.forEach(s => ['planStart', 'planEnd'].forEach(k => { const d = devParseDate(s[k]); if (d) s[k] = devIso(devAddDays(d, delta)); }));
+  devMarkDirty(); devRender(); devSyncTable(); devSyncPop();
+}
+function devSyncPlanStart() {   // the field shows the earliest plan start of the draft (it is not changed while it is being typed in)
+  const el = document.getElementById('devPlanStart'); if (!el || document.activeElement === el) return;
+  const m = devPlanStartMin(devState.draft); el.value = m ? devIso(m) : ''; el.disabled = !m;
+}
+['input', 'change'].forEach(t => document.getElementById('devPlanStart').addEventListener(t, e => devShiftPlan(e.target.value)));   // (the second one finds nothing left to move)
+// Did nothing but the WHOLE plan move by the same number of days (the same stages in the same order, the same names and shares, only the plan dates)? Then it is the number of days, else null.
+function devPureShift(oldList, newList) {
+  if (!oldList.length || oldList.length !== newList.length) return null;
+  let delta = null;
+  for (let i = 0; i < oldList.length; i++) {
+    const o = oldList[i], n = newList[i];
+    if (o.id !== n.id || (o.name || '') !== (n.name || '') || Number(o.weight) !== Number(n.weight)) return null;
+    for (const k of ['planStart', 'planEnd']) {
+      const a = devParseDate(o[k]), b = devParseDate(n[k]);
+      if (!a && !b && (o[k] || '') === (n[k] || '')) continue;
+      if (!a || !b) return null;
+      const d = Math.round((b - a) / DEV_DAY);
+      if (delta === null) delta = d; else if (d !== delta) return null;
+    }
+  }
+  return delta || null;
+}
 // the same changes of the plan, but told stage by stage: Map(stage id → ['გეგმის დაწყება 01.11.2026 → 15.11.2026', ...]) for the stages that exist in both versions
 function devPlanDiffByStage(oldList, newList) {
   const fmt = v => { const d = devParseDate(v); return d ? `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}` : '—'; };
@@ -3991,7 +4105,7 @@ function devReadFile(file) {
   return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result || '')); r.onerror = () => reject(r.error); r.readAsText(file, 'UTF-8'); });
 }
 async function devImportFile(file) {
-  if (!devState.canEdit) return;
+  if (!devState.canEdit || !devState.isAdmin) return;   // an admin or the super-reviewer only
   if (file.size > 1024 * 1024) { alert('ფაილი ძალიან დიდია (1 მბ-მდე)'); return; }
   let text; try { text = await devReadFile(file); } catch (e) { alert('ფაილის წაკითხვა ვერ მოხერხდა'); return; }
   if ((text.match(/\uFFFD/g) || []).length > 2) { alert('ფაილში არასწორი სიმბოლოებია: შეინახე ის როგორც „CSV UTF-8“ (Excel-ში: Save As → CSV UTF-8)'); return; }
@@ -4347,7 +4461,7 @@ function devRender() {   // everything that follows the draft
   devDrawChart(document.getElementById('devChart'), model, ids => {
     document.querySelectorAll('#devTable tbody tr').forEach((tr, i) => tr.classList.toggle('hl', !!stages[i] && ids.includes(stages[i].id)));
   }, devState.canEdit ? { editable: true, onLive: devLive, onDone: devDone } : null, devOpenComments);
-  if (devState.canEdit) devRefreshEditor();
+  if (devState.canEdit) { devRefreshEditor(); devSyncPlanStart(); }
   if (devState.cmId) devRenderComments();    // an open comments window follows the draft
 }
 function devUpdatedLine() {
@@ -4369,6 +4483,7 @@ window.openDevelopment = async pid => {
   document.getElementById('devTitle').textContent = 'პროექტის განვითარება · ' + (project.name || '');
   document.getElementById('devEditor').style.display = devState.canEdit ? '' : 'none';
   document.getElementById('devHint').style.display = devState.canEdit ? '' : 'none';
+  document.getElementById('devImportBtn').style.display = devState.canEdit && devState.isAdmin ? '' : 'none';   // the CSV upload: an admin or the super-reviewer only (not the project manager)
   devClosePop(); devCloseComments();
   if (devState.canEdit) devBuildEditor();
   devUpdatedLine();
@@ -4615,7 +4730,11 @@ window.devSave = async () => {
   if (!v.ok) { alert(v.errors.join('\n')); return; }
   const lines = devPlanDiff(devState.server, stages), hadActual = devHasActual(devState.server);
   let entry = null;
-  if (hadActual && lines.length) {   // the plan changes although the work has started: ask first (with a place for the reason) and write it into the history
+  const shift = hadActual && lines.length ? devPureShift(devState.server, stages) : null;
+  if (shift) {   // the whole plan moved by the same number of days (the "start of the plan" field): no question, no reason, one line in the history
+    const f = d => d ? devFmtDate(d) : '—';
+    entry = { at: new Date().toISOString(), by: currentUser.uid, byName: currentUserName || '', changes: [`მთელი გეგმა გადაიწია ${shift > 0 ? '+' : '−'}${Math.abs(shift)} დღით: ${f(devPlanStartMin(devState.server))} → ${f(devPlanStartMin(stages))}`] };
+  } else if (hadActual && lines.length) {   // the plan changes although the work has started: ask first (with a place for the reason) and write it into the history
     const ans = await devAskPlanChange(lines);
     if (!ans.ok) return;
     entry = { at: new Date().toISOString(), by: currentUser.uid, byName: currentUserName || '', changes: lines.slice(0, 30), ...(ans.reason ? { reason: ans.reason } : {}) };
@@ -7139,7 +7258,8 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
 // projects/{pid}/reports/{rid} = { type ('weekly' | 'daily' | 'quality'; missing = weekly), number, date, authorId, authorName, info (the object's name and address, copied from the project), photos [{url, path,
 // caption}], completed / ongoing / planned [text] }. Site managers (User accounts with the "write reports" right) and admins write them;
 // everybody but contractors reads them. A report can be downloaded as an A4 PDF (renderReportPdf, further below).
-const REPORT_SLOTS = 3, REPORT_MAX_PHOTOS = 12;            // photo places that are always there / the most photos in one report
+const REPORT_SLOTS = 3, REPORT_MAX_PHOTOS = 12;
+const reportMinSlots = () => reportFormType === 'daily' ? 1 : REPORT_SLOTS;   // a daily report begins with ONE place for a photo and its comment, the weekly one with three            // photo places that are always there / the most photos in one report
 const REPORT_GROUPS = [['completed', 'შესრულებული სამუშაოები'], ['ongoing', 'მიმდინარე სამუშაოები'], ['planned', 'დაგეგმილი სამუშაოები']];
 // Three kinds of report, numbered separately: weekly (with a PDF), daily (no PDF; nothing in the form is required) and quality (numbered issues, with a PDF: see THE QUALITY REPORT below).
 // A report's code: the project's code, the kind and a 3-digit number — MZK-wR-057 (weekly), MZK-dR-002 (daily); without a project code: wR-057 / dR-002.
@@ -7171,6 +7291,8 @@ let reportsSortDesc = true, reportViewId = null;
 window.openReports = async pid => {
   if (!canReadReports()) { showToast('ეს განყოფილება თქვენთვის მიუწვდომელია'); return; }   // contractors: no card, and no way in
   reportsProjectId = pid; reportsList = []; reportsProject = null;
+  workChartRange = 'month'; document.getElementById('workRangeMonth').classList.add('active'); document.getElementById('workRangeAll').classList.remove('active');
+  setReportsView('list');   // the screen always opens with the list of the reports
   document.getElementById('reportsSearch').value = '';
   document.getElementById('reportsTypeFilter').value = '';
   document.getElementById('btnNewReport').style.display = 'none';   // the two "new report" buttons are shown below once we know whether this person may write here
@@ -7201,6 +7323,7 @@ window.openReports = async pid => {
 // From the reports back to the project's section cards.
 function goBackFromReports() {
   const pid = reportsProjectId;
+  if (workChartInstance) { workChartInstance.destroy(); workChartInstance = null; }
   reportsProjectId = null;
   document.getElementById('reportsScreen').style.display = 'none';
   document.getElementById('projectsScreen').style.display = 'block';
@@ -7213,13 +7336,14 @@ async function loadReports() {
   const snap = await getDocs(query(collection(db, 'projects', reportsProjectId, 'reports'), orderBy('number', 'desc')));
   reportsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   renderReportsList();
+  if (reportsView === 'chart') renderWorkChart();
 }
 // The reports that match the search box (every typed word must appear in the code, kind, date, author, photo descriptions or works) and the
 // chosen kind, newest first (by date, then by number) or the other way round.
 function filteredReports() {
   const words = document.getElementById('reportsSearch').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const kind = document.getElementById('reportsTypeFilter').value;
-  const text = r => [reportCode(reportsProject, r), REPORT_KIND_LABEL[reportKind(r)], reportDate(r.date), r.authorName, ...(r.photos || []).map(ph => ph.caption), ...(r.completed || []), ...(r.ongoing || []), ...(r.planned || []), ...qualityText(r)].join(' ').toLowerCase();
+  const text = r => [reportCode(reportsProject, r), REPORT_KIND_LABEL[reportKind(r)], reportDate(r.date), r.authorName, ...(r.photos || []).map(ph => ph.caption), ...(r.completed || []), ...(r.ongoing || []), ...(r.planned || []), ...qualityText(r), ...dailyText(r)].join(' ').toLowerCase();
   const order = (a, b) => String(a.date || '').localeCompare(String(b.date || '')) || ((a.number || 0) - (b.number || 0));
   return reportsList.filter(r => (!kind || reportKind(r) === kind) && words.every(w => text(r).includes(w))).sort((a, b) => reportsSortDesc ? order(b, a) : order(a, b));
 }
@@ -7230,7 +7354,7 @@ function renderReportsList() {
   document.getElementById('reportsTbody').innerHTML = rows.length ? rows.map(r => `
     <div class="issue-row report-grid-row rp-${reportKind(r)}" onclick="openReportView('${r.id}')">
       <div class="issue-num-cell">${esc(reportCode(reportsProject, r))}</div>
-      <div>${REPORT_KIND_LABEL[reportKind(r)]}</div>
+      <div>${REPORT_KIND_LABEL[reportKind(r)]}${dailyItemsOf(r).length ? `<div class="rp-sub">${dailyItemsOf(r).length} საკითხი · ${dailyPeople(r)} ადამიანი</div>` : ''}</div>
       <div class="issue-date-cell">${esc(reportDate(r.date))}</div>
       <div class="issue-title-cell">${esc(r.authorName || '')}</div>
       <div class="rp-actions">
@@ -7258,8 +7382,9 @@ window.openReportView = id => {
   document.getElementById('reportViewTitle').textContent = `ოქმი ${reportCode(reportsProject, r)}`;
   document.getElementById('reportViewBody').innerHTML =
     `<p><b>ტიპი:</b> ${REPORT_KIND_LABEL[reportKind(r)]}</p><p><b>ობიექტი:</b> ${esc(info.projectName)}</p><p><b>მისამართი:</b> ${esc(info.address || '—')}</p><p><b>თარიღი:</b> ${esc(reportDate(r.date))}</p><p><b>მოამზადა:</b> ${esc(r.authorName || '')}</p>` +
+    (dailyItemsOf(r).length ? dailyViewHtml(r) : '') +
     (photos.length ? `<h3>ფოტომასალა</h3>` + photos.map((ph, i) => `<div class="rp-vphoto"><img src="${esc(ph.url)}" alt="" onclick="openReportPhoto(${i})"><div>${i + 1}. ${esc(ph.caption || '')}</div></div>`).join('') : '') +
-    `<h3>ობიექტზე მიმდინარე და დასრულებული სამუშაოები</h3>` + REPORT_GROUPS.map(([key, title]) => group(title + ':', r[key])).join('');
+    (dailyItemsOf(r).length ? '' : `<h3>ობიექტზე მიმდინარე და დასრულებული სამუშაოები</h3>` + REPORT_GROUPS.map(([key, title]) => group(title + ':', r[key])).join(''));
   document.getElementById('btnReportViewEdit').style.display = canEditReport(r, reportsProject) ? '' : 'none';
   document.getElementById('btnReportViewPdf').style.display = reportKind(r) === 'weekly' ? '' : 'none';   // only the weekly report has a PDF
   om('reportViewModal');
@@ -7283,7 +7408,7 @@ window.openReportForm = (id, type) => {
   reportInfoDraft = (editingReport && editingReport.info) || reportInfoFromProject(reportsProject || {});
   reportPhotosToDelete = []; reportUploadedThisSession = []; reportUploads = 0;
   reportSlots = ((editingReport && editingReport.photos) || []).map(ph => ({ url: ph.url, path: ph.path || '', caption: ph.caption || '', busy: false }));
-  while (reportSlots.length < REPORT_SLOTS) reportSlots.push({ url: '', path: '', caption: '', busy: false });
+  while (reportSlots.length < reportMinSlots()) reportSlots.push({ url: '', path: '', caption: '', busy: false });
   const list = k => { const a = ((editingReport && editingReport[k]) || []).slice(); return a.length ? a : ['']; };
   reportWorks = { completed: list('completed'), ongoing: list('ongoing'), planned: list('planned') };
   // The numbers of the two kinds are counted separately: the next one is the last of THIS kind + 1 (the very first weekly report: typed by hand, e.g. 55).
@@ -7296,6 +7421,7 @@ window.openReportForm = (id, type) => {
   document.getElementById('rWindowNote').style.display = isAdminLike() || reportFixOnly ? 'none' : '';   // an admin may change a report at any time (the limited form has a note of its own)
   updateReportCodePreview();
   if (reportFormType === 'quality') qLoadState(editingReport); else { qIssues = []; }
+  if (reportFormType === 'daily') dLoadState(editingReport); else dItems = [];
   renderReportInfo(); renderReportPhotos(); renderReportWorks();
   applyReportFormKind();
   om('reportModal');
@@ -7321,8 +7447,8 @@ function renderReportPhotos() {
   document.getElementById('rPhotos').innerHTML = reportSlots.map((s, i) => `
     <div class="rp-photo">
       <div class="rp-photo-box" onclick="pickReportPhoto(${i})">${s.busy ? '<span class="spinner-dark"></span>' : (s.url ? `<img src="${esc(s.url)}" alt="">` : '📷<br>ფოტოს არჩევა')}</div>
-      <textarea placeholder="ფოტოს აღწერა (სავალდებულოა)" oninput="setReportCaption(${i}, this.value)">${esc(s.caption)}</textarea>
-      <button type="button" class="rp-x" title="${i < REPORT_SLOTS ? 'გასუფთავება' : 'წაშლა'}" onclick="removeReportPhoto(${i})">✕</button>
+      <textarea placeholder="ფოტოს აღწერა (${reportFormType === 'weekly' ? 'სავალდებულოა' : 'არასავალდებულოა'})" oninput="setReportCaption(${i}, this.value)">${esc(s.caption)}</textarea>
+      <button type="button" class="rp-x" title="${i < reportMinSlots() ? 'გასუფთავება' : 'წაშლა'}" onclick="removeReportPhoto(${i})">✕</button>
     </div>`).join('');
   document.getElementById('btnAddReportPhoto').style.display = reportSlots.length < REPORT_MAX_PHOTOS ? '' : 'none';
 }
@@ -7337,7 +7463,7 @@ window.addReportPhotoSlot = () => {
 window.removeReportPhoto = i => {
   const s = reportSlots[i]; if (!s) return;
   if (s.path) reportPhotosToDelete.push(s.path);        // removed from Storage when the report is saved
-  if (i < REPORT_SLOTS) reportSlots[i] = { url: '', path: '', caption: '', busy: false }; else reportSlots.splice(i, 1);
+  if (i < reportMinSlots()) reportSlots[i] = { url: '', path: '', caption: '', busy: false }; else reportSlots.splice(i, 1);
   renderReportPhotos();
 };
 // Several files may be chosen at once: the first goes to the place that was clicked, the others to the next empty places (new ones are added).
@@ -7409,8 +7535,16 @@ window.closeReportForm = () => {
 window.saveReport = async () => {
   if (reportUploads) { alert('ფოტოების ატვირთვა ჯერ არ დასრულებულა, მოიცადე'); return; }
   if (reportFormType === 'quality') return saveQualityReport();
-  // A weekly report needs its number and a description for every photo. A daily report needs nothing: an empty number is filled in with the next one.
+  // A weekly report needs its number and a description for every photo. A daily report needs its items (every field but the note), nothing else: an empty number is filled in with the next one.
   const daily = reportFormType === 'daily';
+  let dailyItems = [];
+  if (daily) {
+    const c = dCollect();
+    if (c.errors.length) { dMarkErrors(c.errors); alert(c.errors[0].text); return; }   // every wrong field is red; the first problem is said
+    if (!c.items.length) { alert('დაამატე ერთი საკითხი მაინც'); return; }
+    if (c.dropped && !confirm(`ცარიელი საკითხები (${c.dropped}) არ შეინახება. მაინც შევინახო?`)) return;
+    dailyItems = c.items;
+  }
   let number = parseInt(document.getElementById('rNumber').value, 10);
   if (!Number.isInteger(number) || number < 1) {
     if (!daily) { alert('ჩაწერე ოქმის ნომერი'); document.getElementById('rNumber').focus(); return; }
@@ -7425,12 +7559,10 @@ window.saveReport = async () => {
   const code = reportCode(reportsProject, { type: reportFormType, number });
   if (reportsList.some(r => r.id !== (editingReport && editingReport.id) && reportKind(r) === reportFormType && Number(r.number) === number) && !confirm(`ოქმი ${code} უკვე არსებობს ამ პროექტში. მაინც შევინახო?`)) return;
   const clean = k => reportWorks[k].map(t => String(t || '').trim()).filter(Boolean);
-  const data = {
-    type: reportFormType, number, info: reportInfoDraft,
-    photos: withPhoto.map(s => ({ url: s.url, path: s.path, caption: s.caption.trim() })),
-    completed: clean('completed'), ongoing: clean('ongoing'), planned: clean('planned'),
-    updatedAt: serverTimestamp(),
-  };
+  const photos = withPhoto.map(s => ({ url: s.url, path: s.path, caption: s.caption.trim() }));
+  const data = daily
+    ? { type: 'daily', number, info: reportInfoDraft, items: dailyItems, photos, ...(editingReport ? { completed: [], ongoing: [], planned: [] } : {}), updatedAt: serverTimestamp() }   // (an old daily report that is edited loses its lists)
+    : { type: reportFormType, number, info: reportInfoDraft, photos, completed: clean('completed'), ongoing: clean('ongoing'), planned: clean('planned'), updatedAt: serverTimestamp() };
   const btn = document.getElementById('btnSaveReport'); btn.disabled = true; btn.textContent = 'ინახება...';
   try {
     const ref = doc(db, 'projects', reportsProjectId, 'reports', reportStorageId);
@@ -7454,6 +7586,176 @@ window.deleteReport = async id => {
     deleteReportFiles(reportAllPhotoPaths(r));
     await loadReports();
   } catch (e) { alert(e && e.code === 'permission-denied' && !isAdminLike() ? 'ოქმის წაშლის დრო (24 საათი) ამოიწურა' : 'შეცდომა წაშლისას: ' + e.message); }
+};
+
+// ══ THE DAILY REPORT ("ყოველდღიური ოქმი"): numbered ITEMS, and a chart of the work made of them ══
+// A daily report holds items { id, title, mark, work, people, progress, note } (all required but the note: the title, the mark (e.g. a level or a floor), the work, the number of people on
+// it, the progress in %), then the photos as in the other reports (one place for a photo and its comment to begin with). The chart of the work (the switch on the reports screen) is
+// drawn from these items. The old lists of works (completed / in progress / planned) are gone from the form.
+const DAILY_MAX_ITEMS = 40, DAILY_MAX_PEOPLE = 5000;
+let dItems = [];
+const dNewId = () => 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const dBlankItem = () => ({ id: dNewId(), title: '', mark: '', work: '', people: '', progress: '', note: '' });
+const workKey = w => String(w || '').trim().toLowerCase().replace(/\s+/g, ' ');   // "არმირება" and "არმირება  " are one and the same work
+const dailyItemsOf = r => (r && reportKind(r) === 'daily' && Array.isArray(r.items)) ? r.items : [];
+const dailyText = r => dailyItemsOf(r).flatMap(it => [it.title, it.mark, it.work, it.note]);
+const dailyPeople = r => dailyItemsOf(r).reduce((t, it) => t + (Number(it.people) || 0), 0);
+const trText = t => (typeof window.__i18nTr === 'function' ? window.__i18nTr(t) : t);   // the texts drawn on a canvas are not translated by themselves
+function dLoadState(r) {
+  dItems = dailyItemsOf(r).map(it => ({ id: it.id || dNewId(), title: it.title || '', mark: it.mark || '', work: it.work || '', people: it.people == null ? '' : String(it.people), progress: it.progress == null ? '' : String(it.progress), note: it.note || '' }));
+  if (!dItems.length) dItems.push(dBlankItem());
+}
+// the works that were written in this project's daily reports, the most used first (spelled the way it was written most often): offered while a work is typed
+function fillWorkList() {
+  const counts = new Map();
+  reportsList.forEach(r => dailyItemsOf(r).forEach(it => { const k = workKey(it.work); if (!k) return; const m = counts.get(k) || new Map(); const sp = String(it.work).trim(); m.set(sp, (m.get(sp) || 0) + 1); counts.set(k, m); }));
+  const names = [...counts.values()].map(m => ({ name: [...m.entries()].sort((a, b) => b[1] - a[1])[0][0], n: [...m.values()].reduce((t, x) => t + x, 0) })).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name, 'ka'));
+  document.getElementById('rWorkList').innerHTML = names.map(x => `<option value="${esc(x.name)}"></option>`).join('');
+}
+function renderDailyItems() {
+  const el = document.getElementById('rDItems');
+  const active = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.df : null;
+  const caret = active && document.activeElement.selectionStart != null ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+  el.innerHTML = dItems.map((it, i) => `<div class="rd-item" data-di="${i}">
+    <div class="rd-head"><span>საკითხი ${qNum(i)}</span><button type="button" class="rp-x" title="საკითხის წაშლა" onclick="dRemoveItem(${i})">✕</button></div>
+    <div class="rd-grid">
+      <label class="rd-title">სათაური<input data-df="${i}|title" maxlength="80" value="${esc(it.title)}" oninput="dSet(${i},'title',this.value)"></label>
+      <label class="rd-mark">ნიშნული<input data-df="${i}|mark" maxlength="30" value="${esc(it.mark)}" oninput="dSet(${i},'mark',this.value)"></label>
+      <label class="rd-work">სამუშაო<input data-df="${i}|work" list="rWorkList" maxlength="80" autocomplete="off" value="${esc(it.work)}" oninput="dSet(${i},'work',this.value)"></label>
+      <label class="rd-people">ადამიანი<input data-df="${i}|people" type="number" min="1" max="${DAILY_MAX_PEOPLE}" step="1" value="${esc(it.people)}" oninput="dSet(${i},'people',this.value)"></label>
+      <label class="rd-prog">პროგრესი %<input data-df="${i}|progress" type="number" min="0" max="100" step="1" value="${esc(it.progress)}" oninput="dSet(${i},'progress',this.value)"></label>
+      <label class="rd-note">შენიშვნა (არასავალდებულოა)<textarea data-df="${i}|note" maxlength="500" oninput="dSet(${i},'note',this.value)">${esc(it.note)}</textarea></label>
+    </div></div>`).join('');
+  if (active) { const t = el.querySelector(`[data-df="${active}"]`); if (t) { t.focus(); if (caret && t.setSelectionRange && t.type !== 'number') t.setSelectionRange(caret[0], caret[1]); } }
+}
+window.dSet = (i, k, v) => { if (dItems[i]) dItems[i][k] = v; const f = document.querySelector(`#rDItems [data-df="${i}|${k}"]`); if (f) f.classList.remove('bad'); };
+window.addDailyItem = () => {
+  if (dItems.length >= DAILY_MAX_ITEMS) { alert(`ოქმში მაქსიმუმ ${DAILY_MAX_ITEMS} საკითხია`); return; }
+  dItems.push(dBlankItem()); renderDailyItems();
+  const f = document.querySelector('#rDItems .rd-item:last-child [data-df$="|title"]'); if (f) { f.focus(); if (f.scrollIntoView) f.scrollIntoView({ block: 'nearest' }); }
+};
+window.dRemoveItem = i => {
+  const it = dItems[i]; if (!it) return;
+  const filled = [it.title, it.mark, it.work, it.people, it.progress, it.note].some(v => String(v).trim());
+  if (filled && !confirm(`წავშალო საკითხი ${qNum(i)}?`)) return;
+  dItems.splice(i, 1); if (!dItems.length) dItems.push(dBlankItem());
+  renderDailyItems();
+};
+// The items as they will be saved, and what is wrong with them. A completely empty item is simply left out (after a question); all the other items need every field but the note.
+function dCollect() {
+  const items = [], errors = []; let dropped = 0;
+  dItems.forEach((it, i) => {
+    const t = it.title.trim(), m = it.mark.trim(), w = it.work.trim(), p = String(it.people).trim(), g = String(it.progress).trim(), n = it.note.trim();
+    if (!t && !m && !w && !p && !g && !n) { dropped++; return; }
+    const err = (field, text) => errors.push({ i, field, text: `საკითხი ${qNum(i)}: ${text}` });
+    if (!t) err('title', 'სათაური არ არის შევსებული');
+    if (!m) err('mark', 'ნიშნული არ არის შევსებული');
+    if (!w) err('work', 'სამუშაო არ არის შევსებული');
+    const pn = Number(p);
+    if (!p) err('people', 'ადამიანების რაოდენობა არ არის შევსებული'); else if (!Number.isInteger(pn) || pn < 1 || pn > DAILY_MAX_PEOPLE) err('people', `ადამიანების რაოდენობა უნდა იყოს მთელი რიცხვი 1-დან ${DAILY_MAX_PEOPLE}-მდე`);
+    const gn = Number(g);
+    if (!g) err('progress', 'პროგრესი არ არის შევსებული'); else if (!Number.isFinite(gn) || gn < 0 || gn > 100) err('progress', 'პროგრესი უნდა იყოს 0-დან 100-მდე');
+    items.push({ id: it.id, title: t, mark: m, work: w, people: pn, progress: gn, note: n });
+  });
+  return { items, errors, dropped };
+}
+function dMarkErrors(errors) {   // every wrong field turns red; the first one gets the cursor
+  document.querySelectorAll('#rDItems .bad').forEach(e => e.classList.remove('bad'));
+  errors.forEach(e => { const f = document.querySelector(`#rDItems [data-df="${e.i}|${e.field}"]`); if (f) f.classList.add('bad'); });
+  const first = errors[0] && document.querySelector(`#rDItems [data-df="${errors[0].i}|${errors[0].field}"]`); if (first) { first.focus(); if (first.scrollIntoView) first.scrollIntoView({ block: 'nearest' }); }
+}
+// Reading a daily report: the items one under the other, with a bar for the progress.
+function dailyViewHtml(r) {
+  const items = dailyItemsOf(r);
+  return `<h3>საკითხები</h3>` + items.map((it, i) => `<div class="rd-vitem"><div class="rd-vhead"><span class="n">${qNum(i)}</span>${esc(it.title)}</div>
+    <div class="rd-vline"><b>ნიშნული:</b> ${esc(it.mark)} · <b>სამუშაო:</b> ${esc(it.work)}</div>
+    <div class="rd-vline"><b>ადამიანი:</b> ${esc(it.people)} · <b>პროგრესი:</b> ${esc(it.progress)}%</div>
+    <div class="rd-vbar"><i style="width:${Math.max(0, Math.min(100, Number(it.progress) || 0))}%"></i></div>
+    ${it.note ? `<div class="rd-vline" style="margin-top:4px"><b>შენიშვნა:</b> ${esc(it.note)}</div>` : ''}</div>`).join('') + `<p style="margin-top:8px"><b>სულ ადამიანი:</b> ${dailyPeople(r)}</p>`;
+}
+
+// ── THE CHART OF THE WORK (made of the daily reports): x = the days, y = the number of people; one line for every work, a dashed white one for all of them together, and the legend
+// below it exactly as under the chart of the issues (a click on a name switches its line off and on). A work has a line from the first day it was written to the last one: on a day in
+// between that has a report but no entry of the work, it is 0 (the work paused); before its first day and after its last one it has no point. A day with no report at all has no point (the
+// line goes on to the next day that has one). Several items of one work in a day (or in several reports of that day) add up. ──
+let reportsView = 'list', workChartInstance = null, workChartRange = 'month';
+const WORK_COLORS = ['#4fc3f7', '#ffb74d', '#81c784', '#f06292', '#ba68c8', '#fff176', '#4db6ac', '#ff8a65', '#9575cd', '#a1887f', '#90a4ae', '#dce775'];
+const fmtDay = d => `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+const fmtDayFull = d => `${fmtDay(d)}.${d.getFullYear()}`;
+function reportDayTime(r) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(r.date || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : null; }
+function workChartData() {
+  const days = new Set(), works = new Map(), total = new Map();
+  reportsList.forEach(r => {
+    const items = dailyItemsOf(r), t = reportDayTime(r); if (t == null || !items.length) return;
+    days.add(t);
+    items.forEach(it => {
+      const k = workKey(it.work); if (!k) return;
+      let w = works.get(k); if (!w) { w = { key: k, names: new Map(), byDay: new Map() }; works.set(k, w); }
+      const nm = String(it.work).trim(); w.names.set(nm, (w.names.get(nm) || 0) + 1);
+      const d = w.byDay.get(t) || { people: 0, entries: [] }; d.people += Number(it.people) || 0; d.entries.push(it); w.byDay.set(t, d);
+      total.set(t, (total.get(t) || 0) + (Number(it.people) || 0));
+    });
+  });
+  const list = [...works.values()].map(w => ({ ...w, name: [...w.names.entries()].sort((a, b) => b[1] - a[1])[0][0] })).sort((a, b) => a.name.localeCompare(b.name, 'ka'));
+  return { days: [...days].sort((a, b) => a - b), works: list, total };
+}
+function renderWorkChart() {
+  if (workChartInstance) { workChartInstance.destroy(); workChartInstance = null; }
+  const data = workChartData(), DAY = 86400000, n = new Date(), today = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+  let start = today - 30 * DAY, end = today;                                   // "1 თვე": the last month
+  if (workChartRange === 'all' && data.days.length) { start = data.days[0] - DAY; end = data.days[data.days.length - 1] + DAY; }   // "ყველა": from the first report to the last
+  const days = data.days.filter(t => t >= start && t <= end);
+  document.getElementById('workChartStatus').textContent = !data.days.length ? 'ყოველდღიური ოქმი ჯერ არ არის' : !days.length ? 'ამ პერიოდში ოქმი არ არის' : '';
+  const sets = [];
+  data.works.forEach((w, i) => {   // (the colour belongs to the work, whatever the range: the place in the list of all the works)
+    const seen = [...w.byDay.keys()], first = Math.min(...seen), last = Math.max(...seen), pts = days.filter(t => t >= first && t <= last);
+    if (!pts.length) return;      // the work was not written in this period
+    sets.push({ label: w.name, data: pts.map(t => ({ x: t, y: (w.byDay.get(t) || { people: 0 }).people })), borderColor: WORK_COLORS[i % WORK_COLORS.length], backgroundColor: WORK_COLORS[i % WORK_COLORS.length], borderWidth: 2, pointRadius: 3, pointHoverRadius: 6, tension: 0, borderDash: i >= WORK_COLORS.length ? [6, 3] : [], _work: w });
+  });
+  sets.push({ label: 'სულ', data: days.map(t => ({ x: t, y: data.total.get(t) || 0 })), borderColor: '#ffffff', backgroundColor: '#ffffff', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 2, pointHoverRadius: 5, tension: 0, _total: true });
+  const grid = { color: 'rgba(255,255,255,.08)' }, tick = 'rgba(255,255,255,.75)';
+  workChartInstance = new Chart(document.getElementById('workChartCanvas').getContext('2d'), {
+    type: 'line', data: { datasets: sets },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: 'nearest', intersect: true },
+      scales: {
+        x: { type: 'time', time: { unit: 'day' }, min: start, max: end, grid, ticks: { color: tick, maxRotation: 0, minRotation: 0, autoSkip: true, maxTicksLimit: 12, callback: v => fmtDay(new Date(v)) } },
+        y: { min: 0, grid, title: { display: true, text: trText('ადამიანი'), color: tick }, ticks: { color: tick, precision: 0, callback: v => Number.isInteger(v) ? v : null } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(40,30,52,.96)', borderColor: 'rgba(255,255,255,.2)', borderWidth: 1, titleColor: '#fff', bodyColor: 'rgba(255,255,255,.92)', padding: 10,
+          callbacks: {
+            title: items => fmtDayFull(new Date(items[0].parsed.x)),
+            label: item => `${item.dataset._total ? trText('სულ') : item.dataset.label}: ${item.parsed.y} ${trText('ადამიანი')}`,
+            afterLabel: item => { const w = item.dataset._work, d = w && w.byDay.get(item.parsed.x); return d ? d.entries.map(it => `• ${it.title} · ${it.mark} · ${it.progress}%${it.note ? ' · ' + it.note : ''}`) : []; },
+          },
+        },
+      },
+    },
+  });
+  buildWorkChartLegend(workChartInstance);
+}
+// the legend: a filled swatch = the line is shown, an outline = it is switched off (the same look and behaviour as under the chart of the issues)
+function buildWorkChartLegend(chart) {
+  const box = document.getElementById('workChartLegend');
+  box.innerHTML = chart.data.datasets.map((ds, i) => { const vis = chart.isDatasetVisible(i); return `<span class="activity-legend-item${vis ? '' : ' is-hidden'}" data-i="${i}"><span class="activity-legend-swatch" style="border-color:${ds.borderColor};background:${vis ? ds.borderColor : 'transparent'}"></span>${ds._total ? 'სულ' : `<span data-no-i18n>${esc(ds.label)}</span>`}</span>`; }).join('');
+  box.querySelectorAll('.activity-legend-item').forEach(el => el.addEventListener('click', () => { const i = Number(el.dataset.i); chart.setDatasetVisibility(i, !chart.isDatasetVisible(i)); chart.update(); buildWorkChartLegend(chart); }));
+}
+window.setReportsView = v => {
+  reportsView = v === 'chart' ? 'chart' : 'list';
+  const chart = reportsView === 'chart', $ = id => document.getElementById(id);
+  $('rpViewList').classList.toggle('active', !chart); $('rpViewChart').classList.toggle('active', chart);
+  document.querySelector('#reportsScreen .reports-scroll').style.display = chart ? 'none' : '';
+  ['reportsSearch', 'reportsTypeFilter', 'reportsCount'].forEach(id => { $(id).style.display = chart ? 'none' : ''; });
+  $('reportsWorkChart').style.display = chart ? '' : 'none';
+  if (chart) renderWorkChart(); else if (workChartInstance) { workChartInstance.destroy(); workChartInstance = null; }
+};
+window.setWorkChartRange = r => {
+  workChartRange = r === 'all' ? 'all' : 'month';
+  document.getElementById('workRangeMonth').classList.toggle('active', workChartRange === 'month'); document.getElementById('workRangeAll').classList.toggle('active', workChartRange === 'all');
+  renderWorkChart();
 };
 
 // ══ THE QUALITY REPORT ("ხარისხის ოქმი", code qR) ══
@@ -7493,8 +7795,12 @@ function qLoadState(r) {
 }
 // the form shows what belongs to the kind of report: the quality report has its issues, the others their photos and lists
 function applyReportFormKind() {
-  const quality = reportFormType === 'quality', $ = id => document.getElementById(id);
-  ['rSecPhotos', 'rPhotos', 'btnAddReportPhoto', 'rSecWorks', 'rWorks'].forEach(id => { $(id).style.display = quality ? 'none' : ''; });
+  const quality = reportFormType === 'quality', daily = reportFormType === 'daily', $ = id => document.getElementById(id);
+  ['rSecPhotos', 'rPhotos'].forEach(id => { $(id).style.display = quality ? 'none' : ''; });
+  if (quality) $('btnAddReportPhoto').style.display = 'none'; else renderReportPhotos();   // (the "+ photo" button follows the number of the photos)
+  ['rSecWorks', 'rWorks'].forEach(id => { $(id).style.display = quality || daily ? 'none' : ''; });   // the three lists of works: the weekly report only
+  ['rDItemsHead', 'rDItems', 'btnAddDailyItem'].forEach(id => { $(id).style.display = daily ? '' : 'none'; });
+  if (daily) { renderDailyItems(); fillWorkList(); }
   $('rIssues').style.display = quality ? '' : 'none';
   $('rIssuesHead').style.display = quality ? '' : 'none';
   $('btnAddQualityIssueTop').style.display = quality && !reportFixOnly ? '' : 'none';
