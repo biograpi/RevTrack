@@ -476,6 +476,13 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .dv-ask-box label{display:block;font-size:12.5px;color:#52514e}
 .dv-ask-box textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;border:1px solid rgba(11,11,11,.2);border-radius:8px;padding:6px 8px;margin-top:4px;resize:vertical}
 .dv-ask-box .dv-muted{color:#898781;font-size:12.5px}
+.dev-wrap input.dv-name-in{cursor:pointer;text-overflow:ellipsis}
+.dev-wrap input.dv-name-in:hover{border-color:var(--accent)}
+.dev-wrap #devNameText{width:100%;box-sizing:border-box;font:inherit;font-size:14px;line-height:1.45;padding:9px 11px;border:1px solid var(--dv-border);border-radius:8px;background:var(--dv-field);color:var(--dv-ink);resize:vertical;overflow-wrap:anywhere}
+.dev-wrap #devNameText:focus{outline:none;border-color:var(--accent)}
+.dev-wrap .dv-name-foot{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin-top:5px}
+.dev-wrap #devPopTitle,.dev-wrap #devCmTitle{overflow-wrap:anywhere}
+.dev-wrap .dv-kpi .v.dv-cur{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .dv-imp-wrap{max-height:290px;overflow:auto;border:1px solid rgba(11,11,11,.12);border-radius:8px;margin:8px 0 10px}
 .dv-imp-wrap table{width:100%;border-collapse:collapse;font-size:12.5px}
 .dv-imp-wrap th,.dv-imp-wrap td{text-align:left;padding:4px 8px;border-bottom:1px solid #e1e0d9;white-space:nowrap}
@@ -592,6 +599,9 @@ body.has-footer .site-footer{display:flex}
 .user-row .user-status{text-align:left}
 .user-info .ue{font-size:13px;font-weight:500;color:var(--ink)}
 .user-info .um{font-size:12px;color:var(--ink-light)}
+.user-info .um.signup-note{color:var(--ink);margin-top:3px;overflow-wrap:anywhere}
+.user-info .um.signup-note.waiting{background:#fff4d6;border-left:3px solid var(--warn);padding:3px 8px;border-radius:4px}
+.user-row-wrap.pending{background:#fffbf1}
 
 /* ── PROJECT FORM ── */
 .member-search-row{display:flex;gap:8px;margin-bottom:8px}
@@ -640,15 +650,10 @@ body.has-footer .site-footer{display:flex}
       <div class="auth-field"><label>ელ. ფოსტა</label><input type="email" id="regEmail" placeholder="name@company.ge"></div>
       <div class="auth-field"><label>პაროლი</label><input type="password" id="regPass" placeholder="მინიმუმ 6 სიმბოლო"></div>
       <div class="auth-field">
-        <label>თქვენი როლი</label>
-        <select id="regRole">
-          <option value="reviewer">რევიზორი</option>
-          <option value="design_manager">დიზაინ მენეჯერი</option>
-          <option value="contractor">კონტრაქტორი</option>
-          <option value="viewer">User</option>
-        </select>
-        <div class="auth-hint">როლს საბოლოოდ დაადასტურებს ადმინისტრატორი</div>
-      </div>
+      <label>თქვენი როლი და ობიექტი</label>
+      <input type="text" id="regNote" maxlength="150" placeholder="მაგ. საიტ მენეჯერი, საკენი" autocomplete="off">
+      <div class="auth-hint">მიუთითეთ რა როლი გაქვთ და რომელი ობიექტი, მაგალითად „საიტ მენეჯერი, საკენი“, „ინტერიერის დიზაინერი“, „კონტრაქტორი, ბარე“. უფლებებს ადმინისტრატორი მოგანიჭებთ</div>
+    </div>
       <div class="auth-err" id="regErr"></div>
       <div class="auth-ok" id="regOk">მოთხოვნა გაიგზავნა! დაელოდეთ ადმინისტრატორის დადასტურებას.</div>
       <button class="btn-primary" style="width:100%;justify-content:center" id="btnRegister">რეგისტრაცია</button>
@@ -918,6 +923,14 @@ body.has-footer .site-footer{display:flex}
 <label>მიზეზი (არასავალდებულოა)<textarea id="devAskReason" maxlength="500" rows="3" placeholder="მაგ. რატომ გადაიდო დაწყება"></textarea></label>
 <p class="dv-muted">თუ მიზეზს ჩაწერ, ის დაემატება იმ ეტაპების კომენტარებს, რომლებსაც გეგმა შეეცვალათ.</p>
 <div class="dv-ask-actions"><button type="button" id="devAskNo">გაუქმება</button><button type="button" class="primary" id="devAskYes">შენახვა</button></div>
+</div>
+</div>
+<div class="dv-ask" id="devName" style="display:none">
+<div class="dv-ask-box" style="width:min(560px,100%)">
+<h4>ეტაპის სახელი</h4>
+<textarea id="devNameText" rows="5" maxlength="200" placeholder="ეტაპის სახელი"></textarea>
+<div class="dv-name-foot"><span class="dv-muted">Enter — შენახვა · Esc — გაუქმება</span><span class="dv-muted" id="devNameCount" data-no-i18n>0 / 200</span></div>
+<div class="dv-ask-actions"><button type="button" id="devNameNo">გაუქმება</button><button type="button" class="primary" id="devNameYes">შენახვა</button></div>
 </div>
 </div>
 <div class="dv-ask" id="devImport" style="display:none">
@@ -1395,8 +1408,16 @@ body.has-footer .site-footer{display:flex}
   document.documentElement.lang = 'en';
   document.documentElement.setAttribute('translate', 'no');
 
-  var INNER = {"სახელი არ არის": "no name", "სახელი 80 ასოზე გრძელია": "the name is longer than 80 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
+  var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"თქვენი როლი და ობიექტი": "Your role and project",
+"მაგ. საიტ მენეჯერი, საკენი": "e.g. Site manager, Sakeni",
+"მიუთითეთ რა როლი გაქვთ და რომელი ობიექტი, მაგალითად „საიტ მენეჯერი, საკენი“, „ინტერიერის დიზაინერი“, „კონტრაქტორი, ბარე“. უფლებებს ადმინისტრატორი მოგანიჭებთ": "State your role and project, for example \"Site manager, Sakeni\", \"Interior designer\", \"Contractor, Bare\". The administrator will give you your permissions",
+"მიუთითეთ თქვენი როლი და ობიექტი (მინიმუმ 3 სიმბოლო)": "State your role and project (at least 3 characters)",
+"რეგისტრაცია შესრულდა, მაგრამ თქვენი როლისა და ობიექტის ტექსტი ვერ შეინახა. გთხოვთ, ადმინისტრატორს ცალკე აცნობოთ თქვენი როლი და ობიექტი.": "Registration is done, but the text about your role and project could not be saved. Please tell the administrator your role and project separately.",
+"მიუთითა:": "Stated:",
+"Enter — შენახვა · Esc — გაუქმება": "Enter — save · Esc — cancel",
+"დააჭირე სახელის დასაწერად": "Click to write the name",
 "დამტკიცების ველი არასწორადაა ჩაწერილი (უნდა იყოს true). მიმართე ადმინისტრატორს": "The approval field is written wrongly (it must be true). Contact the administrator",
 "ხარისხის ინსპექტორი (წერს ოქმებს ყველა პროექტზე)": "Quality inspector (writes reports on every project)",
 "პროექტ მენეჯერი (წერს ოქმებს ყველა პროექტზე და გეგმავს თავის პროექტს)": "Project manager (writes reports on every project and plans his own project)",
@@ -1405,7 +1426,7 @@ body.has-footer .site-footer{display:flex}
 "წერს ოქმებს ყველა პროექტზე": "Writes reports on every project",
 "ყოველკვირეული და ყოველდღიური ოქმი იწერება საიტ მენეჯერის ან ამ პროექტის პროექტ მენეჯერის მიერ; ხარისხის ინსპექტორს ხარისხის ოქმების წერა შეუძლია": "Weekly and daily reports are written by a site manager or this project's project manager; a quality inspector can write quality reports",
 "ახალი ოქმის დაწერა შეუძლია საიტ მენეჯერს ან ამ პროექტის პროექტ მენეჯერს; ხარისხის ოქმს ხარისხის ინსპექტორიც წერს": "A new report can be written by a site manager or this project's project manager; a quality report can also be written by a quality inspector",
-"სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“. ოქმებს წერს ყველა მონიშნული საიტ მენეჯერი ნებისმიერ პროექტზე; ეს სია მხოლოდ ჩვენებისთვისაა (პროექტის ბარათზე და სქემაზე)": "Only a User marked as \\\"Site manager\\\" in the users list appears here. Every marked site manager writes reports on any project; this list is only for showing (on the project card and the diagram)",
+"სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“. ოქმებს წერს ყველა მონიშნული საიტ მენეჯერი ნებისმიერ პროექტზე; ეს სია მხოლოდ ჩვენებისთვისაა (პროექტის ბარათზე და სქემაზე)": "Only a User marked as \"Site manager\" in the users list appears here. Every marked site manager writes reports on any project; this list is only for showing (on the project card and the diagram)",
 "სურათი ვერ აიტვირთა: ინტერნეტი შეწყდა ან ძალიან ნელია. სცადე ხელახლა.": "The picture could not be uploaded: the internet was interrupted or is too slow. Try again.",
 "ოქმები": "Reports",
 "სამუშაოების გრაფიკი": "Work chart",
@@ -1953,7 +1974,7 @@ body.has-footer .site-footer{display:flex}
       var one = function (t) {
         var x;
         if (t === 'სახელი არ არის') return 'the name is missing';
-        if (t === 'სახელი 80 ასოზე გრძელია') return 'the name is longer than 80 letters';
+        if (t === 'სახელი 200 ასოზე გრძელია') return 'the name is longer than 200 letters';
         if (t === 'წილი არ არის') return 'the share is missing';
         if (t === 'გეგმის დაწყება არ არის') return 'the plan start is missing';
         if (t === 'გეგმის დასრულება არ არის') return 'the plan end is missing';
@@ -2329,6 +2350,7 @@ let currentProjectDesignManagers = []; // [{uid, name}] — cached names of desi
 let issues = {};
 // Every user document keyed by uid (filled by loadAllUsers). Used to turn uids into names.
 let allUsers = {};
+let signupNotes = {};   // uid → the line a person wrote about himself when he registered (his role and the object); only an admin reads it
 let myCommentReads = {}; // {issueId: msEpoch} — cached "last seen" times for the current user, refreshed per project open
 // Functions that stop the live issue listeners (Firestore onSnapshot). Call them when leaving a project.
 let unsubIssues = null;
@@ -3918,6 +3940,7 @@ function devNow(model) {
   return { plan: now.plan, actual: now.actual, date: model.TODAY, notStarted: false, lag: devLag(model, model.TODAY, now.actual) };
 }
 // the checks before saving. errors block the saving, warnings do not.
+const DEV_NAME_MAX = 200;   // the longest name of a stage (letters)
 function devValidate(stages, today) {
   const errors = [], warnings = [];
   const list = stages || [];
@@ -3926,7 +3949,7 @@ function devValidate(stages, today) {
   list.forEach((s, i) => {
     const n = i + 1, nm = (s.name || '').trim();
     if (!nm) errors.push(`ეტაპი ${n}: სახელი არ არის`);
-    if (nm.length > 80) errors.push(`ეტაპი ${n}: სახელი 80 ასოზე გრძელია`);
+    if (nm.length > DEV_NAME_MAX) errors.push(`ეტაპი ${n}: სახელი ${DEV_NAME_MAX} ასოზე გრძელია`);
     const w = Number(s.weight);
     if (!(w > 0) || w > 100) errors.push(`ეტაპი ${n}: წილი 0-ზე მეტი და 100-მდე უნდა იყოს`); else sum += w;
     const ps = devParseDate(s.planStart), pe = devParseDate(s.planEnd);
@@ -4075,7 +4098,7 @@ function devCsvToStages(text) {
   rows.slice(1).forEach((r, k) => {
     const line = k + 2, get = key => col[key] == null ? '' : String(r[col[key]] == null ? '' : r[col[key]]).trim(), probs = [];
     const name = get('name');
-    if (!name) probs.push('სახელი არ არის'); else if (name.length > 80) probs.push('სახელი 80 ასოზე გრძელია');
+    if (!name) probs.push('სახელი არ არის'); else if (name.length > DEV_NAME_MAX) probs.push(`სახელი ${DEV_NAME_MAX} ასოზე გრძელია`);
     const w = devCsvNum(get('weight')); let weight = 0;
     if (w === null) probs.push('წილი არ არის'); else if (Number.isNaN(w)) probs.push(`წილი არასწორია („${get('weight')}“)`); else weight = w;
     const dt = {};
@@ -4188,7 +4211,7 @@ function devKpiHtml(model) {
     <div class="dv-kpi"><div class="l">გეგმით დღეისთვის</div><div class="v num">${devFmtP(n.plan)}</div><div class="l">დაგეგმილი შესრულება</div></div>
     <div class="dv-kpi"><div class="l">სხვაობა %-ში</div><div class="v num" style="color:${up ? 'var(--dv-good-text)' : 'var(--dv-bad)'}">${up ? '▲' : '▼'} ${devSign(df)}</div><div class="l">${up ? 'წინ უსწრებს გეგმას' : 'ჩამორჩება გეგმას'}</div></div>
     <div class="dv-kpi"><div class="l">სხვაობა დღეებში</div><div class="v num" style="color:${!L || L.days === 0 ? 'var(--dv-ink)' : late ? 'var(--dv-bad)' : 'var(--dv-good-text)'}">${!L ? '—' : (late ? '▼ ' : L.days < 0 ? '▲ ' : '') + Math.abs(L.days) + ' დღე'}</div><div class="l">${!L ? '' : L.days > 0 ? 'ჩამორჩება გრაფიკს' : L.days < 0 ? 'უსწრებს გრაფიკს' : 'გრაფიკშია'}${L ? ` · ${devFmtP(n.actual)} გეგმით ${devFmtDate(L.planDate)}-ს` : ''}</div></div>
-    <div class="dv-kpi"><div class="l">მიმდინარე ეტაპი</div><div class="v" data-no-i18n style="font-size:16px;padding-top:8px">${esc(devStageNames(model, model.TODAY, 'a'))}</div></div>`;
+    <div class="dv-kpi"><div class="l">მიმდინარე ეტაპი</div><div class="v dv-cur" data-no-i18n style="font-size:16px;padding-top:8px" title="${esc(devStageNames(model, model.TODAY, 'a'))}">${esc(devStageNames(model, model.TODAY, 'a'))}</div></div>`;
 }
 
 let devChartApi = null;   // what the drawn chart offers to the rest of the code: setModel(model) redraws the curve and the bars while a bar is being dragged
@@ -4554,7 +4577,7 @@ const DEV_FIELDS = ['planStart', 'planEnd', 'actualStart', 'actualEnd'];
 function devSyncTable() {   // the table's fields show the draft (except the one being typed in)
   document.querySelectorAll('#devTable tbody tr').forEach(tr => {
     const s = devState.draft[+tr.dataset.i]; if (!s) return;
-    tr.querySelectorAll('[data-f]').forEach(el => { if (document.activeElement === el) return; const v = el.dataset.f === 'planDays' ? devDays(s) : s[el.dataset.f]; el.value = el.dataset.f === 'weight' ? (v || '') : el.dataset.f === 'prog' ? Math.round(v || 0) : (v == null ? '' : v); });
+    tr.querySelectorAll('[data-f]').forEach(el => { if (el.dataset.f === 'name') el.title = s.name || 'დააჭირე სახელის დასაწერად'; if (document.activeElement === el) return; const v = el.dataset.f === 'planDays' ? devDays(s) : s[el.dataset.f]; el.value = el.dataset.f === 'weight' ? (v || '') : el.dataset.f === 'prog' ? Math.round(v || 0) : (v == null ? '' : v); });
   });
 }
 
@@ -4589,7 +4612,7 @@ function devSyncPop() {
 document.getElementById('devPop').addEventListener('input', e => { const f = e.target.dataset.pf; if (f && devState.popIdx >= 0) devSetField(devState.popIdx, f, e.target.value); });
 document.getElementById('devPop').addEventListener('click', e => { const c = e.target.closest('[data-pc]'); if (c && devState.popIdx >= 0) devSetField(devState.popIdx, c.dataset.pc, ''); });
 window.devClosePop = devClosePop;
-document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (document.getElementById('devImport').style.display !== 'none') { devCloseImport(); return; } if (devState.cmId) devCloseComments(); else if (devState.popIdx >= 0) devClosePop(); });
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (document.getElementById('devName').style.display !== 'none') { devCloseNameEditor(); return; } if (document.getElementById('devImport').style.display !== 'none') { devCloseImport(); return; } if (devState.cmId) devCloseComments(); else if (devState.popIdx >= 0) devClosePop(); });
 
 // ── The comments of a stage: everybody who sees the chart can read them, the admin / the super-reviewer / the project manager write (the chart's editors) ──
 // A comment is part of the stage, so it is saved by the same "შენახვა" as the rest of the chart. The author (and an admin) can delete a comment, nobody can change one.
@@ -4661,7 +4684,7 @@ function devBuildEditor() {
     <tbody>${devState.draft.map((s, i) => `
       <tr data-i="${i}">
         <td class="mv"><button type="button" data-act="up" title="ზევით">↑</button><button type="button" data-act="down" title="ქვევით">↓</button></td>
-        <td><input type="text" data-f="name" maxlength="80" value="${esc(s.name)}" placeholder="ეტაპის სახელი"></td>
+        <td><input type="text" class="dv-name-in" data-f="name" readonly value="${esc(s.name)}" title="${esc(s.name || 'დააჭირე სახელის დასაწერად')}" placeholder="ეტაპის სახელი"></td>
         <td class="num"><input type="number" data-f="weight" min="0" max="100" step="any" value="${s.weight || ''}"></td>
         <td class="dt"><input type="date" data-f="planStart" value="${esc(s.planStart)}"></td>
         <td class="dt"><input type="date" data-f="planEnd" value="${esc(s.planEnd)}"><input type="number" class="days" data-f="planDays" min="0" max="3650" step="1" value="${devDays(s)}" placeholder="დღე" title="ხანგრძლივობა დღეებში (გეგმის დაწყებიდან)"></td>
@@ -4738,11 +4761,38 @@ document.getElementById('devTable').addEventListener('click', e => {
   else return;
   devMarkDirty(); devBuildEditor(); devRender();
 });
+// ── The NAME of a stage: the field in the table is only a sign (a click on it opens a window of its own, with room for a long name: up to 200 letters) ──
+let devNameIdx = -1;
+function devOpenNameEditor(i) {
+  const s = devState.draft[i]; if (!s || !devState.canEdit) return;
+  devCloseComments(); devNameIdx = i;
+  const t = document.getElementById('devNameText'); t.value = s.name || '';
+  document.getElementById('devNameCount').textContent = `${t.value.length} / ${DEV_NAME_MAX}`;
+  document.getElementById('devName').style.display = '';
+  t.focus(); t.setSelectionRange(t.value.length, t.value.length);
+}
+function devCloseNameEditor() { devNameIdx = -1; document.getElementById('devName').style.display = 'none'; }
+function devSaveName() {
+  const i = devNameIdx, s = devState.draft[i]; if (!s) { devCloseNameEditor(); return; }
+  const v = document.getElementById('devNameText').value.replace(/\s*[\r\n]+\s*/g, ' ').trim().slice(0, DEV_NAME_MAX);   // one line: line breaks become spaces
+  devCloseNameEditor();
+  const inp = document.querySelector(`#devTable tbody tr[data-i="${i}"] [data-f=name]`);
+  if (inp && document.activeElement === inp) inp.blur();
+  if (v !== (s.name || '')) devSetField(i, 'name', v);
+  devSyncTable(); devSyncPop();
+  if (inp) inp.focus();
+}
+document.getElementById('devNameText').addEventListener('input', e => { document.getElementById('devNameCount').textContent = `${e.target.value.length} / ${DEV_NAME_MAX}`; });
+document.getElementById('devNameText').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); devSaveName(); } });
+document.getElementById('devNameYes').addEventListener('click', devSaveName);
+document.getElementById('devNameNo').addEventListener('click', devCloseNameEditor);
+document.getElementById('devTable').addEventListener('click', e => { const el = e.target; if (el && el.matches && el.matches('[data-f=name]')) { const tr = el.closest('tr'); if (tr) devOpenNameEditor(+tr.dataset.i); } });
+document.getElementById('devTable').addEventListener('keydown', e => { const el = e.target; if (el && el.matches && el.matches('[data-f=name]') && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); const tr = el.closest('tr'); if (tr) devOpenNameEditor(+tr.dataset.i); } });
 window.devAddStage = () => {
   if (devState.draft.length >= 60) { alert('ეტაპი 60-ზე მეტი ვერ იქნება'); return; }
   devState.draft.push({ id: devNewId(), name: '', weight: 0, planStart: '', planEnd: '', actualStart: '', actualEnd: '', prog: 0, comments: [] });
   devMarkDirty(); devBuildEditor(); devRender();
-  const inputs = document.querySelectorAll('#devTable tbody tr:last-child [data-f=name]'); if (inputs[0]) inputs[0].focus();
+  devOpenNameEditor(devState.draft.length - 1);   // a new stage: its name is asked for at once, in the window
 };
 window.devCancelEdits = () => { devState.draft = devClone(devState.server); devState.dirty = false; devBuildEditor(); devRender(); };
 document.getElementById('devToday').addEventListener('input', e => {   // the admin's own "as of" date, for testing: it is not saved
@@ -7243,27 +7293,34 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
   const name = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim();
   const pass = document.getElementById('regPass').value;
-  const role = document.getElementById('regRole').value;
+  const note = document.getElementById('regNote').value.replace(/\s+/g, ' ').trim();   // his role and the object, in his own words: only an admin will read it
   const err = document.getElementById('regErr'); err.style.display='none';
   const ok = document.getElementById('regOk'); ok.style.display='none';
   if (!name) { err.textContent='სახელი სავალდებულოა'; err.style.display='block'; return; }
   if (!email) { err.textContent='ელ. ფოსტა სავალდებულოა'; err.style.display='block'; return; }
   if (pass.length < 6) { err.textContent='პაროლი უნდა იყოს მინიმუმ 6 სიმბოლო'; err.style.display='block'; return; }
+  if (note.length < 3) { err.textContent='მიუთითეთ თქვენი როლი და ობიექტი (მინიმუმ 3 სიმბოლო)'; err.style.display='block'; return; }
   const btn = document.getElementById('btnRegister');
   btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
   isRegistering = true;
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    // Everybody registers as a plain User: the admin gives the role and the marks when he approves the account.
     await setDoc(doc(db,'users',cred.user.uid), {
-      name, email, role, approved: false, emailVerified: false, createdAt: serverTimestamp()
+      name, email, role: 'viewer', approved: false, emailVerified: false, createdAt: serverTimestamp()
     });
+    // The line about himself goes into a document of its own (signupNotes/{uid}), which only an admin can read. If it cannot be saved the registration still stands: he is told to let the admin know.
+    let noteSaved = true;
+    try { await setDoc(doc(db,'signupNotes',cred.user.uid), { note, createdAt: serverTimestamp() }); } catch(nErr) { noteSaved = false; console.warn('signup note not saved:', nErr); }
     try { await sendEmailVerification(cred.user); } catch(vErr) { console.warn('verification email failed:', vErr); }
     await signOut(auth);
     document.getElementById('regName').value = '';
     document.getElementById('regEmail').value = '';
     document.getElementById('regPass').value = '';
+    document.getElementById('regNote').value = '';
     document.getElementById('tabLogin').click();
     showToast('რეგისტრაცია დასრულდა! გადაამოწმეთ მეილი დასადასტურებლად, შემდეგ დაელოდეთ ადმინისტრატორის დადასტურებას.');
+    if (!noteSaved) alert('რეგისტრაცია შესრულდა, მაგრამ თქვენი როლისა და ობიექტის ტექსტი ვერ შეინახა. გთხოვთ, ადმინისტრატორს ცალკე აცნობოთ თქვენი როლი და ობიექტი.');
   } catch(e) {
     let msg = 'შეცდომა: ' + e.message;
     if (e.code === 'auth/email-already-in-use') msg = 'ეს ელ. ფოსტა უკვე რეგისტრირებულია';
@@ -8284,6 +8341,13 @@ async function loadAllUsers() {
     showToast('შეცდომა: ' + e.message);
   }
 }
+// The lines the people wrote about themselves when they registered (their role and the object): read by an admin only; for anybody else the database refuses and nothing is shown.
+async function loadSignupNotes() {
+  signupNotes = {};
+  if (!isAdminLike()) return;
+  try { const snap = await getDocs(collection(db, 'signupNotes')); snap.forEach(d => { signupNotes[d.id] = String((d.data() || {}).note || ''); }); }
+  catch (e) { console.warn('signupNotes not loaded:', e); }
+}
 // Draws the admin users panel: role, approval, the marks (interior designer, MEP reviewer, site manager, project manager) and delete. The list can be narrowed by role, by
 // approval (only those waiting to be approved) and by the search box: every typed word has to appear somewhere in the person's name or email (capital
 // letters don't matter), so "gia ber" finds "Gia Beridze".
@@ -8291,18 +8355,20 @@ function renderUsersPanel() {
   const panel = document.getElementById('usersPanel');
   const roleFilter = document.getElementById('usersRoleFilter').value, approvalFilter = document.getElementById('usersApprovalFilter').value;
   const words = document.getElementById('usersSearch').value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const matchesSearch = u => { const text = `${u.name || ''} ${u.email || ''}`.toLowerCase(); return words.every(w => text.includes(w)); };
+  const matchesSearch = u => { const text = `${u.name || ''} ${u.email || ''} ${isAdminLike() ? (signupNotes[u.id] || '') : ''}`.toLowerCase(); return words.every(w => text.includes(w)); };
   const allCount = Object.keys(allUsers).length;
-  const users = Object.values(allUsers).filter(u => (!roleFilter || u.role === roleFilter) && (!approvalFilter || (approvalFilter === 'pending' ? !u.approved : !!u.approved)) && matchesSearch(u));
+  const users = Object.values(allUsers).filter(u => (!roleFilter || u.role === roleFilter) && (!approvalFilter || (approvalFilter === 'pending' ? !u.approved : !!u.approved)) && matchesSearch(u))
+    .sort((a, b) => (a.approved ? 1 : 0) - (b.approved ? 1 : 0));   // those waiting to be approved come first (the others keep their order)
   // "Total" is always everyone registered; when the list is narrowed, how many of them are shown is added.
   document.getElementById('usersTotalCount').textContent = `სულ დარეგისტრირებულია: ${allCount}` + ((roleFilter || approvalFilter || words.length) ? ` (ნაჩვენებია: ${users.length})` : '');
   const canManageUsers = isAdminLike();
   panel.innerHTML = users.length ? users.map(u => `
-    <div class="user-row-wrap">
+    <div class="user-row-wrap${u.approved ? '' : ' pending'}">
       <div class="user-row">
         <div class="user-info">
           <div class="ue">${esc(u.name)}</div>
           <div class="um">${esc(u.email)}</div>
+          ${canManageUsers && signupNotes[u.id] ? `<div class="um signup-note${u.approved ? '' : ' waiting'}">მიუთითა: <b data-no-i18n>${esc(signupNotes[u.id])}</b></div>` : ''}
           <div class="um" style="opacity:.7">ბოლო შესვლა: ${u.lastLoginAt?.toDate ? u.lastLoginAt.toDate().toLocaleString((window.UI_LOCALE || 'ka-GE'),{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : 'უცნობია'}</div>
         </div>
         ${!canManageUsers ? `<div style="grid-column:2 / -1;color:var(--ink-light);font-size:12px">${roleL[u.role]||u.role}</div>` : u.role!=='admin'?`
@@ -8357,7 +8423,7 @@ document.getElementById('usersRoleFilter').addEventListener('change', renderUser
 document.getElementById('usersApprovalFilter').addEventListener('change', renderUsersPanel);
 document.getElementById('usersSearch').addEventListener('input', renderUsersPanel);
 document.getElementById('btnGlobalUsers').addEventListener('click', async () => {
-  await loadAllUsers();
+  await loadAllUsers(); await loadSignupNotes();
   document.getElementById('usersSearch').value = ''; // every time the panel opens it starts with the whole list
   document.getElementById('usersApprovalFilter').value = '';
   renderUsersPanel();
@@ -8471,6 +8537,7 @@ window.deleteUser = async (uid, name) => {
   if (!confirm(`წავშალო მომხმარებელი "${name}"?\n\nმას აღარ ეყოლება წვდომა სისტემაზე (მისი ანგარიშის მონაცემები Firestore-დან წაიშლება). გაითვალისწინეთ: Firebase Authentication-ის ანგარიში თავად ცალკე რჩება — მისი სრული წაშლა შესაძლებელია მხოლოდ Firebase Console-დან.`)) return;
   try {
     await deleteDoc(doc(db,'users',uid));
+    try { await deleteDoc(doc(db,'signupNotes',uid)); } catch (e) { /* there may be none */ }
     showToast('მომხმარებელი წაიშალა');
     document.getElementById('btnGlobalUsers').click();
   } catch(e) { alert('შეცდომა: '+e.message); }
