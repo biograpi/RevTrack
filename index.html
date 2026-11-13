@@ -393,6 +393,15 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .rp-switch{display:inline-flex;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;flex:none}
 .rp-switch button{border:0;background:white;padding:7px 14px;font:inherit;font-size:13px;color:var(--ink-mid);cursor:pointer}
 .rp-switch button.active{background:var(--accent);color:white}
+#forceGraphSvg{display:block;width:100%;height:auto;touch-action:pan-y}
+.fg-link{fill:none;stroke-linecap:round;transition:opacity .15s}
+.fg-node{cursor:default;transition:opacity .15s}
+.fg-dim{opacity:.12}
+.fg-hint{text-align:center;font-size:11.5px;color:rgba(255,255,255,.45);margin-top:6px}
+/* the tick boxes above the diagrams are painted in the colours of their columns: they work the boxes AND say what the colours mean */
+#sankeyControlsRow .activity-legend-item input[type=checkbox]{width:13px;height:13px}
+.activity-legend-item.has-colour input[type=checkbox]{border-color:var(--box-color);background:var(--box-color)}
+.activity-legend-item.has-colour input[type=checkbox]:not(:checked){background:transparent}
 .rp-chart-card{background:#1a1120;border-radius:12px;padding:18px 24px 22px;margin:14px 0}
 .rp-chart-box{position:relative;height:clamp(270px,36vw,430px)}   /* a phone gets a chart that is tall enough to read, a wide screen a comfortable one */
 .rp-chart-card .activity-chart-head{gap:14px;flex-wrap:wrap;justify-content:flex-start}
@@ -679,6 +688,7 @@ body.has-footer .site-footer{display:flex}
   <div class="main-view-toggle" id="mainViewToggle" style="display:none">
     <button class="view-toggle-btn" id="mainViewToggleGrid" onclick="chooseMainListView('grid')">ბადე</button>
     <button class="view-toggle-btn" id="mainViewToggleChart" onclick="chooseMainListView('chart')">გრაფიკი</button>
+    <button class="view-toggle-btn" id="mainViewToggleForce" onclick="chooseMainListView('force')">კავშირები</button>
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
@@ -694,6 +704,11 @@ body.has-footer .site-footer{display:flex}
       <label class="activity-legend-item"><input type="checkbox" id="chkSankeyReviewer" onchange="toggleSankeyReviewer()"> რევიზორები</label>
     </div>
     <svg id="reviewerManagerChartSvg"></svg>
+  </div>
+  <!-- the third view: the graph of connections (the projects and the people and companies that work on them); the row of boxes above the diagram moves up here when this view is shown -->
+  <div class="activity-chart-wrap" id="forceGraphWrap" style="display:none;position:relative">
+    <svg id="forceGraphSvg"></svg>
+    <div class="fg-hint" id="forceGraphHint">წერტილის გადათრევა შეგიძლია · მასშტაბი: Ctrl + ბორბალი ან ორი თითი</div>
   </div>
   <div class="activity-chart-wrap" id="activityChartWrap" style="display:none">
     <div class="activity-chart-head">
@@ -1409,6 +1424,9 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"კავშირები": "Connections",
+"წერტილის გადათრევა შეგიძლია · მასშტაბი: Ctrl + ბორბალი ან ორი თითი": "You can drag a node · zoom: Ctrl + wheel or two fingers",
+"პროექტები არ არის": "There are no projects",
 "✎ ხელით ჩაწერა…": "✎ Type by hand…",
 "თქვენი როლი და ობიექტი": "Your role and project",
 "მაგ. საიტ მენეჯერი, საკენი": "e.g. Site manager, Sakeni",
@@ -2669,6 +2687,14 @@ function computeMaxColumnNodeCount(projects) {
   return Math.max(projects.length, managers.size, reviewers.size, pms.size, sites.size, contractors.size);
 }
 // "ნინო ორმოცაძე" -> "ნინო ო." — distinguishes two people sharing a first name.
+// A person's name on TWO lines in the diagram: the first name, and under it the surname (everything after the first word). A name of one word, a placeholder ("— არავინ"), an
+// e-mail address and a list of several people (with a comma) stay on one line.
+function personLines(full) {
+  const t = String(full || '').trim();
+  if (!t || /^[—–-]/.test(t) || t.includes('@') || t.includes(',') || t === 'უცნობი') return [t];   // (a comma: a list of several people, e.g. the MEP reviewers "გია, იური", not one name)
+  const parts = t.split(/\s+/);
+  return parts.length < 2 ? [t] : [parts[0], parts.slice(1).join(' ')];
+}
 function nameWithLastInitial(fullName) {
   const parts = (fullName||'').trim().split(/\s+/);
   if (parts.length < 2) return parts[0] || fullName;
@@ -2694,6 +2720,21 @@ let lastChartProjects = null; // cached for re-render when the size toggle chang
 // The three toggle functions below are called by the checkboxes above the diagram: they read the checkboxes, then redraw.
 // Dims the label of every switched-off box above the diagram (the look of the activity chart's tick boxes).
 const SANKEY_BOX_IDS = ['chkSankeyDm', 'chkSankeyPm', 'chkSankeySite', 'chkSankeyArch', 'chkSankeyStruct', 'chkSankeyMp', 'chkSankeyElec', 'chkSankeyReviewer'];
+// Every box is painted in the colour of its column (the first colour of the column's palette, the one the diagram and the graph use), so the boxes are the key of the colours too.
+const SANKEY_BOX_COLORS = { chkSankeyDm: SANKEY_MANAGER_PALETTE[0], chkSankeyPm: SANKEY_PM_PALETTE[0], chkSankeySite: SANKEY_SITE_PALETTE[0], chkSankeyArch: SANKEY_ARCH_PALETTE[0], chkSankeyStruct: SANKEY_STRUCT_PALETTE[0], chkSankeyMp: SANKEY_MEP_PALETTE[0], chkSankeyElec: SANKEY_ELEC_PALETTE[0], chkSankeyReviewer: SANKEY_REVIEWER_PALETTE[0] };
+Object.entries(SANKEY_BOX_COLORS).forEach(([id, c]) => { const label = document.getElementById(id).closest('label'); label.classList.add('has-colour'); label.style.setProperty('--box-color', c); });
+// The diagram and the graph of connections each keep THEIR OWN boxes: switching from one to the other brings back the boxes the person left there (the first time: all on).
+const boxesSaved = { chart: null, force: null };
+const BOXES_ALL_ON = { dm: true, pm: true, site: true, arch: true, struct: true, mp: true, elec: true, reviewer: true };
+const boxesNow = () => ({ dm: sankeyManagerTypes.dm, pm: sankeyManagerTypes.pm, site: sankeyManagerTypes.site, arch: sankeyDisciplines.arch, struct: sankeyDisciplines.struct, mp: sankeyDisciplines.mp, elec: sankeyDisciplines.elec, reviewer: sankeyShowReviewer });
+function applyBoxes(st) {
+  sankeyManagerTypes.dm = st.dm; sankeyManagerTypes.pm = st.pm; sankeyManagerTypes.site = st.site;
+  sankeyDisciplines.arch = st.arch; sankeyDisciplines.struct = st.struct; sankeyDisciplines.mp = st.mp; sankeyDisciplines.elec = st.elec;
+  sankeyShowReviewer = st.reviewer;
+  const ids = { chkSankeyDm: st.dm, chkSankeyPm: st.pm, chkSankeySite: st.site, chkSankeyArch: st.arch, chkSankeyStruct: st.struct, chkSankeyMp: st.mp, chkSankeyElec: st.elec, chkSankeyReviewer: st.reviewer };
+  Object.entries(ids).forEach(([id, on]) => { document.getElementById(id).checked = !!on; });
+  syncSankeyChecks();
+}
 function syncSankeyChecks() {
   // the "all" box follows the others: ticked when every box is on, a bar when only some are, empty when none
   const on = SANKEY_BOX_IDS.filter(id => document.getElementById(id).checked).length, all = document.getElementById('chkSankeyAll');
@@ -2708,7 +2749,7 @@ function setAllSankeyBoxes(on) {
   sankeyDisciplines.arch = sankeyDisciplines.struct = sankeyDisciplines.mp = sankeyDisciplines.elec = on;
   sankeyShowReviewer = on;
   syncSankeyChecks();
-  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
+  redrawMainChart();
 }
 window.toggleSankeyAll = function() { setAllSankeyBoxes(document.getElementById('chkSankeyAll').checked); };
 
@@ -2717,7 +2758,7 @@ window.toggleSankeyManagerType = function() {
   sankeyManagerTypes.pm = document.getElementById('chkSankeyPm').checked;
   sankeyManagerTypes.site = document.getElementById('chkSankeySite').checked;
   syncSankeyChecks();
-  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
+  redrawMainChart();
 };
 
 window.toggleSankeyDiscipline = function() {
@@ -2726,13 +2767,13 @@ window.toggleSankeyDiscipline = function() {
   sankeyDisciplines.mp = document.getElementById('chkSankeyMp').checked;
   sankeyDisciplines.elec = document.getElementById('chkSankeyElec').checked;
   syncSankeyChecks();
-  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
+  redrawMainChart();
 };
 
 window.toggleSankeyReviewer = function() {
   sankeyShowReviewer = document.getElementById('chkSankeyReviewer').checked;
   syncSankeyChecks();
-  if (lastChartProjects) renderReviewerManagerChart(lastChartProjects);
+  redrawMainChart();
 };
 
 // Draws the project-structure diagram (a D3 Sankey chart). Each project flows:
@@ -2817,8 +2858,8 @@ function renderReviewerManagerChart(projects, opts) {
   const nodesById = new Map(); // id -> {id, name, color}
   // Node ids carry a column prefix so names can't collide across columns: p: project, m: design manager,
   // c: contractor, r: reviewer, pm: project manager, sm: site manager. The label shown is the clean name.
-  function addNode(id, name, color) {
-    if (!nodesById.has(id)) nodesById.set(id, { id, name, color });
+  function addNode(id, name, color, full) {   // full: the whole name of a PERSON (drawn on two lines when there is room); name is the short form used when the rows are tight
+    if (!nodesById.has(id)) nodesById.set(id, full ? { id, name, color, person: true, full } : { id, name, color });
     return id;
   }
   const reviewerColorByName = new Map();
@@ -2848,7 +2889,7 @@ function renderReviewerManagerChart(projects, opts) {
     const projectId = addNode(`p:${p.id}`, projectLabel(p.name), projectColor);
     nodesById.get(projectId).logo = p.logo || '';   // the project's own logo (an SVG as a data URL), if it has one
     nodesById.get(projectId).value0 = value;         // the project's size (its bar), for the layout that has no flows
-    const reviewerId = sankeyShowReviewer ? addNode(`r:${reviewerFullName}`, firstNameOnly(reviewerFullName), reviewerColor) : null;
+    const reviewerId = sankeyShowReviewer ? addNode(`r:${reviewerFullName}`, firstNameOnly(reviewerFullName), reviewerColor, reviewerFullName) : null;
     // Every link carries the project's id explicitly — this is what makes
     // hover-highlighting correct and simple regardless of how many hops
     // separate two nodes: "related" just means "same projectId", not
@@ -2860,7 +2901,7 @@ function renderReviewerManagerChart(projects, opts) {
     if (sankeyManagerTypes.dm) {
       const managerFullName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ';
       const managerColor = colorFor(managerColorByName, managerFullName, SANKEY_MANAGER_PALETTE);
-      const managerId = addNode(`m:${managerFullName}`, nameWithLastInitial(managerFullName), managerColor);
+      const managerId = addNode(`m:${managerFullName}`, nameWithLastInitial(managerFullName), managerColor, managerFullName);
       pushLink(projectId, managerId, value, p.id, projectColor, managerColor, projectColor);
       preContractorId = managerId;
       preContractorColor = managerColor;
@@ -2874,7 +2915,7 @@ function renderReviewerManagerChart(projects, opts) {
     if (sankeyManagerTypes.pm) {
       const pmFullName = p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ');
       pmColor = colorFor(pmColorByName, pmFullName, SANKEY_PM_PALETTE);
-      pmId = addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor);
+      pmId = addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor, pmFullName);
     }
     // The site manager is the last column, after the project managers. It follows the PM when the PM column is shown, otherwise it
     // takes the PM's place (reviewers / contractors lead straight to it).
@@ -2885,7 +2926,7 @@ function renderReviewerManagerChart(projects, opts) {
       const siteNames = projectSiteManagers(p);
       for (const siteFullName of (siteNames.length ? siteNames : ['— არავინ'])) {
         const siteColor = colorFor(siteColorByName, siteFullName, SANKEY_SITE_PALETTE);
-        siteTargets.push({ id: addNode(`sm:${siteFullName}`, nameWithLastInitial(siteFullName), siteColor), color: siteColor });
+        siteTargets.push({ id: addNode(`sm:${siteFullName}`, nameWithLastInitial(siteFullName), siteColor, siteFullName), color: siteColor });
       }
     }
     const tails = pmId ? [{ id: pmId, color: pmColor }] : siteTargets;   // where the reviewers lead: the PM, or the site managers if there is no PM column
@@ -2929,7 +2970,7 @@ function renderReviewerManagerChart(projects, opts) {
         const mepReviewerName = m.kind === 'mp' ? mepReviewers.mpFinal : (m.kind === 'elec' ? mepReviewers.elecFinal : mepReviewers.legacy);
         if (sankeyShowReviewer && mepReviewerName) {
           const mepReviewerColor = colorFor(reviewerColorByName, mepReviewerName, SANKEY_REVIEWER_PALETTE);
-          const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor);
+          const mepReviewerId = addNode(`r:${mepReviewerName}`, mepReviewerName, mepReviewerColor, mepReviewerName);
           pushLink(mepId, mepReviewerId, value, p.id, mepColor, mepReviewerColor, projectColor);
           if (tails.length && !reviewerLinkedToPm.has(mepReviewerId)) { linkTo(mepReviewerId, mepReviewerColor, tails); reviewerLinkedToPm.add(mepReviewerId); }
         }
@@ -3049,6 +3090,23 @@ function renderReviewerManagerChart(projects, opts) {
     return new Set(graph.links.filter(l => projectIds.has(l.projectId)));
   }
 
+  // Is there room for a name on two lines? The centres of two neighbouring labels of one column must be at least 2.5 lines apart (a PDF with many projects on one page, or a
+  // phone, can be tight: then the short form "გიორგი გ." stays on one line).
+  const rowRoom = new Map();
+  (() => {
+    const cols = new Map();
+    graph.nodes.forEach(n => { const k = Math.round(n.x0); if (!cols.has(k)) cols.set(k, []); cols.get(k).push(n); });
+    cols.forEach(list => {
+      list.sort((a, b) => (a.y0 + a.y1) - (b.y0 + b.y1));
+      list.forEach((n, i) => {
+        const c = (n.y0 + n.y1) / 2;
+        const up = i ? c - (list[i - 1].y0 + list[i - 1].y1) / 2 : Infinity, down = i < list.length - 1 ? (list[i + 1].y0 + list[i + 1].y1) / 2 - c : Infinity;
+        rowRoom.set(n.id, Math.min(up, down));
+      });
+    });
+  })();
+  const twoLineOk = d => !(rowRoom.get(d.id) < parseFloat(fontPx) * 2.5);
+
   const node = svg.append('g')
     .selectAll('g')
     .data(graph.nodes)
@@ -3056,7 +3114,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('class', 'sankey-node')
     .attr('data-node-id', d => d.id)
     .attr('data-project-ids', d => [...new Set(relatedLinksFor(d.id).size ? [...relatedLinksFor(d.id)].map(l => l.projectId) : [])].join(','))
-    .style('cursor', d => d.id.startsWith('p:') ? 'pointer' : 'default');
+    .style('cursor', 'default');   // (a project is opened from the grid only)
 
   node.append('rect')
     .attr('class', 'sankey-node-rect')
@@ -3065,7 +3123,7 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('height', d => Math.max(1, d.y1 - d.y0))
     .attr('width', d => d.x1 - d.x0)
     .attr('fill', d => d.color)
-    .each(function(d) { if (!noLabels) d3.select(this).append('title').text(d.name); });
+    .each(function(d) { if (!noLabels) d3.select(this).append('title').text(d.person ? d.full : d.name); });
 
   // Every link gets a matching pair of thin "segment" rects drawn right on
   // top of its source and target nodes (after the base solid rects above,
@@ -3114,7 +3172,15 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('font-size', d => (newLook && isProject(d)) ? projectFontPx : fontPx)   // only the project names are bigger
     .style('font-size', d => (newLook && isProject(d)) ? projectFontPx : null)    // (as a style too: the stylesheet's own 11px rule for all diagram text would otherwise win on the page)
     .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif")
-    .text(d => d.name);
+    .each(function(d) {
+      // a person: first name, and under it the surname, when the row has room for two lines (else the short form on one line, as before)
+      const ls = (d.person && twoLineOk(d)) ? personLines(d.full) : [d.name];
+      const t = d3.select(this);
+      if (ls.length < 2) { t.text(ls[0]); return; }
+      const x = t.attr('x');
+      t.attr('dy', null);
+      ls.forEach((line, i) => t.append('tspan').attr('x', x).attr('dy', i ? '1.15em' : '-0.2em').text(line));
+    });
 
   // Bound with plain addEventListener (rather than D3's .on chained earlier
   // in the selection's lifecycle) directly on each node's own DOM element,
@@ -3123,9 +3189,6 @@ function renderReviewerManagerChart(projects, opts) {
   // entirely for export renders, which are never shown live.
   if (!isExport) {
     node.each(function(d) {
-      if (d.id.startsWith('p:')) {
-        this.addEventListener('click', () => showProjectSections(d.id.slice(2)));
-      }
       this.addEventListener('mouseenter', () => {
         const related = relatedLinksFor(d.id);
         linkSel.attr('opacity', l => related.has(l) ? 0.75 : 0.06);
@@ -3152,7 +3215,7 @@ function renderReviewerManagerChart(projects, opts) {
       let y1 = n.y0;
       (n.targetLinks || []).forEach(l => { l.y1 = y1 + l.width / 2; y1 += l.width; });
     }
-    node.style('cursor', function(d) { return d.id.startsWith('p:') ? 'pointer' : 'ns-resize'; });
+    node.style('cursor', function(d) { return d.id.startsWith('p:') ? 'default' : 'ns-resize'; });   // (a project is not a link here: it is opened from the grid only)
     node.each(function(d) {
       if (d.id.startsWith('p:')) return;
       const el = this;
@@ -3229,6 +3292,146 @@ function renderReviewerManagerChart(projects, opts) {
       svg.selectAll(':scope > text').attr('transform', `translate(${shift},0)`);   // the "პროექტი" heading goes along
     }
   }
+}
+
+// ══ THE THIRD VIEW OF THE MAIN PAGE: THE GRAPH OF CONNECTIONS (a force-directed graph, d3-force) ══
+// The projects are the big nodes; every person or company that works on a project is a small node joined to it. Somebody who works on several projects stands between them (and is
+// bigger the more projects he has), so the picture shows who connects the projects. The nodes that are shown follow the SAME boxes as the diagram (the row of boxes moves up here when
+// this view is shown). The layout is worked out at once, in a fixed number of steps (so the picture is the same every time), and then the nodes can be dragged. It is drawn with SVG
+// (crisp Georgian text, the logos, names on two lines, hover and click); the same d3 that draws the diagram already has the force layout in it.
+const FG_LABEL = { r: 'რევიზორი', m: 'დიზაინ მენეჯერი', pm: 'პროექტის მენეჯერი', sm: 'საიტ მენეჯერი', arch: 'არქიტექტორი', struct: 'კონსტრუქტორი', mp: 'MP', elec: 'Electrical' };
+const FG_ORDER = ['r', 'm', 'pm', 'sm', 'arch', 'struct', 'mp', 'elec'];
+const FG_PROJECT_R = 16;   // every project is a circle of the same size (its logo inside, the name only as a tooltip; a click does nothing: a project is opened from the grid only)
+const fgNobody = name => /^\s*[—–]/.test(name);   // "— არავინ", "— MP არ არის": nobody there, so no node
+let forceSim = null;
+function stopForceGraph() { if (forceSim) { forceSim.stop(); forceSim = null; } }
+// A company's name on two lines when it is long (broken at the space nearest to the middle); a person's name: first name, and under it the surname.
+function fgLines(node) {
+  if (node.full) return personLines(node.full);
+  const t = node.name;
+  if (t.length <= 16 || !t.includes(' ')) return [t];
+  let best = -1; for (let i = 0; i < t.length; i++) if (t[i] === ' ' && (best < 0 || Math.abs(i - t.length / 2) < Math.abs(best - t.length / 2))) best = i;
+  return [t.slice(0, best), t.slice(best + 1)];
+}
+// The data of the graph: { nodes, links } from the projects and the boxes that are ticked (st; by default the boxes of the page). A pure function: the same projects and the same boxes
+// give the same graph. A node is a project (type 'project') or a person / company of a column (r, m, pm, sm, arch, struct, mp, elec); the same name is ONE node, whatever number of
+// projects it works on. A placeholder ("— არავინ") is no node.
+function buildForceData(projects, st) {
+  st = st || { dm: sankeyManagerTypes.dm, pm: sankeyManagerTypes.pm, site: sankeyManagerTypes.site, arch: sankeyDisciplines.arch, struct: sankeyDisciplines.struct, mp: sankeyDisciplines.mp, elec: sankeyDisciplines.elec, reviewer: sankeyShowReviewer };
+  projects = sortProjectsByName(projects);
+  const projLabel = window.__i18nTranslit || (n => n);
+  const palette = { r: SANKEY_REVIEWER_PALETTE, m: SANKEY_MANAGER_PALETTE, pm: SANKEY_PM_PALETTE, sm: SANKEY_SITE_PALETTE, arch: SANKEY_ARCH_PALETTE, struct: SANKEY_STRUCT_PALETTE, mp: SANKEY_MEP_PALETTE, elec: SANKEY_ELEC_PALETTE };
+  const colours = {}; FG_ORDER.forEach(k => { colours[k] = new Map(); });
+  const colourOf = (kind, name) => { const m = colours[kind]; if (!m.has(name)) m.set(name, palette[kind][m.size % palette[kind].length]); return m.get(name); };
+  const nodes = new Map(), links = [], seen = new Set();
+  const attach = (p, prefix, kind, name, person) => {
+    name = String(name || '').trim(); if (!name || fgNobody(name)) return;
+    const id = `${prefix}:${name}`;
+    if (!nodes.has(id)) nodes.set(id, { id, type: kind, name, full: person ? name : null, color: colourOf(kind, name), count: 0 });
+    const key = `${p.id}|${id}`;
+    if (!seen.has(key)) { seen.add(key); nodes.get(id).count++; links.push({ source: `p:${p.id}`, target: id, projectId: p.id }); }
+  };
+  projects.forEach(p => {
+    nodes.set(`p:${p.id}`, { id: `p:${p.id}`, type: 'project', projectId: p.id, name: projLabel(p.name), color: p.color || DEFAULT_CARD_COLOR, logo: p.logo || '', count: 0, r: FG_PROJECT_R });
+    if (st.reviewer) attach(p, 'r', 'r', p.createdByName || 'ადმინი', true);
+    if (st.dm) attach(p, 'm', 'm', p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '', true);
+    if (st.pm) attach(p, 'pm', 'pm', p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : (p.pmName || ''), true);
+    if (st.site) projectSiteManagers(p).forEach(n => attach(p, 'sm', 'sm', n, true));
+    if (st.arch) attach(p, 'c', 'arch', (p.contractors || {}).arch, false);
+    if (st.struct) attach(p, 'c', 'struct', (p.contractors || {}).struct, false);
+    const mepRev = projectMepReviewers(p);
+    sankeyMepContractors(p, st).forEach(m => {
+      attach(p, 'c', m.kind === 'elec' ? 'elec' : 'mp', m.name, false);
+      if (st.reviewer && !fgNobody(m.name)) attach(p, 'r', 'r', m.kind === 'mp' ? mepRev.mpFinal : (m.kind === 'elec' ? mepRev.elecFinal : mepRev.legacy), true);
+    });
+  });
+  const list = [...nodes.values()];
+  const projectsFirst = list.filter(n => n.type === 'project');
+  const others = list.filter(n => n.type !== 'project').sort((a, b) => FG_ORDER.indexOf(a.type) - FG_ORDER.indexOf(b.type) || a.name.localeCompare(b.name, 'ka'));
+  others.forEach(n => { n.r = 3.5 + 1.7 * Math.sqrt(n.count); });
+  // the room each node takes (the circle and its name), so that the names do not lie on one another
+  [...projectsFirst, ...others].forEach(n => {
+    const w = n.type === 'project' ? 0 : Math.max(...fgLines(n).map(l => measureLabelWidth(l, 9.5)));
+    n.collide = n.type === 'project' ? n.r + 12 : Math.max(n.r + 7, w * 0.55 + 3);
+  });
+  return { nodes: [...projectsFirst, ...others], links };
+}
+// The layout: the projects start on an ellipse (so every project has its own place and the people of one project gather round it), the people start beside their first project; then a
+// fixed number of steps of the force simulation. Returns the simulation (stopped) and the positioned nodes and links.
+function layoutForce(data, width, height) {
+  const nodes = data.nodes.map(d => ({ ...d })), links = data.links.map(l => ({ ...l })), byId = new Map(nodes.map(n => [n.id, n]));
+  const cx = width / 2, cy = height / 2, projects = nodes.filter(n => n.type === 'project');
+  const gw = Math.min(width * 0.9, 300 + nodes.length * 6), gh = Math.min(height * 0.9, 220 + nodes.length * 5);   // the graph gathers in the middle of the field, its size follows the number of nodes
+  projects.forEach((n, i) => { const a = (2 * Math.PI * i) / Math.max(projects.length, 1) - Math.PI / 2; n.x = projects.length > 1 ? cx + gw * 0.34 * Math.cos(a) : cx; n.y = projects.length > 1 ? cy + gh * 0.34 * Math.sin(a) : cy; });
+  nodes.filter(n => n.type !== 'project').forEach((n, i) => { const first = links.find(l => l.target === n.id), pr = first && byId.get(first.source); n.x = (pr ? pr.x : cx) + Math.cos(i * 2.4) * 45; n.y = (pr ? pr.y : cy) + Math.sin(i * 2.4) * 45; });
+  links.forEach(l => { l.source = byId.get(l.source); l.target = byId.get(l.target); });
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).distance(l => 46 + (l.target.count > 1 ? 10 : 0)).strength(0.55))
+    .force('charge', d3.forceManyBody().strength(d => d.type === 'project' ? -340 : -80))
+    .force('collide', d3.forceCollide(d => d.collide).strength(1).iterations(3))
+    .force('x', d3.forceX(cx).strength(0.025)).force('y', d3.forceY(cy).strength(0.04));
+  sim.stop();
+  const steps = Math.ceil(Math.log(sim.alphaMin()) / Math.log(1 - sim.alphaDecay()));
+  for (let i = 0; i < steps; i++) sim.tick();
+  const keep = n => { n.x = Math.max(n.r + 4, Math.min(width - n.r - 4, n.x)); n.y = Math.max(n.r + 4, Math.min(height - n.r - 22, n.y)); };
+  nodes.forEach(keep);
+  return { sim, nodes, links, keep };
+}
+function renderForceGraph(projects) {
+  const svgEl = document.getElementById('forceGraphSvg'), wrap = document.getElementById('forceGraphWrap');
+  stopForceGraph(); svgEl.innerHTML = '';
+  const tr = window.__i18nTr || (w => w);
+  // THE FIELD is as wide as the diagram's (the whole width of the block) and as high as the page allows (so the whole block fits on the screen); the nodes in it are small and gather in the
+  // middle, and can be dragged anywhere in the field. A narrow screen gets a wider field that is scaled down.
+  const data = buildForceData(projects || []), n = data.nodes.length;
+  const cs = getComputedStyle(wrap), inner = (wrap.clientWidth || 900) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);   // the width the diagram's own field has
+  const shown = Math.max(300, inner), width = Math.max(shown, 520), height = Math.round(Math.max(420, Math.min(width * 0.7, (window.innerHeight || 800) - 225)));
+  const svg = d3.select(svgEl);
+  const defs = svg.append('defs'), ink = defs.append('filter').attr('id', 'fg-logo-ink').attr('color-interpolation-filters', 'sRGB');
+  ink.append('feFlood').attr('flood-color', '#f1eece').attr('result', 'ink'); ink.append('feComposite').attr('in', 'ink').attr('in2', 'SourceGraphic').attr('operator', 'in');
+  if (!data.nodes.length) { svg.append('text').attr('x', width / 2).attr('y', height / 2).attr('text-anchor', 'middle').attr('fill', 'rgba(255,255,255,.5)').attr('font-size', 13).text(tr('პროექტები არ არის')); return null; }
+  const laid = layoutForce(data, width, height), { sim, nodes, links } = laid;
+  forceSim = sim;
+  svg.attr('viewBox', [0, 0, width, height]); svgEl.style.width = '100%';
+  svg.insert('rect', ':first-child').attr('width', width).attr('height', height).attr('fill', '#1a1120');
+  const keep = laid.keep;
+  const zoomLayer = svg.append('g').attr('class', 'fg-zoom');
+  const link = zoomLayer.append('g').selectAll('line').data(links).join('line').attr('class', 'fg-link').attr('stroke', d => d.target.color).attr('stroke-opacity', 0.55).attr('stroke-width', 1.5);
+  const node = zoomLayer.append('g').selectAll('g').data(nodes).join('g').attr('class', d => 'fg-node' + (d.type === 'project' ? ' fg-project' : '')).attr('data-node-id', d => d.id);
+  node.append('title').text(d => d.type === 'project' ? d.name : `${d.full || d.name} · ${tr(FG_LABEL[d.type])}${d.count > 1 ? ` · ${d.count} ${tr('პროექტი')}` : ''}`);
+  node.append('circle').attr('r', d => d.r).attr('fill', d => d.color).attr('fill-opacity', d => d.type === 'project' ? 0.95 : 0.9).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', d => d.type === 'project' ? 1.5 : 1);
+  node.filter(d => d.type === 'project').append('image').attr('class', 'project-logo').attr('href', d => d.logo || DEFAULT_PROJECT_LOGO).attr('filter', 'url(#fg-logo-ink)').attr('preserveAspectRatio', 'xMidYMid meet')
+    .attr('x', d => -d.r * 0.66).attr('y', d => -d.r * 0.66).attr('width', d => d.r * 1.32).attr('height', d => d.r * 1.32);
+  // the names of the people and companies, under their circles (a project has its logo only: its name is the tooltip)
+  node.filter(d => d.type !== 'project').append('text').attr('class', 'fg-label').attr('text-anchor', 'middle').attr('fill', 'rgba(255,255,255,.82)').attr('font-size', 9.5)
+    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif")
+    .attr('paint-order', 'stroke').attr('stroke', '#1a1120').attr('stroke-width', 2.5).attr('stroke-linejoin', 'round')
+    .each(function(d) { const t = d3.select(this), y0 = d.r + 10; fgLines(d).forEach((line, i) => t.append('tspan').attr('x', 0).attr('y', y0 + i * 10.5).text(line)); });
+  function ticked() { link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y); node.attr('transform', d => `translate(${d.x},${d.y})`); }
+  ticked(); sim.on('tick', () => { nodes.forEach(keep); ticked(); });
+  // hover: the node, what it is joined to and the lines between (everything else fades)
+  function highlight(d) {
+    const mine = links.filter(l => l.source.id === d.id || l.target.id === d.id), keepIds = new Set([d.id]);
+    mine.forEach(l => { keepIds.add(l.source.id); keepIds.add(l.target.id); });
+    node.classed('fg-dim', n => !keepIds.has(n.id)); link.classed('fg-dim', l => !mine.includes(l));
+  }
+  function clear() { node.classed('fg-dim', false); link.classed('fg-dim', false); }
+  node.on('mouseenter', (e, d) => highlight(d)).on('mouseleave', clear);   // (no click: a project is opened from the grid only)
+  // a node can be dragged (and lets go when released)
+  node.call(d3.drag()
+    .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.25).restart(); d.fx = d.x; d.fy = d.y; })
+    .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+    .on('end', (e, d) => { if (!e.active) sim.alphaTarget(0); }));   // (it stays where it was dropped: d.fx / d.fy keep their values)
+  // zoom and pan: Ctrl + wheel (or the pinch on a trackpad), two fingers on a phone, a drag of the empty background, and the three buttons
+  const zoom = d3.zoom().scaleExtent([0.4, 4]).filter(e => e.type === 'wheel' ? (e.ctrlKey || e.metaKey) : e.type.startsWith('touch') ? (e.touches && e.touches.length >= 2) : !e.button).on('zoom', e => zoomLayer.attr('transform', e.transform));
+  svg.call(zoom).on('dblclick.zoom', null);
+  svgEl.__fg = { sim, nodes, links, highlight, clear, zoom, width, height, box: [0, 0, width, height] };
+  return svgEl.__fg;
+}
+// Draws whichever of the two charts is shown (the boxes above them are shared).
+function redrawMainChart() {
+  if (!lastChartProjects) return;
+  if (mainListView === 'force') renderForceGraph(lastChartProjects); else renderReviewerManagerChart(lastChartProjects);
 }
 
 // Downloads the diagram as a standalone page (projects.zip containing projects.html): a snapshot of the data is
@@ -3317,6 +3520,13 @@ function withInitial(n) {
   if (parts.length < 2) return parts[0] || n;
   return parts[0] + ' ' + parts[1][0] + '.';
 }
+// A person's name on TWO lines: the first name, and under it the surname (everything after the first word). A name of one word, a placeholder and an e-mail stay on one line.
+function personLines(full) {
+  var t = String(full || '').trim();
+  if (!t || /^[—–-]/.test(t) || t.indexOf('@') >= 0 || t.indexOf(',') >= 0 || t === 'უცნობი') return [t];
+  var parts = t.split(/\\s+/);
+  return parts.length < 2 ? [t] : [parts[0], parts.slice(1).join(' ')];
+}
 function colorFor(map, name, palette) {
   if (!map[name]) map[name] = palette[Object.keys(map).length % palette.length];
   return map[name];
@@ -3339,8 +3549,8 @@ function render() {
 
   var reviewerColors = {}, managerColors = {}, pmColors = {}, siteColors = {}, archColors = {}, structColors = {}, mepColors = {}, elecColors = {};
   var nodesById = {};
-  function addNode(id, name, color) {
-    if (!nodesById[id]) nodesById[id] = { id: id, name: name, color: color };
+  function addNode(id, name, color, full) {
+    if (!nodesById[id]) nodesById[id] = full ? { id: id, name: name, color: color, person: true, full: full } : { id: id, name: name, color: color };
     return id;
   }
   var links = [];
@@ -3351,12 +3561,12 @@ function render() {
     var value = Math.max(p.gba || 1000, 1);
     var projectId = addNode('p:' + p.id, p.name, projectColor);
     nodesById[projectId].logo = p.logo || '';   // the project's own logo, if it has one
-    var reviewerId = showReviewer ? addNode('r:' + p.reviewer, firstName(p.reviewer), reviewerColor) : null;
+    var reviewerId = showReviewer ? addNode('r:' + p.reviewer, firstName(p.reviewer), reviewerColor, p.reviewer) : null;
     var preId = projectId, preColor = projectColor;
 
     if (showDm) {
       var managerColor = colorFor(managerColors, p.manager, MANAGER_PALETTE);
-      var managerId = addNode('m:' + p.manager, withInitial(p.manager), managerColor);
+      var managerId = addNode('m:' + p.manager, withInitial(p.manager), managerColor, p.manager);
       links.push({ source: projectId, target: managerId, value: value, pid: p.id, c1: projectColor, c2: managerColor });
       preId = managerId; preColor = managerColor;
     }
@@ -3366,7 +3576,7 @@ function render() {
     var pmId = null, pmColor = null;
     if (showPm) {
       pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
-      pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor);
+      pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor, p.pm);
     }
     // the site managers: the last column, after the project managers (it takes the PM's place when the PM column is off). A project can have
     // several: one node each, and the project's value is shared equally between them (one, or none = "— არავინ": exactly as before).
@@ -3374,7 +3584,7 @@ function render() {
     if (showSite) {
       (p.sites && p.sites.length ? p.sites : ['— არავინ']).forEach(function(siteName) {
         var siteColor = colorFor(siteColors, siteName, SITE_PALETTE);
-        siteTargets.push({ id: addNode('sm:' + siteName, withInitial(siteName), siteColor), color: siteColor });
+        siteTargets.push({ id: addNode('sm:' + siteName, withInitial(siteName), siteColor, siteName), color: siteColor });
       });
     }
     var tails = pmId ? [{ id: pmId, color: pmColor }] : siteTargets;
@@ -3411,7 +3621,7 @@ function render() {
         var mepReviewerName = m.kind === 'mp' ? p.mpReviewer : (m.kind === 'elec' ? p.elecReviewer : p.mepReviewerOld);
         if (showReviewer && mepReviewerName) {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
-          var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
+          var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor, mepReviewerName);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
           if (tails.length && !reviewerLinkedToPm[mepReviewerId]) { linkTo(mepReviewerId, mepReviewerColor, tails); reviewerLinkedToPm[mepReviewerId] = true; }
         }
@@ -3506,10 +3716,24 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
     return graph.links.filter(function(l) { return pids[l.pid]; });
   }
 
+  // Is there room for a name on two lines? The centres of two neighbouring labels of a column must be at least 2.5 lines apart; if not, the short form stays on one line.
+  var rowRoom = {};
+  (function() {
+    var cols = {};
+    graph.nodes.forEach(function(n) { var k = Math.round(n.x0); (cols[k] = cols[k] || []).push(n); });
+    Object.keys(cols).forEach(function(k) {
+      var list = cols[k].sort(function(a, b) { return (a.y0 + a.y1) - (b.y0 + b.y1); });
+      list.forEach(function(n, i) {
+        var c = (n.y0 + n.y1) / 2, up = i ? c - (list[i - 1].y0 + list[i - 1].y1) / 2 : Infinity, down = i < list.length - 1 ? (list[i + 1].y0 + list[i + 1].y1) / 2 - c : Infinity;
+        rowRoom[n.id] = Math.min(up, down);
+      });
+    });
+  })();
+  function twoLineOk(d) { return !(rowRoom[d.id] < 11 * 2.5); }
   var node = svg.append('g').selectAll('g').data(graph.nodes).join('g');
   node.append('rect').attr('x', function(d) { return d.x0; }).attr('y', function(d) { return d.y0; })
     .attr('height', function(d) { return Math.max(1, d.y1 - d.y0); }).attr('width', function(d) { return d.x1 - d.x0; })
-    .attr('fill', function(d) { return d.color; }).append('title').text(function(d) { return d.name; });
+    .attr('fill', function(d) { return d.color; }).append('title').text(function(d) { return d.person ? d.full : d.name; });
   // The project's logo in its square, left of the project's bar (part of the project's node): no plate, drawn in light cream, only its shape.
   node.filter(function(d) { return d.id.indexOf('p:') === 0; }).each(function(d) {
     var cy = (d.y0 + d.y1) / 2;
@@ -3531,7 +3755,14 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
     .attr('text-anchor', function(d) { return d.x0 < width / 2 ? 'start' : 'end'; })
     .attr('fill', 'rgba(255,255,255,.85)').attr('font-size', function(d) { return d.id.indexOf('p:') === 0 ? projectFont : '11px'; })
     .style('font-size', function(d) { return d.id.indexOf('p:') === 0 ? projectFont : null; })
-    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(function(d) { return d.name; });
+    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif")
+    .each(function(d) {
+      var ls = (d.person && twoLineOk(d)) ? personLines(d.full) : [d.name], t = d3.select(this);
+      if (ls.length < 2) { t.text(ls[0]); return; }
+      var x = t.attr('x');
+      t.attr('dy', null);
+      ls.forEach(function(line, i) { t.append('tspan').attr('x', x).attr('dy', i ? '1.15em' : '-0.2em').text(line); });
+    });
 
   node.each(function(d) {
     var el = this;
@@ -3765,19 +3996,31 @@ window.downloadSankeyAsPdf = function() {
 };
 
 // Switches the project list between the card grid and the diagram.
-// A click of the person on the "ბადე" / "გრაფიკი" buttons. Going to the diagram switches ALL the boxes above it on (the whole structure at once). Coming back to the list
+// A click of the person on the "ბადე" / "გრაფიკი" / "კავშირები" buttons. Going from the grid to a chart switches ALL the boxes above it on (the whole structure at once). Coming back to the list
 // from a project does not go through here: the view and the boxes stay as the person left them.
 window.chooseMainListView = function(view) {
-  const toChart = view === 'chart' && mainListView !== 'chart';
+  const toChart = (view === 'chart' || view === 'force') && mainListView === 'grid';
   setMainListView(view);
   if (toChart) setAllSankeyBoxes(true);
 };
 window.setMainListView = function(view) {
-  mainListView = view;
-  document.getElementById('projectsGrid').style.display = view === 'grid' ? 'grid' : 'none';
-  document.getElementById('reviewerManagerChartWrap').style.display = view === 'chart' ? 'block' : 'none';
-  document.getElementById('mainViewToggleGrid').classList.toggle('active', view === 'grid');
-  document.getElementById('mainViewToggleChart').classList.toggle('active', view === 'chart');
+  const prev = mainListView;
+  mainListView = view;   // 'grid' | 'chart' | 'force'
+  // each chart keeps its own boxes: leaving one saves them, going straight to the other brings back the ones it had
+  if (prev !== view && (prev === 'chart' || prev === 'force')) boxesSaved[prev] = boxesNow();
+  const between = prev !== view && (prev === 'chart' || prev === 'force') && (view === 'chart' || view === 'force');
+  if (between) applyBoxes(boxesSaved[view] || BOXES_ALL_ON);
+  const $ = id => document.getElementById(id);
+  $('projectsGrid').style.display = view === 'grid' ? 'grid' : 'none';
+  $('reviewerManagerChartWrap').style.display = view === 'chart' ? 'block' : 'none';
+  $('forceGraphWrap').style.display = view === 'force' ? 'block' : 'none';
+  $('mainViewToggleGrid').classList.toggle('active', view === 'grid');
+  $('mainViewToggleChart').classList.toggle('active', view === 'chart');
+  $('mainViewToggleForce').classList.toggle('active', view === 'force');
+  // the row of boxes stands above whichever chart is shown
+  const row = $('sankeyControlsRow'), host = $(view === 'force' ? 'forceGraphWrap' : 'reviewerManagerChartWrap');
+  if (view !== 'grid' && row.parentElement !== host) host.insertBefore(row, host.firstChild);
+  if (view === 'force') { if (lastChartProjects) renderForceGraph(lastChartProjects); } else { stopForceGraph(); if (between && lastChartProjects) renderReviewerManagerChart(lastChartProjects); }   // (back to the diagram: it is drawn with ITS boxes)
 };
 
 // The project list screen. Admins, reviewers, design managers and Users see every project; contractors only the projects
