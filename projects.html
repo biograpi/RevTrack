@@ -382,15 +382,9 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
   node.style('cursor', 'ns-resize');
   node.each(function(d) {
     var el = this;
-    var dragging = false, startClientY = 0, startY0 = 0;
-    el.addEventListener('mousedown', function(e) {
-      dragging = true;
-      startClientY = e.clientY;
-      startY0 = d.y0;
-      e.preventDefault();
-    });
-    window.addEventListener('mousemove', function(e) {
-      if (!dragging) return;
+    // the window listens only WHILE this node is being dragged (before, every drawing added two listeners per node and none was ever removed)
+    var startClientY = 0, startY0 = 0;
+    var onMove = function(e) {
       var scale = height / (svgEl.getBoundingClientRect().height || height);
       var h = d.y1 - d.y0;
       d.y0 = Math.max(0, Math.min(height - h, startY0 + (e.clientY - startClientY) * scale));
@@ -402,8 +396,15 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
       linkSel.attr('d', d3.sankeyLinkHorizontal());
       segA.attr('y', function(l) { return l.y0 - l.width / 2; });
       segB.attr('y', function(l) { return l.y1 - l.width / 2; });
+    };
+    var onUp = function() { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    el.addEventListener('mousedown', function(e) {
+      startClientY = e.clientY;
+      startY0 = d.y0;
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      e.preventDefault();
     });
-    window.addEventListener('mouseup', function() { dragging = false; });
   });
 
   function colCenterX(prefix) {

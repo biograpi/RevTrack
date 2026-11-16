@@ -3431,15 +3431,10 @@ function renderReviewerManagerChart(projects, opts) {
     node.each(function(d) {
       if (d.id.startsWith('p:')) return;
       const el = this;
-      let dragging = false, startClientY = 0, startY0 = 0;
-      el.addEventListener('mousedown', (e) => {
-        dragging = true;
-        startClientY = e.clientY;
-        startY0 = d.y0;
-        e.preventDefault();
-      });
-      window.addEventListener('mousemove', (e) => {
-        if (!dragging) return;
+      // The window listens only WHILE this node is being dragged. (It used to listen all the time: every drawing of the diagram added two listeners per node and never removed them,
+      // so after a few visits to the project list every mouse movement woke up thousands of them and the page slowed down, most of all in Safari.)
+      let startClientY = 0, startY0 = 0;
+      const onMove = (e) => {
         const scale = height / (svgEl.getBoundingClientRect().height || height);
         const h = d.y1 - d.y0;
         d.y0 = Math.max(0, Math.min(height - h, startY0 + (e.clientY - startClientY) * scale));
@@ -3450,8 +3445,15 @@ function renderReviewerManagerChart(projects, opts) {
         linkSel.attr('d', sankeyLinkHorizontal());
         segmentSel.attr('y', l => l.y0 - l.width / 2);
         segmentSel2.attr('y', l => l.y1 - l.width / 2);
+      };
+      const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      el.addEventListener('mousedown', (e) => {
+        startClientY = e.clientY;
+        startY0 = d.y0;
+        window.addEventListener('mousemove', onMove);   // (the same function twice is added once: no pile-up even if a button was released outside the window)
+        window.addEventListener('mouseup', onUp);
+        e.preventDefault();
       });
-      window.addEventListener('mouseup', () => { dragging = false; });
     });
   }
 
@@ -3991,15 +3993,9 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
   node.style('cursor', 'ns-resize');
   node.each(function(d) {
     var el = this;
-    var dragging = false, startClientY = 0, startY0 = 0;
-    el.addEventListener('mousedown', function(e) {
-      dragging = true;
-      startClientY = e.clientY;
-      startY0 = d.y0;
-      e.preventDefault();
-    });
-    window.addEventListener('mousemove', function(e) {
-      if (!dragging) return;
+    // the window listens only WHILE this node is being dragged (before, every drawing added two listeners per node and none was ever removed)
+    var startClientY = 0, startY0 = 0;
+    var onMove = function(e) {
       var scale = height / (svgEl.getBoundingClientRect().height || height);
       var h = d.y1 - d.y0;
       d.y0 = Math.max(0, Math.min(height - h, startY0 + (e.clientY - startClientY) * scale));
@@ -4011,8 +4007,15 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
       linkSel.attr('d', d3.sankeyLinkHorizontal());
       segA.attr('y', function(l) { return l.y0 - l.width / 2; });
       segB.attr('y', function(l) { return l.y1 - l.width / 2; });
+    };
+    var onUp = function() { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    el.addEventListener('mousedown', function(e) {
+      startClientY = e.clientY;
+      startY0 = d.y0;
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      e.preventDefault();
     });
-    window.addEventListener('mouseup', function() { dragging = false; });
   });
 
   function colCenterX(prefix) {
