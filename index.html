@@ -443,7 +443,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .bc-tab{border:0;background:transparent;padding:10px 14px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-light);border-bottom:2px solid transparent;cursor:pointer}
 .bc-tab:hover{color:var(--ink)}
 .bc-tab.active{color:var(--ink);border-bottom-color:var(--accent)}
-.bc-tab .bc-n{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--bg);font-size:11px;text-align:center;font-weight:600}
 .bc-tab.bc-add{color:var(--accent)}
 .bc-dir-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .bc-dir-head label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light)}
@@ -5487,7 +5486,7 @@ function bcRender() {
   document.getElementById('bcCount').textContent = c.directions ? `${c.directions} მიმართულება · ${c.people} წარმომადგენელი` : '';
   document.getElementById('bcSave').style.display = edit ? '' : 'none';
   tabs.style.display = q ? 'none' : '';
-  tabs.innerHTML = bcState.draft.map(d => `<button type="button" class="bc-tab${d.id === bcState.active ? ' active' : ''}" data-dir="${esc(d.id)}">${esc(d.title || '(უსახელო)')} <span class="bc-n">${d.people.length}</span></button>`).join('')
+  tabs.innerHTML = bcState.draft.map(d => `<button type="button" class="bc-tab${d.id === bcState.active ? ' active' : ''}" data-dir="${esc(d.id)}">${esc(d.title || '(უსახელო)')}</button>`).join('')
     + (edit ? `<button type="button" class="bc-tab bc-add" id="bcAddDir">+ მიმართულება</button>` : '');
   if (q) { bcRenderSearch(q, panel); return; }
   if (!act) { panel.innerHTML = `<div class="bc-empty">${edit ? 'მიმართულება ჯერ არ არის დამატებული. დააჭირე „+ მიმართულება“-ს (მაგ. „მონოლითი“).' : 'ინფორმაცია ჯერ არ არის დამატებული.'}</div>`; return; }
@@ -5585,7 +5584,7 @@ function bcWire() {
   panel.addEventListener('input', e => {
     if (!bcState.canEdit) return;
     const act = bcActiveDir(); if (!act) return;
-    if (e.target.id === 'bcDirTitle') { act.title = e.target.value; const t = document.querySelector('#bcTabs .bc-tab.active'); if (t) t.firstChild.textContent = (act.title || '(უსახელო)') + ' '; bcMarkDirty(); return; }
+    if (e.target.id === 'bcDirTitle') { act.title = e.target.value; const t = document.querySelector('#bcTabs .bc-tab.active'); if (t) t.textContent = act.title || '(უსახელო)'; bcMarkDirty(); return; }
     const tr = e.target.closest('tr[data-pid]'), f = e.target.dataset.f; if (!tr || !f) return;
     const p = act.people.find(x => x.id === tr.dataset.pid); if (!p) return;
     p[f] = e.target.value; bcMarkDirty();
