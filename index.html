@@ -433,12 +433,13 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 #bcModal .modal{display:flex;flex-direction:column;max-height:calc(100vh - 40px)}   /* the window scrolls inside, the footer ("შენახვა") is always in sight */
 #bcModal .modal-body{overflow-y:auto;flex:1 1 auto}
 .bc-wrap{min-height:320px}
-.bc-cell input[data-f="org"]{min-width:120px}.bc-cell input[data-f="rep"]{min-width:150px}.bc-cell input[data-f="position"]{min-width:110px}
-.bc-cell input[data-f="email"]{min-width:150px}.bc-cell input[data-f="phone"]{min-width:140px}.bc-cell input[data-f="comment"]{min-width:160px}
 .bc-top{display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap}
 .bc-search{flex:1 1 280px;max-width:520px;border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg)}
-.bc-search:focus,.bc-cell input:focus,.bc-dir-head input:focus{outline:none;border-color:var(--accent);background:white}
+.bc-search:focus,.bc-dir-head input:focus{outline:none;border-color:var(--accent);background:white}
 .bc-count{font-size:12px;color:var(--ink-light)}
+.bc-edit-btn{margin-left:auto;font-weight:600}
+.bc-mode{font-size:12px;font-weight:600;color:#7a4b00;background:#fff3d6;border:1px solid #f0cf8a;border-radius:12px;padding:4px 11px}
+#bcModal .modal.is-editing .modal-body{background:#fffdf7}
 .bc-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--rule);margin-bottom:14px}
 .bc-tab{border:0;background:transparent;padding:10px 14px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-light);border-bottom:2px solid transparent;cursor:pointer}
 .bc-tab:hover{color:var(--ink)}
@@ -449,14 +450,24 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .bc-dir-head input{flex:1 1 220px;max-width:360px;border:1px solid var(--rule);border-radius:var(--r);padding:8px 11px;font-family:inherit;font-size:13px;background:var(--bg)}
 .bc-del-dir{margin-left:auto;color:var(--warn);border-color:var(--warn-lo);font-size:12px;padding:6px 10px}
 .bc-scroll{overflow-x:auto}
-.bc-table{width:100%;border-collapse:collapse;font-size:13px}
-.bc-table th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-light);padding:6px;border-bottom:1px solid var(--rule);white-space:nowrap}
-.bc-table td{padding:4px 6px;border-bottom:1px solid var(--rule);vertical-align:middle;overflow-wrap:anywhere}
-.bc-num{width:34px;color:var(--ink-light);text-align:center}
-.bc-cell{display:flex;align-items:center;gap:4px}
-.bc-cell input{width:100%;min-width:0;border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg)}
-.bc-ico{text-decoration:none;font-size:14px;padding:2px 4px}
-.bc-acts{white-space:nowrap;width:96px}
+.bc-table{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}   /* the same columns in the view and in the editing mode; every cell shows ALL its text */
+.bc-c-num{width:38px}.bc-c-dir{width:12%}.bc-c-org{width:15%}.bc-c-rep{width:17%}.bc-c-pos{width:13%}.bc-c-email{width:19%}.bc-c-phone{width:13%}.bc-c-acts{width:84px}
+.bc-table.is-edit .bc-c-org{width:14%}.bc-table.is-edit .bc-c-rep{width:16%}.bc-table.is-edit .bc-c-pos{width:12%}.bc-table.is-edit .bc-c-email{width:17%}.bc-table.is-edit .bc-c-phone{width:12%}   /* (the buttons of the rows take 84 px: the others give them a little, the comment keeps almost the width it has in the view) */
+.bc-table th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-light);padding:6px 4px 6px 12px;border-bottom:1px solid var(--rule);white-space:normal;vertical-align:bottom}   /* (the text of a cell starts 12 px in: 4 of the cell + 1 of the border + 7 of its padding) */
+.bc-table td{padding:3px 4px;border-bottom:1px solid var(--rule);vertical-align:top;overflow-wrap:anywhere}
+.bc-num{color:var(--ink-light);text-align:center;padding-top:9px !important}
+.bc-cell{display:flex;align-items:flex-start;gap:4px}
+/* the text of a cell in the view (.bc-t) and the text box of the same cell in the editing mode lie in exactly the same place: same padding, same border width, same line height */
+.bc-t,.bc-cell textarea{display:block;width:100%;min-width:0;box-sizing:border-box;margin:0;padding:5px 7px;border:1px solid transparent;border-radius:var(--r);font-family:inherit;font-size:14px;line-height:1.45;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;background:transparent}
+.bc-cell textarea{resize:none;overflow:hidden}
+.bc-cell textarea:hover{border-color:var(--rule);background:var(--bg)}
+.bc-cell textarea:focus{outline:none;border-color:var(--accent);background:white}
+#bcSugg{position:fixed;z-index:400;background:white;border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--shadow-md);max-height:210px;overflow:auto}
+.bc-sugg-item{padding:7px 11px;font-size:13px;cursor:pointer}
+.bc-sugg-item:hover{background:var(--bg)}
+.bc-ico{text-decoration:none;font-size:14px;padding:5px 4px}
+.bc-acts{white-space:nowrap;padding-top:5px !important}
+.bc-acts button{width:24px !important;height:24px !important;margin-left:1px !important}
 .bc-acts button{border:1px solid var(--rule);background:white;border-radius:6px;width:26px;height:26px;cursor:pointer;margin-left:2px}
 .bc-acts button:disabled{opacity:.35;cursor:default}
 .bc-empty{padding:26px;text-align:center;color:var(--ink-light)}
@@ -465,11 +476,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   .bc-tabs{flex-wrap:nowrap;overflow-x:auto}.bc-tab{white-space:nowrap}   /* (five tabs: they slide sideways instead of piling up) */
   .bc-table thead{display:none}
   .bc-table,.bc-table tbody{display:block}
+  .bc-table colgroup{display:none}
   .bc-table tr{display:block;border:1px solid var(--rule);border-radius:8px;margin-bottom:10px;padding:6px 8px}
-  .bc-table td{display:grid;grid-template-columns:104px 1fr;gap:8px;align-items:center;border:0;padding:3px 0}
+  .bc-table td{display:grid;grid-template-columns:104px 1fr;gap:8px;align-items:start;border:0;padding:3px 0}
   .bc-table td::before{content:attr(data-label);font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-light)}
-  .bc-table td.bc-num{text-align:left;width:auto}
-  .bc-cell input{min-width:0 !important}   /* (on a phone every box takes the width of its card) */
+  .bc-table td.bc-num{text-align:left;width:auto;padding-top:3px !important}
   .bc-table td.bc-acts{display:flex;width:auto;justify-content:flex-end}
   .bc-table td.bc-acts::before,.bc-table td.bc-empty::before{content:none}
 }
@@ -971,13 +982,15 @@ body.has-footer .site-footer{display:flex}
     <div class="modal-body bc-wrap">
       <div class="bc-top">
         <input id="bcSearch" class="bc-search" type="search" placeholder="ძებნა: სახელი, ორგანიზაცია, მეილი, ტელეფონი..." autocomplete="off">
+        <span class="bc-mode" id="bcMode" style="display:none">✎ რედაქტირების რეჟიმი</span>
         <span class="bc-count" id="bcCount"></span>
+        <button type="button" class="btn-secondary bc-edit-btn" id="bcEditBtn" style="display:none">✎ რედაქტირება</button>
       </div>
       <div class="bc-tabs" id="bcTabs"></div>
       <div id="bcPanel"></div>
-      <datalist id="bcOrgList"></datalist>
+      <div id="bcSugg" style="display:none"></div>
     </div>
-    <div class="modal-footer"><button class="btn-secondary" onclick="bcClose()">დახურვა</button><button class="btn-primary" id="bcSave" style="display:none" disabled>შენახვა</button></div>
+    <div class="modal-footer"><button class="btn-secondary" id="bcCloseBtn" onclick="bcClose()">დახურვა</button><button class="btn-secondary" id="bcCancelBtn" style="display:none">გაუქმება</button><button class="btn-primary" id="bcSave" style="display:none" disabled>შენახვა</button></div>
   </div>
 </div>
 <div class="modal-overlay" id="devModal">
@@ -1526,6 +1539,9 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"✎ შევსების დაწყება": "✎ Start filling in",
+"✎ რედაქტირების რეჟიმი": "✎ Editing mode",
+"შეუნახავი ცვლილებებია. გაუქმდეს?": "There are unsaved changes. Cancel them?",
 "არჩევა შეიძლება დარეგისტრირებული მომხმარებლებიდან („ინტერიერის დიზაინერის“ ნიშნის მქონეები სიის თავშია). ინტერიერის დიზაინერი საკითხს ყველა პროექტზე ხსნის: ეს არჩევა პროექტის ბარათისა და გრაფიკებისთვისაა": "You can choose among the registered users (those marked as interior designers are at the top of the list). An interior designer opens issues on every project: this choice is for the project's card and the graphs",
 "ინტერიერის საკითხები": "Interior issues",
 "ინტერიერის დიზაინერები": "Interior designers",
@@ -5431,9 +5447,11 @@ window.showProjectSections = async function(pid) {
 // The contract DIRECTIONS of a project (their titles are typed by the project manager, e.g. "მონოლითი") and, in each, the list of STAKEHOLDERS: organisation, its representative, position,
 // e-mail, telephone, a comment. One document per project: projects/{id}/buildContractors/main = { directions: [{ id, title, people: [{ id, org, rep, position, email, phone, comment }] }] }.
 // Everybody but a contractor reads it; the project's project managers (and an admin / the super-reviewer) change it. It is one-off information: no history, no "updated by".
+// The window has two modes: the VIEW (for everybody, also for those who may change it: the text of every cell is shown IN FULL, so the PM can present it) and the EDITING mode (the same table, the cells are
+// text boxes that grow with their text; "შენახვა" saves and goes back to the view, "გაუქმება" throws the changes away).
 const BC_LIMITS = { directions: 20, people: 100, title: 60, org: 100, rep: 100, position: 100, email: 120, phone: 40, comment: 500 };
 const BC_FIELDS = [['org', 'ორგანიზაცია'], ['rep', 'ორგანიზაციის წარმომადგენელი'], ['position', 'პოზიცია'], ['email', 'საკონტაქტო მეილი'], ['phone', 'ტელეფონი'], ['comment', 'კომენტარი']];
-const bcState = { pid: null, project: null, canEdit: false, server: [], draft: [], active: '', dirty: false, search: '' };
+const bcState = { pid: null, project: null, canEdit: false, mode: 'view', server: [], draft: [], active: '', dirty: false, search: '' };   // mode: the window always opens as a VIEW (what is shown to others, fit for a presentation); a person who may change it presses "✎ რედაქტირება" to edit
 const canReadBc = () => currentGlobalRole !== 'contractor' || isAdminLike();           // everybody but the contractors
 const canEditBc = project => isAdminLike() || isProjectPmOf(project);                  // an admin, the super-reviewer and the project's project managers
 const bcId = () => Math.random().toString(36).slice(2, 10);
@@ -5469,49 +5487,83 @@ function bcCheck(draft) {
   }
   return { clean };
 }
+const bcEditing = () => bcState.canEdit && bcState.mode === 'edit';
 function bcMarkDirty() { bcState.dirty = JSON.stringify(bcState.draft) !== JSON.stringify(bcState.server); const b = document.getElementById('bcSave'); if (b) b.disabled = !bcState.dirty; }
 const bcActiveDir = () => bcState.draft.find(d => d.id === bcState.active) || bcState.draft[0] || null;
 // the contact links: an e-mail address opens a letter, a telephone number calls
 const bcMailLink = v => v && bcEmailOk(v) ? `<a class="bc-ico" href="mailto:${esc(v)}" title="${esc(v)}">✉</a>` : '';
 const bcTelLink = v => { const n = String(v || '').replace(/[^0-9+]/g, ''); return n && bcPhoneOk(v) ? `<a class="bc-ico" href="tel:${esc(n)}" title="${esc(n)}">☎</a>` : ''; };
-function bcFillOrgList() {
+// the organisations already typed in this project, the most used first (offered when typing an organisation, so that one company is not written two ways)
+function bcOrgNames() {
   const counts = new Map();
   bcState.draft.forEach(d => d.people.forEach(p => { if (p.org) counts.set(p.org, (counts.get(p.org) || 0) + 1); }));
-  document.getElementById('bcOrgList').innerHTML = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ka')).map(([o]) => `<option value="${esc(o)}"></option>`).join('');
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ka')).map(([o]) => o);
+}
+// The text boxes of the editing mode GROW with their text (a long name is never cut off), exactly as the same text lies in the view.
+function bcFit(el) {
+  if (!el || !el.scrollHeight) return;   // (a hidden window has no height yet)
+  el.style.height = 'auto';
+  el.style.height = (el.scrollHeight + el.offsetHeight - el.clientHeight) + 'px';
+}
+function bcFitAll() { document.querySelectorAll('#bcPanel textarea[data-f]').forEach(bcFit); }
+// what a cell shows in the view
+const bcCellText = (f, p) => f === 'email' ? (p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : '') : f === 'phone' ? (bcTelLink(p.phone) ? `<a href="tel:${esc(p.phone.replace(/[^0-9+]/g, ''))}">${esc(p.phone)}</a>` : esc(p.phone)) : esc(p[f]);
+// the buttons of the window follow the mode: the view has "✎ რედაქტირება" (for those who may change it) and "დახურვა"; the editing mode has "გაუქმება" and "შენახვა"
+function bcApplyMode() {
+  const edit = bcEditing(), show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+  show('bcEditBtn', bcState.canEdit && !edit && bcState.draft.length > 0 && !bcState.search.trim());
+  show('bcMode', edit); show('bcSave', edit); show('bcCancelBtn', edit); show('bcCloseBtn', !edit); show('bcSearch', !edit);
+  const m = document.querySelector('#bcModal .modal'); if (m) m.classList.toggle('is-editing', edit);
+  if (!edit) bcHideSugg();
 }
 function bcRender() {
-  const tabs = document.getElementById('bcTabs'), panel = document.getElementById('bcPanel'), edit = bcState.canEdit, q = bcState.search.trim().toLowerCase();
+  bcApplyMode();
+  const tabs = document.getElementById('bcTabs'), panel = document.getElementById('bcPanel'), edit = bcEditing(), q = edit ? '' : bcState.search.trim().toLowerCase();
   const act = bcActiveDir(); if (act) bcState.active = act.id;
   const c = bcCounts(bcState.draft);
   document.getElementById('bcCount').textContent = c.directions ? `${c.directions} მიმართულება · ${c.people} წარმომადგენელი` : '';
-  document.getElementById('bcSave').style.display = edit ? '' : 'none';
   tabs.style.display = q ? 'none' : '';
   tabs.innerHTML = bcState.draft.map(d => `<button type="button" class="bc-tab${d.id === bcState.active ? ' active' : ''}" data-dir="${esc(d.id)}">${esc(d.title || '(უსახელო)')}</button>`).join('')
     + (edit ? `<button type="button" class="bc-tab bc-add" id="bcAddDir">+ მიმართულება</button>` : '');
   if (q) { bcRenderSearch(q, panel); return; }
-  if (!act) { panel.innerHTML = `<div class="bc-empty">${edit ? 'მიმართულება ჯერ არ არის დამატებული. დააჭირე „+ მიმართულება“-ს (მაგ. „მონოლითი“).' : 'ინფორმაცია ჯერ არ არის დამატებული.'}</div>`; return; }
+  if (!act) {
+    panel.innerHTML = edit ? '<div class="bc-empty">მიმართულება ჯერ არ არის დამატებული. დააჭირე „+ მიმართულება“-ს (მაგ. „მონოლითი“).</div>'
+      : `<div class="bc-empty">ინფორმაცია ჯერ არ არის დამატებული.${bcState.canEdit ? '<div style="margin-top:14px"><button type="button" class="btn-primary" id="bcStartEdit">✎ შევსების დაწყება</button></div>' : ''}</div>`;
+    return;
+  }
   const head = BC_FIELDS.map(([, label]) => `<th>${label}</th>`).join('');
+  const cols = `<colgroup><col class="bc-c-num"><col class="bc-c-org"><col class="bc-c-rep"><col class="bc-c-pos"><col class="bc-c-email"><col class="bc-c-phone"><col>${edit ? '<col class="bc-c-acts">' : ''}</colgroup>`;
   const rows = act.people.map((p, i) => `<tr data-pid="${esc(p.id)}">
       <td class="bc-num" data-label="#">${i + 1}</td>
       ${BC_FIELDS.map(([f, label]) => edit
-        ? `<td data-label="${label}"><div class="bc-cell"><input data-f="${f}" maxlength="${BC_LIMITS[f]}" value="${esc(p[f])}" ${f === 'org' ? 'list="bcOrgList"' : ''} ${f === 'email' ? 'inputmode="email"' : f === 'phone' ? 'inputmode="tel"' : ''}>${f === 'email' ? `<span class="bc-link" data-for="email">${bcMailLink(p.email)}</span>` : f === 'phone' ? `<span class="bc-link" data-for="phone">${bcTelLink(p.phone)}</span>` : ''}</div></td>`
-        : `<td data-label="${label}">${f === 'email' ? (p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : '') : f === 'phone' ? (bcTelLink(p.phone) ? `<a href="tel:${esc(p.phone.replace(/[^0-9+]/g, ''))}">${esc(p.phone)}</a>` : esc(p.phone)) : esc(p[f])}</td>`).join('')}
+        ? `<td data-label="${label}"><div class="bc-cell"><textarea rows="1" data-f="${f}" maxlength="${BC_LIMITS[f]}" spellcheck="false" autocomplete="off" ${f === 'email' ? 'inputmode="email"' : f === 'phone' ? 'inputmode="tel"' : ''}>${esc(p[f])}</textarea></div></td>`
+        : `<td data-label="${label}"><div class="bc-t">${bcCellText(f, p)}</div></td>`).join('')}
       ${edit ? `<td class="bc-acts"><button type="button" class="bc-up" title="ზევით" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" class="bc-down" title="ქვევით" ${i === act.people.length - 1 ? 'disabled' : ''}>↓</button><button type="button" class="bc-del" title="წაშლა">✕</button></td>` : ''}
     </tr>`).join('');
   panel.innerHTML = `${edit ? `<div class="bc-dir-head"><label>მიმართულების სახელი</label><input id="bcDirTitle" maxlength="${BC_LIMITS.title}" value="${esc(act.title)}" placeholder="მაგ. მონოლითი"><button type="button" class="btn-secondary bc-del-dir" id="bcDelDir">🗑 მიმართულების წაშლა</button></div>` : ''}
-    <div class="bc-scroll"><table class="bc-table"><thead><tr><th>#</th>${head}${edit ? '<th></th>' : ''}</tr></thead><tbody>${rows || `<tr><td colspan="${BC_FIELDS.length + (edit ? 2 : 1)}" class="bc-empty">${edit ? 'წარმომადგენელი ჯერ არ არის დამატებული' : 'წარმომადგენელი არ არის'}</td></tr>`}</tbody></table></div>
+    <div class="bc-scroll"><table class="bc-table${edit ? ' is-edit' : ''}">${cols}<thead><tr><th>#</th>${head}${edit ? '<th></th>' : ''}</tr></thead><tbody>${rows || `<tr><td colspan="${BC_FIELDS.length + (edit ? 2 : 1)}" class="bc-empty">${edit ? 'წარმომადგენელი ჯერ არ არის დამატებული' : 'წარმომადგენელი არ არის'}</td></tr>`}</tbody></table></div>
     ${edit ? `<button type="button" class="btn-add-link" id="bcAddPerson">+ წარმომადგენლის დამატება</button>` : ''}`;
-  if (edit) bcFillOrgList();
+  if (edit) bcFitAll();
 }
-// A search over ALL the directions: by name, organisation, position, e-mail, telephone or comment. The result is a plain list; the direction is a button that leads to it.
+// A search over ALL the directions: by name, organisation, position, e-mail, telephone or comment. The result is a plain list; the direction is a button that leads to it. (Only in the view.)
 function bcRenderSearch(q, panel) {
   const words = q.split(/\s+/).filter(Boolean), hits = [];
   bcState.draft.forEach(d => d.people.forEach((p, i) => { const text = [p.org, p.rep, p.position, p.email, p.phone, p.comment].join(' ').toLowerCase(); if (words.every(w => text.includes(w))) hits.push({ d, p, i }); }));
   document.getElementById('bcCount').textContent = `ნაპოვნია: ${hits.length}`;
-  panel.innerHTML = hits.length ? `<div class="bc-scroll"><table class="bc-table"><thead><tr><th>მიმართულება</th><th>#</th>${BC_FIELDS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${hits.map(h => `<tr>
+  panel.innerHTML = hits.length ? `<div class="bc-scroll"><table class="bc-table"><colgroup><col class="bc-c-dir"><col class="bc-c-num"><col class="bc-c-org"><col class="bc-c-rep"><col class="bc-c-pos"><col class="bc-c-email"><col class="bc-c-phone"><col></colgroup><thead><tr><th>მიმართულება</th><th>#</th>${BC_FIELDS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${hits.map(h => `<tr>
       <td data-label="მიმართულება"><button type="button" class="bc-goto" data-dir="${esc(h.d.id)}">${esc(h.d.title || '(უსახელო)')}</button></td><td class="bc-num" data-label="#">${h.i + 1}</td>
-      ${BC_FIELDS.map(([f, label]) => `<td data-label="${label}">${f === 'email' && h.p.email ? `<a href="mailto:${esc(h.p.email)}">${esc(h.p.email)}</a>` : f === 'phone' && bcTelLink(h.p.phone) ? `<a href="tel:${esc(h.p.phone.replace(/[^0-9+]/g, ''))}">${esc(h.p.phone)}</a>` : esc(h.p[f])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="bc-empty">ვერაფერი მოიძებნა</div>';
+      ${BC_FIELDS.map(([f, label]) => `<td data-label="${label}"><div class="bc-t">${bcCellText(f, h.p)}</div></td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="bc-empty">ვერაფერი მოიძებნა</div>';
 }
+// The suggestions of the organisation box: the organisations of this project that contain what has been typed (a small list under the box; a click on one fills the box).
+function bcShowSugg(el) {
+  const box = document.getElementById('bcSugg'); if (!box) return;
+  const typed = el.value.trim().toLowerCase(), list = bcOrgNames().filter(o => o.toLowerCase() !== typed && (!typed || o.toLowerCase().includes(typed))).slice(0, 6);
+  if (!list.length || !bcEditing()) { bcHideSugg(); return; }
+  const r = el.getBoundingClientRect();
+  box.innerHTML = list.map(o => `<div class="bc-sugg-item" data-v="${esc(o)}">${esc(o)}</div>`).join('');
+  box.style.left = Math.round(r.left) + 'px'; box.style.top = Math.round(r.bottom + 2) + 'px'; box.style.minWidth = Math.round(r.width) + 'px'; box.style.display = 'block'; box._for = el;
+}
+function bcHideSugg() { const box = document.getElementById('bcSugg'); if (box) { box.style.display = 'none'; box._for = null; } }
 window.openBc = async pid => {
   if (!canReadBc()) return;
   const pd = await getDoc(doc(db, 'projects', pid));
@@ -5521,37 +5573,51 @@ window.openBc = async pid => {
   try { const snap = await getDoc(doc(db, 'projects', pid, 'buildContractors', 'main')); if (snap.exists()) data = snap.data(); }
   catch (e) { showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
   const dirs = bcCleanDirections(data.directions);
-  Object.assign(bcState, { pid, project, canEdit: canEditBc(project), server: dirs, draft: bcClone(dirs), active: dirs[0] ? dirs[0].id : '', dirty: false, search: '' });
+  Object.assign(bcState, { pid, project, canEdit: canEditBc(project), mode: 'view', server: dirs, draft: bcClone(dirs), active: dirs[0] ? dirs[0].id : '', dirty: false, search: '' });   // always opens as a VIEW
   document.getElementById('bcTitle').textContent = 'მშენებლობის კონტრაქტორები · ' + (project.name || '');
   document.getElementById('bcSearch').value = '';
   om('bcModal'); bcMarkDirty(); bcRender();
 };
 window.bcClose = () => {
   if (bcState.dirty && !confirm('შეუნახავი ცვლილებებია. დახურვა?')) return;
-  bcState.dirty = false; cm('bcModal');
+  bcState.dirty = false; bcState.mode = 'view'; bcHideSugg(); cm('bcModal');
+};
+// "✎ რედაქტირება" (or "✎ შევსების დაწყება" when there is nothing yet): the same table, now with text boxes
+window.bcStartEdit = () => {
+  if (!bcState.canEdit) return;
+  bcState.mode = 'edit'; bcState.search = ''; document.getElementById('bcSearch').value = '';
+  bcMarkDirty(); bcRender();
+};
+// "გაუქმება": the changes are thrown away (after a question, if there are any) and the view comes back
+window.bcCancelEdit = () => {
+  if (bcState.dirty && !confirm('შეუნახავი ცვლილებებია. გაუქმდეს?')) return;
+  bcState.draft = bcClone(bcState.server); bcState.dirty = false; bcState.mode = 'view';
+  if (!bcState.draft.some(d => d.id === bcState.active)) bcState.active = bcState.draft[0] ? bcState.draft[0].id : '';
+  bcMarkDirty(); bcRender();
 };
 window.bcSave = async () => {
-  if (!bcState.canEdit) return;
+  if (!bcEditing()) return;
   const r = bcCheck(bcState.draft);
-  if (r.error) {   // the window goes to the direction and the field with the mistake
-    bcState.search = ''; document.getElementById('bcSearch').value = ''; bcState.active = r.dir; bcRender();
-    const row = r.person ? document.querySelector(`#bcPanel tr[data-pid="${r.person}"] input[data-f="${r.field}"]`) : document.getElementById('bcDirTitle');
+  if (r.error) {   // the window stays in the editing mode and goes to the direction and the field with the mistake
+    bcState.active = r.dir; bcRender();
+    const row = r.person ? document.querySelector(`#bcPanel tr[data-pid="${r.person}"] [data-f="${r.field}"]`) : document.getElementById('bcDirTitle');
     if (row) row.focus();
     alert(r.error); return;
   }
   try {
     await setDoc(doc(db, 'projects', bcState.pid, 'buildContractors', 'main'), { directions: r.clean });
   } catch (e) { alert('შეცდომა: ' + e.message); return; }
-  bcState.server = bcClone(r.clean); bcState.draft = bcClone(r.clean); bcState.dirty = false;
+  bcState.server = bcClone(r.clean); bcState.draft = bcClone(r.clean); bcState.dirty = false; bcState.mode = 'view';   // saved: back to the view, as the others will see it
   if (!bcState.draft.some(d => d.id === bcState.active)) bcState.active = bcState.draft[0] ? bcState.draft[0].id : '';
   bcMarkDirty(); bcRender(); bcFillCardLine(bcState.server); showToast('შენახულია!');
 };
 // the clicks and the typing of the window (one set of listeners; the draft is changed at once, the document only by "შენახვა")
 function bcWire() {
-  const panel = document.getElementById('bcPanel'), tabs = document.getElementById('bcTabs');
+  const panel = document.getElementById('bcPanel'), tabs = document.getElementById('bcTabs'), body = document.querySelector('#bcModal .modal-body');
   tabs.addEventListener('click', e => {
     const t = e.target.closest('.bc-tab'); if (!t) return;
     if (t.id === 'bcAddDir') {
+      if (!bcEditing()) return;
       if (bcState.draft.length >= BC_LIMITS.directions) { showToast(`მიმართულება მაქსიმუმ ${BC_LIMITS.directions}`); return; }
       const d = { id: bcId(), title: '', people: [] }; bcState.draft.push(d); bcState.active = d.id; bcMarkDirty(); bcRender();
       const el = document.getElementById('bcDirTitle'); if (el) el.focus(); return;
@@ -5559,14 +5625,17 @@ function bcWire() {
     bcState.active = t.dataset.dir; bcRender();
   });
   document.getElementById('bcSearch').addEventListener('input', e => { bcState.search = e.target.value; bcRender(); });
+  document.getElementById('bcEditBtn').addEventListener('click', () => bcStartEdit());
+  document.getElementById('bcCancelBtn').addEventListener('click', () => bcCancelEdit());
   panel.addEventListener('click', e => {
     const go = e.target.closest('.bc-goto'); if (go) { bcState.active = go.dataset.dir; bcState.search = ''; document.getElementById('bcSearch').value = ''; bcRender(); return; }
-    if (!bcState.canEdit) return;
+    if (e.target.closest('#bcStartEdit')) { bcStartEdit(); return; }
+    if (!bcEditing()) return;
     const act = bcActiveDir(); if (!act) return;
     if (e.target.closest('#bcAddPerson')) {
       if (act.people.length >= BC_LIMITS.people) { showToast(`წარმომადგენელი მაქსიმუმ ${BC_LIMITS.people}`); return; }
       const p = bcCleanPerson({}); act.people.push(p); bcMarkDirty(); bcRender();
-      const el = document.querySelector(`#bcPanel tr[data-pid="${p.id}"] input[data-f="org"]`); if (el) el.focus(); return;
+      const el = document.querySelector(`#bcPanel tr[data-pid="${p.id}"] textarea[data-f="org"]`); if (el) el.focus(); return;
     }
     if (e.target.closest('#bcDelDir')) {
       if (!confirm(`წაიშლება მიმართულება „${act.title || '(უსახელო)'}“ და მასში არსებული ${act.people.length} წარმომადგენელი. გაგრძელება?`)) return;
@@ -5582,15 +5651,34 @@ function bcWire() {
     }
   });
   panel.addEventListener('input', e => {
-    if (!bcState.canEdit) return;
+    if (!bcEditing()) return;
     const act = bcActiveDir(); if (!act) return;
     if (e.target.id === 'bcDirTitle') { act.title = e.target.value; const t = document.querySelector('#bcTabs .bc-tab.active'); if (t) t.textContent = act.title || '(უსახელო)'; bcMarkDirty(); return; }
     const tr = e.target.closest('tr[data-pid]'), f = e.target.dataset.f; if (!tr || !f) return;
     const p = act.people.find(x => x.id === tr.dataset.pid); if (!p) return;
-    p[f] = e.target.value; bcMarkDirty();
-    if (f === 'email' || f === 'phone') { const span = tr.querySelector(`.bc-link[data-for="${f}"]`); if (span) span.innerHTML = f === 'email' ? bcMailLink(p.email) : bcTelLink(p.phone); }
-    if (f === 'org') bcFillOrgList();
+    p[f] = e.target.value; bcMarkDirty(); bcFit(e.target);
+    if (f === 'org') bcShowSugg(e.target);
   });
+  // Enter does not make a new line (a cell is one line of text that wraps): it goes to the same cell of the next row. When a box is left, its text is tidied as it will be saved.
+  panel.addEventListener('keydown', e => {
+    const f = e.target.dataset && e.target.dataset.f; if (!bcEditing() || !f) return;
+    if (e.key === 'Enter') { e.preventDefault(); const next = e.target.closest('tr').nextElementSibling; const el = next && next.querySelector(`textarea[data-f="${f}"]`); if (el) el.focus(); else e.target.blur(); }
+    else if (e.key === 'Escape' && f === 'org') bcHideSugg();
+  });
+  panel.addEventListener('focusin', e => { if (bcEditing() && e.target.dataset && e.target.dataset.f === 'org') bcShowSugg(e.target); });
+  panel.addEventListener('focusout', e => {
+    const f = e.target.dataset && e.target.dataset.f; if (!bcEditing() || !f) return;
+    if (f === 'org') bcHideSugg();
+    const act = bcActiveDir(), tr = e.target.closest('tr[data-pid]'), p = act && tr && act.people.find(x => x.id === tr.dataset.pid);
+    if (p) { const v = bcStr(e.target.value, BC_LIMITS[f]); if (v !== e.target.value) { e.target.value = v; p[f] = v; bcMarkDirty(); bcFit(e.target); } }
+  });
+  const sugg = document.getElementById('bcSugg');
+  sugg.addEventListener('mousedown', e => {   // (mousedown, not click: the box keeps the cursor)
+    const it = e.target.closest('.bc-sugg-item'), el = sugg._for; e.preventDefault(); if (!it || !el) return;
+    el.value = it.dataset.v; el.dispatchEvent(new Event('input', { bubbles: true })); bcHideSugg(); el.focus();
+  });
+  body.addEventListener('scroll', bcHideSugg);
+  window.addEventListener('resize', bcFitAll);   // (once: the columns change their width, the boxes find their height again)
   document.getElementById('bcSave').addEventListener('click', () => bcSave());
 }
 bcWire();
