@@ -429,6 +429,51 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   .pm-grid4{grid-template-columns:1fr 1fr}.pm-cols2{grid-template-columns:1fr}
   .pm-row{grid-template-columns:1fr;gap:4px}.pm-row>label{padding-top:0}.pm-ctl{flex-direction:column;align-items:stretch}
 }
+/* THE CARD "მშენებლობის კონტრაქტორები": tabs for the directions and a table of the stakeholders */
+#bcModal .modal{display:flex;flex-direction:column;max-height:calc(100vh - 40px)}   /* the window scrolls inside, the footer ("შენახვა") is always in sight */
+#bcModal .modal-body{overflow-y:auto;flex:1 1 auto}
+.bc-wrap{min-height:320px}
+.bc-cell input[data-f="org"]{min-width:120px}.bc-cell input[data-f="rep"]{min-width:150px}.bc-cell input[data-f="position"]{min-width:110px}
+.bc-cell input[data-f="email"]{min-width:150px}.bc-cell input[data-f="phone"]{min-width:140px}.bc-cell input[data-f="comment"]{min-width:160px}
+.bc-top{display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap}
+.bc-search{flex:1 1 280px;max-width:520px;border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg)}
+.bc-search:focus,.bc-cell input:focus,.bc-dir-head input:focus{outline:none;border-color:var(--accent);background:white}
+.bc-count{font-size:12px;color:var(--ink-light)}
+.bc-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--rule);margin-bottom:14px}
+.bc-tab{border:0;background:transparent;padding:10px 14px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-light);border-bottom:2px solid transparent;cursor:pointer}
+.bc-tab:hover{color:var(--ink)}
+.bc-tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.bc-tab .bc-n{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--bg);font-size:11px;text-align:center;font-weight:600}
+.bc-tab.bc-add{color:var(--accent)}
+.bc-dir-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.bc-dir-head label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light)}
+.bc-dir-head input{flex:1 1 220px;max-width:360px;border:1px solid var(--rule);border-radius:var(--r);padding:8px 11px;font-family:inherit;font-size:13px;background:var(--bg)}
+.bc-del-dir{margin-left:auto;color:var(--warn);border-color:var(--warn-lo);font-size:12px;padding:6px 10px}
+.bc-scroll{overflow-x:auto}
+.bc-table{width:100%;border-collapse:collapse;font-size:13px}
+.bc-table th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-light);padding:6px;border-bottom:1px solid var(--rule);white-space:nowrap}
+.bc-table td{padding:4px 6px;border-bottom:1px solid var(--rule);vertical-align:middle;overflow-wrap:anywhere}
+.bc-num{width:34px;color:var(--ink-light);text-align:center}
+.bc-cell{display:flex;align-items:center;gap:4px}
+.bc-cell input{width:100%;min-width:0;border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg)}
+.bc-ico{text-decoration:none;font-size:14px;padding:2px 4px}
+.bc-acts{white-space:nowrap;width:96px}
+.bc-acts button{border:1px solid var(--rule);background:white;border-radius:6px;width:26px;height:26px;cursor:pointer;margin-left:2px}
+.bc-acts button:disabled{opacity:.35;cursor:default}
+.bc-empty{padding:26px;text-align:center;color:var(--ink-light)}
+.bc-goto{border:0;background:transparent;color:var(--accent);font-family:inherit;font-size:13px;cursor:pointer;text-decoration:underline;padding:0;text-align:left}
+@media (max-width:760px){
+  .bc-tabs{flex-wrap:nowrap;overflow-x:auto}.bc-tab{white-space:nowrap}   /* (five tabs: they slide sideways instead of piling up) */
+  .bc-table thead{display:none}
+  .bc-table,.bc-table tbody{display:block}
+  .bc-table tr{display:block;border:1px solid var(--rule);border-radius:8px;margin-bottom:10px;padding:6px 8px}
+  .bc-table td{display:grid;grid-template-columns:104px 1fr;gap:8px;align-items:center;border:0;padding:3px 0}
+  .bc-table td::before{content:attr(data-label);font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-light)}
+  .bc-table td.bc-num{text-align:left;width:auto}
+  .bc-cell input{min-width:0 !important}   /* (on a phone every box takes the width of its card) */
+  .bc-table td.bc-acts{display:flex;width:auto;justify-content:flex-end}
+  .bc-table td.bc-acts::before,.bc-table td.bc-empty::before{content:none}
+}
 .rp-chart-card{background:#1a1120;border-radius:12px;padding:18px 24px 22px;margin:14px 0}
 .rp-chart-box{position:relative;height:clamp(270px,36vw,430px)}   /* a phone gets a chart that is tall enough to read, a wide screen a comfortable one */
 .rp-chart-card .activity-chart-head{gap:14px;flex-wrap:wrap;justify-content:flex-start}
@@ -920,6 +965,21 @@ body.has-footer .site-footer{display:flex}
 </div>
 
 <!-- Project development: the plan-versus-actual chart. Everybody but contractors sees the chart; the project's PM and admins also edit. -->
+<div class="modal-overlay" id="bcModal">
+  <div class="modal" style="max-width:1240px">
+    <div class="modal-header"><h2 id="bcTitle"></h2><button class="modal-close" onclick="bcClose()">✕</button></div>
+    <div class="modal-body bc-wrap">
+      <div class="bc-top">
+        <input id="bcSearch" class="bc-search" type="search" placeholder="ძებნა: სახელი, ორგანიზაცია, მეილი, ტელეფონი..." autocomplete="off">
+        <span class="bc-count" id="bcCount"></span>
+      </div>
+      <div class="bc-tabs" id="bcTabs"></div>
+      <div id="bcPanel"></div>
+      <datalist id="bcOrgList"></datalist>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="bcClose()">დახურვა</button><button class="btn-primary" id="bcSave" style="display:none" disabled>შენახვა</button></div>
+  </div>
+</div>
 <div class="modal-overlay" id="devModal">
   <div class="modal" style="max-width:1240px">
     <div class="modal-header"><h2 id="devTitle"></h2><button class="modal-close" onclick="devClose()">✕</button></div>
@@ -1462,6 +1522,27 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"მშენებლობის კონტრაქტორები": "Construction contractors",
+"ინფორმაცია არ არის დამატებული": "No information added",
+"ინფორმაცია ჯერ არ არის დამატებული.": "No information has been added yet.",
+"მიმართულება ჯერ არ არის დამატებული. დააჭირე „+ მიმართულება“-ს (მაგ. „მონოლითი“).": "No direction has been added yet. Press \"+ Direction\" (e.g. \"Monolith\").",
+"+ მიმართულება": "+ Direction",
+"მიმართულების სახელი": "Direction name",
+"მაგ. მონოლითი": "e.g. Monolith",
+"🗑 მიმართულების წაშლა": "🗑 Delete the direction",
+"ორგანიზაცია": "Organisation",
+"ორგანიზაციის წარმომადგენელი": "Organisation representative",
+"პოზიცია": "Position",
+"საკონტაქტო მეილი": "Contact e-mail",
+"ტელეფონი": "Telephone",
+"წარმომადგენელი ჯერ არ არის დამატებული": "No representative has been added yet",
+"წარმომადგენელი არ არის": "No representatives",
+"+ წარმომადგენლის დამატება": "+ Add a representative",
+"ძებნა: სახელი, ორგანიზაცია, მეილი, ტელეფონი...": "Search: name, organisation, e-mail, telephone...",
+"ვერაფერი მოიძებნა": "Nothing found",
+"წაიშალოს ეს ხაზი?": "Delete this row?",
+"მიმართულების სახელი სავალდებულოა": "The direction name is required",
+"მიმართულება": "Direction",
 "პროექტის მენეჯერები": "Project managers",
 "+ პროექტ მენეჯერის დამატება": "+ Add a project manager",
 "პროექტ მენეჯერი არ არის დამატებული": "No project manager added",
@@ -2019,6 +2100,13 @@ body.has-footer .site-footer{display:flex}
 
   // Patterns for texts that have numbers or names inside them.
   var P = [
+    [/^(\d+) მიმართულება · (\d+) წარმომადგენელი$/, function (m) { return plural(m[1], 'direction', 'directions') + ' · ' + plural(m[2], 'representative', 'representatives'); }],
+    [/^ნაპოვნია: (\d+)$/, function (m) { return 'Found: ' + m[1]; }],
+    [/^მიმართულება მაქსიმუმ (\d+)$/, function (m) { return 'At most ' + m[1] + ' directions'; }],
+    [/^წარმომადგენელი მაქსიმუმ (\d+)$/, function (m) { return 'At most ' + m[1] + ' representatives in a direction'; }],
+    [/^მეილი არასწორია: ([\s\S]*)$/, function (m) { return 'The e-mail address is not valid: ' + m[1]; }],
+    [/^ტელეფონში დაიშვება მხოლოდ ციფრები, \+, ინტერვალი, ტირე და ფრჩხილები: ([\s\S]*)$/, function (m) { return 'A telephone number may contain only digits, +, spaces, hyphens and brackets: ' + m[1]; }],
+    [/^წაიშლება მიმართულება „([\s\S]*)“ და მასში არსებული (\d+) წარმომადგენელი\. გაგრძელება\?$/, function (m) { return 'The direction "' + m[1] + '" and its ' + m[2] + ' representatives will be deleted. Continue?'; }],
     [/^სურათის ატვირთვის უფლება არ გაქვს\. თუ ეს შეცდომად მიგაჩნია, მისწერე ადმინს და მიუთითე: ([\s\S]*)$/, function (m) { return 'You are not allowed to upload this picture. If you think this is a mistake, write to the admin and mention: ' + m[1]; }],
     [/^საკითხი (\d+)$/, function (m) { return 'Item ' + m[1]; }],
     [/^წავშალო საკითხი (\d+)\?$/, function (m) { return 'Delete item ' + m[1] + '?'; }],
@@ -5264,9 +5352,17 @@ window.showProjectSections = async function(pid) {
         <div class="project-card-creator" id="pdev-line">გრაფიკი</div>
       </div>
     </div>` : ''}
+    ${canReadBc() ? `<div class="project-card project-card-filled" ${cardStyle} onclick="openBc('${pid}')">
+      <div class="project-card-body">
+        <div class="project-card-name">მშენებლობის კონტრაქტორები</div>
+        <div class="project-card-creator">პროექტ მენეჯერი: ${pmName ? esc(pmName) : '—'}</div>
+        <div class="project-card-creator" id="pbc-line"></div>
+      </div>
+    </div>` : ''}
   `;
   grid.style.display = 'grid';
   if (canReadDevelopment()) getDoc(doc(db,'projects',pid,'development','main')).then(sn => devFillCardLine(pid, sn.exists() ? (sn.data().stages || []).map(devCleanStage) : [])).catch(() => { const e = document.getElementById('pdev-line'); if (e) e.textContent = 'გრაფიკი'; });
+  if (canReadBc()) getDoc(doc(db,'projects',pid,'buildContractors','main')).then(sn => bcFillCardLine(sn.exists() ? bcCleanDirections(sn.data().directions) : [])).catch(() => { const e = document.getElementById('pbc-line'); if (e) e.textContent = ''; });
   if (canReadReports()) getCountFromServer(collection(db,'projects',pid,'reports')).then(c => { const el = document.getElementById('pcount-reports'); if (el) el.textContent = c.data().count; }).catch(() => { const el = document.getElementById('pcount-reports'); if (el) el.textContent = '0'; });
 
   ['review','internal','mep'].forEach(async sec => {
@@ -5290,6 +5386,174 @@ window.showProjectSections = async function(pid) {
 
   setupActivityChart(pid, p.createdByName, managerName);
 }
+
+// ══ THE CARD "მშენებლობის კონტრაქტორები" (construction contractors) ══
+// The contract DIRECTIONS of a project (their titles are typed by the project manager, e.g. "მონოლითი") and, in each, the list of STAKEHOLDERS: organisation, its representative, position,
+// e-mail, telephone, a comment. One document per project: projects/{id}/buildContractors/main = { directions: [{ id, title, people: [{ id, org, rep, position, email, phone, comment }] }] }.
+// Everybody but a contractor reads it; the project's project managers (and an admin / the super-reviewer) change it. It is one-off information: no history, no "updated by".
+const BC_LIMITS = { directions: 20, people: 100, title: 60, org: 100, rep: 100, position: 100, email: 120, phone: 40, comment: 500 };
+const BC_FIELDS = [['org', 'ორგანიზაცია'], ['rep', 'ორგანიზაციის წარმომადგენელი'], ['position', 'პოზიცია'], ['email', 'საკონტაქტო მეილი'], ['phone', 'ტელეფონი'], ['comment', 'კომენტარი']];
+const bcState = { pid: null, project: null, canEdit: false, server: [], draft: [], active: '', dirty: false, search: '' };
+const canReadBc = () => currentGlobalRole !== 'contractor' || isAdminLike();           // everybody but the contractors
+const canEditBc = project => isAdminLike() || isProjectPmOf(project);                  // an admin, the super-reviewer and the project's project managers
+const bcId = () => Math.random().toString(36).slice(2, 10);
+const bcClone = x => JSON.parse(JSON.stringify(x));
+const bcStr = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+const bcEmailOk = v => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const bcPhoneOk = v => !v || /^[0-9+\-\s().]*$/.test(v);
+const bcEmptyPerson = p => !(p.org || p.rep || p.position || p.email || p.phone || p.comment);
+function bcCleanPerson(p) { p = p || {}; return { id: p.id || bcId(), org: bcStr(p.org, BC_LIMITS.org), rep: bcStr(p.rep, BC_LIMITS.rep), position: bcStr(p.position, BC_LIMITS.position), email: bcStr(p.email, BC_LIMITS.email), phone: bcStr(p.phone, BC_LIMITS.phone), comment: bcStr(p.comment, BC_LIMITS.comment) }; }
+function bcCleanDirections(list) { return (Array.isArray(list) ? list : []).slice(0, BC_LIMITS.directions).map(d => ({ id: (d && d.id) || bcId(), title: bcStr(d && d.title, BC_LIMITS.title), people: (Array.isArray(d && d.people) ? d.people : []).slice(0, BC_LIMITS.people).map(bcCleanPerson) })); }
+const bcCounts = dirs => ({ directions: dirs.length, people: dirs.reduce((n, d) => n + d.people.length, 0) });
+// The line on the card: "5 მიმართულება · 47 წარმომადგენელი".
+function bcFillCardLine(dirs) {
+  const el = document.getElementById('pbc-line'); if (!el) return;
+  const c = bcCounts(dirs);
+  el.textContent = c.directions ? `${c.directions} მიმართულება · ${c.people} წარმომადგენელი` : 'ინფორმაცია არ არის დამატებული';
+}
+// What is wrong in a draft (the first problem), and the draft cleaned: the empty rows are dropped. A direction needs a title.
+function bcCheck(draft) {
+  const clean = [];
+  for (const d of draft) {
+    const title = bcStr(d.title, BC_LIMITS.title);
+    if (!title) return { error: 'მიმართულების სახელი სავალდებულოა', dir: d.id, field: 'title' };
+    const people = [];
+    for (const raw of d.people) {
+      const p = bcCleanPerson(raw);
+      if (bcEmptyPerson(p)) continue;
+      if (!bcEmailOk(p.email)) return { error: `მეილი არასწორია: ${p.email}`, dir: d.id, person: p.id, field: 'email' };
+      if (!bcPhoneOk(p.phone)) return { error: `ტელეფონში დაიშვება მხოლოდ ციფრები, +, ინტერვალი, ტირე და ფრჩხილები: ${p.phone}`, dir: d.id, person: p.id, field: 'phone' };
+      people.push(p);
+    }
+    clean.push({ id: d.id, title, people });
+  }
+  return { clean };
+}
+function bcMarkDirty() { bcState.dirty = JSON.stringify(bcState.draft) !== JSON.stringify(bcState.server); const b = document.getElementById('bcSave'); if (b) b.disabled = !bcState.dirty; }
+const bcActiveDir = () => bcState.draft.find(d => d.id === bcState.active) || bcState.draft[0] || null;
+// the contact links: an e-mail address opens a letter, a telephone number calls
+const bcMailLink = v => v && bcEmailOk(v) ? `<a class="bc-ico" href="mailto:${esc(v)}" title="${esc(v)}">✉</a>` : '';
+const bcTelLink = v => { const n = String(v || '').replace(/[^0-9+]/g, ''); return n && bcPhoneOk(v) ? `<a class="bc-ico" href="tel:${esc(n)}" title="${esc(n)}">☎</a>` : ''; };
+function bcFillOrgList() {
+  const counts = new Map();
+  bcState.draft.forEach(d => d.people.forEach(p => { if (p.org) counts.set(p.org, (counts.get(p.org) || 0) + 1); }));
+  document.getElementById('bcOrgList').innerHTML = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ka')).map(([o]) => `<option value="${esc(o)}"></option>`).join('');
+}
+function bcRender() {
+  const tabs = document.getElementById('bcTabs'), panel = document.getElementById('bcPanel'), edit = bcState.canEdit, q = bcState.search.trim().toLowerCase();
+  const act = bcActiveDir(); if (act) bcState.active = act.id;
+  const c = bcCounts(bcState.draft);
+  document.getElementById('bcCount').textContent = c.directions ? `${c.directions} მიმართულება · ${c.people} წარმომადგენელი` : '';
+  document.getElementById('bcSave').style.display = edit ? '' : 'none';
+  tabs.style.display = q ? 'none' : '';
+  tabs.innerHTML = bcState.draft.map(d => `<button type="button" class="bc-tab${d.id === bcState.active ? ' active' : ''}" data-dir="${esc(d.id)}">${esc(d.title || '(უსახელო)')} <span class="bc-n">${d.people.length}</span></button>`).join('')
+    + (edit ? `<button type="button" class="bc-tab bc-add" id="bcAddDir">+ მიმართულება</button>` : '');
+  if (q) { bcRenderSearch(q, panel); return; }
+  if (!act) { panel.innerHTML = `<div class="bc-empty">${edit ? 'მიმართულება ჯერ არ არის დამატებული. დააჭირე „+ მიმართულება“-ს (მაგ. „მონოლითი“).' : 'ინფორმაცია ჯერ არ არის დამატებული.'}</div>`; return; }
+  const head = BC_FIELDS.map(([, label]) => `<th>${label}</th>`).join('');
+  const rows = act.people.map((p, i) => `<tr data-pid="${esc(p.id)}">
+      <td class="bc-num" data-label="#">${i + 1}</td>
+      ${BC_FIELDS.map(([f, label]) => edit
+        ? `<td data-label="${label}"><div class="bc-cell"><input data-f="${f}" maxlength="${BC_LIMITS[f]}" value="${esc(p[f])}" ${f === 'org' ? 'list="bcOrgList"' : ''} ${f === 'email' ? 'inputmode="email"' : f === 'phone' ? 'inputmode="tel"' : ''}>${f === 'email' ? `<span class="bc-link" data-for="email">${bcMailLink(p.email)}</span>` : f === 'phone' ? `<span class="bc-link" data-for="phone">${bcTelLink(p.phone)}</span>` : ''}</div></td>`
+        : `<td data-label="${label}">${f === 'email' ? (p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : '') : f === 'phone' ? (bcTelLink(p.phone) ? `<a href="tel:${esc(p.phone.replace(/[^0-9+]/g, ''))}">${esc(p.phone)}</a>` : esc(p.phone)) : esc(p[f])}</td>`).join('')}
+      ${edit ? `<td class="bc-acts"><button type="button" class="bc-up" title="ზევით" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" class="bc-down" title="ქვევით" ${i === act.people.length - 1 ? 'disabled' : ''}>↓</button><button type="button" class="bc-del" title="წაშლა">✕</button></td>` : ''}
+    </tr>`).join('');
+  panel.innerHTML = `${edit ? `<div class="bc-dir-head"><label>მიმართულების სახელი</label><input id="bcDirTitle" maxlength="${BC_LIMITS.title}" value="${esc(act.title)}" placeholder="მაგ. მონოლითი"><button type="button" class="btn-secondary bc-del-dir" id="bcDelDir">🗑 მიმართულების წაშლა</button></div>` : ''}
+    <div class="bc-scroll"><table class="bc-table"><thead><tr><th>#</th>${head}${edit ? '<th></th>' : ''}</tr></thead><tbody>${rows || `<tr><td colspan="${BC_FIELDS.length + (edit ? 2 : 1)}" class="bc-empty">${edit ? 'წარმომადგენელი ჯერ არ არის დამატებული' : 'წარმომადგენელი არ არის'}</td></tr>`}</tbody></table></div>
+    ${edit ? `<button type="button" class="btn-add-link" id="bcAddPerson">+ წარმომადგენლის დამატება</button>` : ''}`;
+  if (edit) bcFillOrgList();
+}
+// A search over ALL the directions: by name, organisation, position, e-mail, telephone or comment. The result is a plain list; the direction is a button that leads to it.
+function bcRenderSearch(q, panel) {
+  const words = q.split(/\s+/).filter(Boolean), hits = [];
+  bcState.draft.forEach(d => d.people.forEach((p, i) => { const text = [p.org, p.rep, p.position, p.email, p.phone, p.comment].join(' ').toLowerCase(); if (words.every(w => text.includes(w))) hits.push({ d, p, i }); }));
+  document.getElementById('bcCount').textContent = `ნაპოვნია: ${hits.length}`;
+  panel.innerHTML = hits.length ? `<div class="bc-scroll"><table class="bc-table"><thead><tr><th>მიმართულება</th><th>#</th>${BC_FIELDS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${hits.map(h => `<tr>
+      <td data-label="მიმართულება"><button type="button" class="bc-goto" data-dir="${esc(h.d.id)}">${esc(h.d.title || '(უსახელო)')}</button></td><td class="bc-num" data-label="#">${h.i + 1}</td>
+      ${BC_FIELDS.map(([f, label]) => `<td data-label="${label}">${f === 'email' && h.p.email ? `<a href="mailto:${esc(h.p.email)}">${esc(h.p.email)}</a>` : f === 'phone' && bcTelLink(h.p.phone) ? `<a href="tel:${esc(h.p.phone.replace(/[^0-9+]/g, ''))}">${esc(h.p.phone)}</a>` : esc(h.p[f])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<div class="bc-empty">ვერაფერი მოიძებნა</div>';
+}
+window.openBc = async pid => {
+  if (!canReadBc()) return;
+  const pd = await getDoc(doc(db, 'projects', pid));
+  if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); return; }
+  const project = { id: pid, ...pd.data() };
+  let data = { directions: [] };
+  try { const snap = await getDoc(doc(db, 'projects', pid, 'buildContractors', 'main')); if (snap.exists()) data = snap.data(); }
+  catch (e) { showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
+  const dirs = bcCleanDirections(data.directions);
+  Object.assign(bcState, { pid, project, canEdit: canEditBc(project), server: dirs, draft: bcClone(dirs), active: dirs[0] ? dirs[0].id : '', dirty: false, search: '' });
+  document.getElementById('bcTitle').textContent = 'მშენებლობის კონტრაქტორები · ' + (project.name || '');
+  document.getElementById('bcSearch').value = '';
+  om('bcModal'); bcMarkDirty(); bcRender();
+};
+window.bcClose = () => {
+  if (bcState.dirty && !confirm('შეუნახავი ცვლილებებია. დახურვა?')) return;
+  bcState.dirty = false; cm('bcModal');
+};
+window.bcSave = async () => {
+  if (!bcState.canEdit) return;
+  const r = bcCheck(bcState.draft);
+  if (r.error) {   // the window goes to the direction and the field with the mistake
+    bcState.search = ''; document.getElementById('bcSearch').value = ''; bcState.active = r.dir; bcRender();
+    const row = r.person ? document.querySelector(`#bcPanel tr[data-pid="${r.person}"] input[data-f="${r.field}"]`) : document.getElementById('bcDirTitle');
+    if (row) row.focus();
+    alert(r.error); return;
+  }
+  try {
+    await setDoc(doc(db, 'projects', bcState.pid, 'buildContractors', 'main'), { directions: r.clean });
+  } catch (e) { alert('შეცდომა: ' + e.message); return; }
+  bcState.server = bcClone(r.clean); bcState.draft = bcClone(r.clean); bcState.dirty = false;
+  if (!bcState.draft.some(d => d.id === bcState.active)) bcState.active = bcState.draft[0] ? bcState.draft[0].id : '';
+  bcMarkDirty(); bcRender(); bcFillCardLine(bcState.server); showToast('შენახულია!');
+};
+// the clicks and the typing of the window (one set of listeners; the draft is changed at once, the document only by "შენახვა")
+function bcWire() {
+  const panel = document.getElementById('bcPanel'), tabs = document.getElementById('bcTabs');
+  tabs.addEventListener('click', e => {
+    const t = e.target.closest('.bc-tab'); if (!t) return;
+    if (t.id === 'bcAddDir') {
+      if (bcState.draft.length >= BC_LIMITS.directions) { showToast(`მიმართულება მაქსიმუმ ${BC_LIMITS.directions}`); return; }
+      const d = { id: bcId(), title: '', people: [] }; bcState.draft.push(d); bcState.active = d.id; bcMarkDirty(); bcRender();
+      const el = document.getElementById('bcDirTitle'); if (el) el.focus(); return;
+    }
+    bcState.active = t.dataset.dir; bcRender();
+  });
+  document.getElementById('bcSearch').addEventListener('input', e => { bcState.search = e.target.value; bcRender(); });
+  panel.addEventListener('click', e => {
+    const go = e.target.closest('.bc-goto'); if (go) { bcState.active = go.dataset.dir; bcState.search = ''; document.getElementById('bcSearch').value = ''; bcRender(); return; }
+    if (!bcState.canEdit) return;
+    const act = bcActiveDir(); if (!act) return;
+    if (e.target.closest('#bcAddPerson')) {
+      if (act.people.length >= BC_LIMITS.people) { showToast(`წარმომადგენელი მაქსიმუმ ${BC_LIMITS.people}`); return; }
+      const p = bcCleanPerson({}); act.people.push(p); bcMarkDirty(); bcRender();
+      const el = document.querySelector(`#bcPanel tr[data-pid="${p.id}"] input[data-f="org"]`); if (el) el.focus(); return;
+    }
+    if (e.target.closest('#bcDelDir')) {
+      if (!confirm(`წაიშლება მიმართულება „${act.title || '(უსახელო)'}“ და მასში არსებული ${act.people.length} წარმომადგენელი. გაგრძელება?`)) return;
+      const i = bcState.draft.indexOf(act); bcState.draft.splice(i, 1); bcState.active = (bcState.draft[i] || bcState.draft[i - 1] || {}).id || ''; bcMarkDirty(); bcRender(); return;
+    }
+    const tr = e.target.closest('tr[data-pid]'); if (!tr) return;
+    const i = act.people.findIndex(p => p.id === tr.dataset.pid); if (i < 0) return;
+    if (e.target.closest('.bc-up') && i > 0) { [act.people[i - 1], act.people[i]] = [act.people[i], act.people[i - 1]]; bcMarkDirty(); bcRender(); }
+    else if (e.target.closest('.bc-down') && i < act.people.length - 1) { [act.people[i + 1], act.people[i]] = [act.people[i], act.people[i + 1]]; bcMarkDirty(); bcRender(); }
+    else if (e.target.closest('.bc-del')) {
+      if (!bcEmptyPerson(bcCleanPerson(act.people[i])) && !confirm('წაიშალოს ეს ხაზი?')) return;
+      act.people.splice(i, 1); bcMarkDirty(); bcRender();
+    }
+  });
+  panel.addEventListener('input', e => {
+    if (!bcState.canEdit) return;
+    const act = bcActiveDir(); if (!act) return;
+    if (e.target.id === 'bcDirTitle') { act.title = e.target.value; const t = document.querySelector('#bcTabs .bc-tab.active'); if (t) t.firstChild.textContent = (act.title || '(უსახელო)') + ' '; bcMarkDirty(); return; }
+    const tr = e.target.closest('tr[data-pid]'), f = e.target.dataset.f; if (!tr || !f) return;
+    const p = act.people.find(x => x.id === tr.dataset.pid); if (!p) return;
+    p[f] = e.target.value; bcMarkDirty();
+    if (f === 'email' || f === 'phone') { const span = tr.querySelector(`.bc-link[data-for="${f}"]`); if (span) span.innerHTML = f === 'email' ? bcMailLink(p.email) : bcTelLink(p.phone); }
+    if (f === 'org') bcFillOrgList();
+  });
+  document.getElementById('bcSave').addEventListener('click', () => bcSave());
+}
+bcWire();
 
 // ── PROJECT ACTIVITY CHART (cumulative issues + comments over time) ──
 // Listens live to the project's issues (all three sections) and redraws the activity chart whenever they change. It also
