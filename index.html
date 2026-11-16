@@ -402,6 +402,33 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 #sankeyControlsRow .activity-legend-item input[type=checkbox]{width:13px;height:13px}
 .activity-legend-item.has-colour input[type=checkbox]{border-color:var(--box-color);background:var(--box-color)}
 .activity-legend-item.has-colour input[type=checkbox]:not(:checked){background:transparent}
+/* THE PROJECT WINDOW: three tabs, wide, the footer always in sight; the same size on every tab (so the window does not jump) */
+#projectModal .modal{display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
+#projectModal .modal-body{overflow-y:auto;height:min(540px,calc(100vh - 230px));flex:none}
+.pm-tabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--rule);background:#fafafa;overflow-x:auto;flex:none}
+.pm-tab{border:0;background:transparent;padding:12px 16px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-light);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.pm-tab:hover{color:var(--ink)}
+.pm-tab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.pm-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.pm-grid .s1{grid-column:span 1}.pm-grid .s2{grid-column:span 2}.pm-grid .s3{grid-column:span 3}.pm-grid .s4{grid-column:span 4}.pm-grid .s6{grid-column:1/-1}
+.pm-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.pm-cols2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.pm-rows{display:flex;flex-direction:column;gap:12px}
+.pm-row{display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:start}
+.pm-row>label{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);padding-top:11px}
+.pm-ctl{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.pm-ctl select,.pm-ctl input{flex:1 1 0;min-width:0;width:100%;border:1px solid var(--rule);border-radius:var(--r);padding:9px 12px;font-family:inherit;font-size:13px;color:var(--ink);background:var(--bg)}
+.pm-ctl select:focus,.pm-ctl input:focus{outline:none;border-color:var(--accent);background:white}
+.pm-col{flex-direction:column;align-items:stretch}
+.pm-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--ink-light);color:var(--ink-light);font-size:9px;font-weight:700;text-transform:none;letter-spacing:0;margin-left:4px;cursor:help;vertical-align:middle}
+.pm-info:hover,.pm-info:focus{border-color:var(--accent);color:var(--accent);outline:none}
+#projectModal .link-input-row input{min-width:0}   /* (a row of the extra contractors may shrink on a phone) */
+.pm-tip{grid-column:1/-1;font-size:11.5px;color:var(--ink-light);background:var(--bg);border-left:3px solid var(--accent);padding:6px 10px;border-radius:4px}
+@media (max-width:760px){
+  .pm-grid{grid-template-columns:1fr}.pm-grid .s1,.pm-grid .s2,.pm-grid .s3,.pm-grid .s4,.pm-grid .s6{grid-column:1/-1}
+  .pm-grid4{grid-template-columns:1fr 1fr}.pm-cols2{grid-template-columns:1fr}
+  .pm-row{grid-template-columns:1fr;gap:4px}.pm-row>label{padding-top:0}.pm-ctl{flex-direction:column;align-items:stretch}
+}
 .rp-chart-card{background:#1a1120;border-radius:12px;padding:18px 24px 22px;margin:14px 0}
 .rp-chart-box{position:relative;height:clamp(270px,36vw,430px)}   /* a phone gets a chart that is tall enough to read, a wide screen a comfortable one */
 .rp-chart-card .activity-chart-head{gap:14px;flex-wrap:wrap;justify-content:flex-start}
@@ -1167,111 +1194,114 @@ body.has-footer .site-footer{display:flex}
 
 <!-- Project manage -->
 <div class="modal-overlay" id="projectModal">
-  <div class="modal" style="max-width:520px">
+  <div class="modal" style="max-width:960px">
     <div class="modal-header"><h2 id="projectModalTitle">პროექტი</h2><button class="modal-close" onclick="cm('projectModal')">✕</button></div>
+    <div class="pm-tabs" id="pmTabs">
+      <button type="button" class="pm-tab active" data-tab="basic" onclick="pmShowTab('basic')">ძირითადი</button>
+      <button type="button" class="pm-tab" data-tab="people" onclick="pmShowTab('people')">პერსონალი</button>
+      <button type="button" class="pm-tab" data-tab="files" onclick="pmShowTab('files')">კონტრაქტორები და ფაილები</button>
+    </div>
     <div class="modal-body">
-      <div class="form-grid" style="margin-bottom:16px">
-        <div class="field form-full"><label>პროექტის სახელი</label><input id="pName" placeholder="პროექტი N123"></div>
-        <div class="field">
-          <label>პროექტის კოდი</label>
-          <input id="pCode" placeholder="MZK" style="text-transform:uppercase" maxlength="8">
-          <div class="auth-hint">კოდის შეცვლა მყისიერად ცვლის ყველა საკითხის ნომერს (მაგ. MZK-001)</div>
-        </div>
-        <div class="field">
-          <label>პროექტის ფერი (ბარათისთვის მთავარ გვერდზე)</label>
-          <div style="display:flex;align-items:center;gap:10px">
-            <input type="color" id="pColor" style="width:44px;height:38px;padding:2px;border:1px solid var(--rule);border-radius:var(--r);cursor:pointer;background:white">
-            <button type="button" class="btn-secondary" id="btnClearColor" style="padding:8px 12px;font-size:12px">ნაგულისხმევზე დაბრუნება</button>
+      <div class="pm-pane" data-pane="basic">
+        <div class="pm-grid">
+          <div class="field s3"><label>პროექტის სახელი</label><input id="pName" placeholder="პროექტი N123"></div>
+          <div class="field s1">
+            <label>პროექტის კოდი</label>
+            <input id="pCode" placeholder="MZK" style="text-transform:uppercase" maxlength="8">
           </div>
-        </div>
-        <div class="field form-full"><label>მისამართი</label><input id="pAddress" placeholder="ობიექტის მისამართი (ჩანს ოქმებში)"></div>
-        <div class="field form-full"><label>აღწერა</label><input id="pDesc" placeholder="მოკლე აღწერა"></div>
-        <div class="field form-full">
-          <label>ლოგო (SVG)</label>
-          <div class="logo-field">
-            <div class="logo-field-preview" id="pLogoPreview"></div>
-            <div class="logo-field-actions">
-              <button type="button" class="btn-secondary" onclick="document.getElementById('pLogoFile').click()">ფაილის არჩევა</button>
-              <button type="button" class="btn-secondary" id="btnClearLogo" onclick="clearProjectLogo()">წაშლა</button>
-              <input type="file" id="pLogoFile" accept=".svg,image/svg+xml" style="display:none">
-              <div class="auth-hint" id="pLogoHint"></div>
+          <div class="field s2">
+            <label>GBA (მ²)</label>
+            <input type="number" id="pGba" min="0" step="1" placeholder="1000">
+          </div>
+          <div class="auth-hint s6" style="margin:-6px 0 0">კოდის შეცვლა მყისიერად ცვლის ყველა საკითხის ნომერს (მაგ. MZK-001)</div>
+          <div class="field s4"><label>მისამართი</label><input id="pAddress" placeholder="ობიექტის მისამართი (ჩანს ოქმებში)"></div>
+          <div class="field s2">
+            <label>პროექტის ფერი</label>
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="color" id="pColor" style="width:44px;height:38px;padding:2px;border:1px solid var(--rule);border-radius:var(--r);cursor:pointer;background:white">
+              <button type="button" class="btn-secondary" id="btnClearColor" style="padding:8px 12px;font-size:12px">ნაგულისხმევზე დაბრუნება</button>
+            </div>
+          </div>
+          <div class="field s6"><label>აღწერა</label><input id="pDesc" placeholder="მოკლე აღწერა"></div>
+          <div class="field s6">
+            <label>ლოგო (SVG)</label>
+            <div class="logo-field">
+              <div class="logo-field-preview" id="pLogoPreview"></div>
+              <div class="logo-field-actions">
+                <button type="button" class="btn-secondary" onclick="document.getElementById('pLogoFile').click()">ფაილის არჩევა</button>
+                <button type="button" class="btn-secondary" id="btnClearLogo" onclick="clearProjectLogo()">წაშლა</button>
+                <input type="file" id="pLogoFile" accept=".svg,image/svg+xml" style="display:none">
+                <div class="auth-hint" id="pLogoHint"></div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="field">
-          <label>GBA (მთლიანი სამშენებლო ფართობი, მ²)</label>
-          <input type="number" id="pGba" min="0" step="1" placeholder="1000">
-        </div>
-        <div class="field form-full">
-          <label>დიზაინ მენეჯერი (საინფორმაციო — უფლებებზე გავლენას არ ახდენს)</label>
-          <select id="pManager"><option value="">— არჩეული არ არის —</option></select>
-        </div>
-        <div class="field">
-          <label>პროექტის მენეჯერი (PM)</label>
-          <select id="pPmUser"><option value="">— თავად ჩავწერ —</option></select>
-          <div class="auth-hint">სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „პროექტ მენეჯერი“</div>
-        </div>
-        <div class="field">
-          <label>PM-ის სახელი (თუ დარეგისტრირებული არაა)</label>
-          <input id="pPmName" placeholder="სახელი გვარი">
-        </div>
-        <div class="field form-full">
-          <label>საიტ მენეჯერები</label>
-          <div id="pSiteList"></div>
-          <button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px;align-self:flex-start" onclick="addSiteManager()">+ საიტ მენეჯერის დამატება</button>
-          <div class="auth-hint">სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“. ოქმებს წერს ყველა მონიშნული საიტ მენეჯერი ნებისმიერ პროექტზე; ეს სია მხოლოდ ჩვენებისთვისაა (პროექტის ბარათზე და სქემაზე)</div>
-        </div>
-        <div class="field">
-          <label>ხარისხის ინსპექტორი</label>
-          <select id="pQcUser"><option value="">— არჩეული არ არის —</option></select>
-          <div class="auth-hint">არჩევა შეიძლება დარეგისტრირებული მომხმარებლებიდან (ხარისხის ინსპექტორის ნიშნის მქონეები სიის თავშია)</div>
-        </div>
-        <div class="field">
-          <label>MP რევიზორი</label>
-          <select id="pMpReviewerUser"><option value="">— თავად ჩავწერ —</option></select>
-        </div>
-        <div class="field">
-          <label>MP რევიზორის სახელი (თუ დარეგისტრირებული არაა)</label>
-          <input id="pMpReviewerName" placeholder="სახელი გვარი">
-        </div>
-        <div class="field">
-          <label>Electrical რევიზორი</label>
-          <select id="pElecReviewerUser"><option value="">— თავად ჩავწერ —</option></select>
-        </div>
-        <div class="field">
-          <label>Electrical რევიზორის სახელი (თუ დარეგისტრირებული არაა)</label>
-          <input id="pElecReviewerName" placeholder="სახელი გვარი">
-        </div>
-        <div class="field form-full" id="pMepReviewerOldRow" style="display:none">
-          <label>MEP რევიზორი (ძველი) <span style="font-weight:400;color:var(--ink-mid)">— გადაიტანე MP ან Electrical რევიზორში და გაასუფთავე</span></label>
-          <input id="pMepReviewer" placeholder="გია, იური">
+      </div>
+      <div class="pm-pane" data-pane="people" style="display:none">
+        <div class="pm-rows">
+          <div class="pm-row">
+            <label>დიზაინ მენეჯერი <span class="pm-info" tabindex="0" title="საინფორმაციო — უფლებებზე გავლენას არ ახდენს" onclick="pmInfo(this)">i</span></label>
+            <div class="pm-ctl"><select id="pManager"><option value="">— არჩეული არ არის —</option></select></div>
+          </div>
+          <div class="pm-row">
+            <label>პროექტის მენეჯერი (PM) <span class="pm-info" tabindex="0" title="სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „პროექტ მენეჯერი“" onclick="pmInfo(this)">i</span></label>
+            <div class="pm-ctl"><select id="pPmUser"><option value="">— თავად ჩავწერ —</option></select><input id="pPmName" placeholder="სახელი გვარი"></div>
+          </div>
+          <div class="pm-row">
+            <label>საიტ მენეჯერები <span class="pm-info" tabindex="0" title="სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“. ოქმებს წერს ყველა მონიშნული საიტ მენეჯერი ნებისმიერ პროექტზე; ეს სია მხოლოდ ჩვენებისთვისაა (პროექტის ბარათზე და სქემაზე)" onclick="pmInfo(this)">i</span></label>
+            <div class="pm-ctl pm-col">
+              <div id="pSiteList"></div>
+              <button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px;align-self:flex-start" onclick="addSiteManager()">+ საიტ მენეჯერის დამატება</button>
+            </div>
+          </div>
+          <div class="pm-row">
+            <label>ხარისხის ინსპექტორი <span class="pm-info" tabindex="0" title="არჩევა შეიძლება დარეგისტრირებული მომხმარებლებიდან (ხარისხის ინსპექტორის ნიშნის მქონეები სიის თავშია)" onclick="pmInfo(this)">i</span></label>
+            <div class="pm-ctl"><select id="pQcUser"><option value="">— არჩეული არ არის —</option></select></div>
+          </div>
+          <div class="pm-row">
+            <label>MP რევიზორი</label>
+            <div class="pm-ctl"><select id="pMpReviewerUser"><option value="">— თავად ჩავწერ —</option></select><input id="pMpReviewerName" placeholder="სახელი გვარი"></div>
+          </div>
+          <div class="pm-row">
+            <label>Electrical რევიზორი</label>
+            <div class="pm-ctl"><select id="pElecReviewerUser"><option value="">— თავად ჩავწერ —</option></select><input id="pElecReviewerName" placeholder="სახელი გვარი"></div>
+          </div>
+          <div class="pm-row" id="pMepReviewerOldRow" style="display:none">
+            <label>MEP რევიზორი (ძველი)</label>
+            <div class="pm-ctl pm-col"><input id="pMepReviewer" placeholder="გია, იური"><span class="auth-hint" style="margin:0">გადაიტანე MP ან Electrical რევიზორში და გაასუფთავე</span></div>
+          </div>
         </div>
       </div>
-
-      <div class="detail-label" style="margin-bottom:8px">კონტრაქტორები</div>
-      <div class="form-grid" style="margin-bottom:10px">
-        <div class="field"><label>არქიტექტორი</label><input id="cArch" placeholder="კომპანია / სახელი"></div>
-        <div class="field"><label>Mechanical &amp; Plumbing</label><input id="cMp" placeholder="კომპანია / სახელი"></div>
-        <div class="field"><label>Electrical</label><input id="cElec" placeholder="კომპანია / სახელი"></div>
-        <div class="field"><label>კონსტრუქტორი</label><input id="cStruct" placeholder="კომპანია / სახელი"></div>
+      <div class="pm-pane" data-pane="files" style="display:none">
+        <div class="detail-label" style="margin-bottom:8px">კონტრაქტორები</div>
+        <div class="pm-grid4" style="margin-bottom:10px">
+          <div class="field"><label>არქიტექტორი</label><input id="cArch" placeholder="კომპანია / სახელი"></div>
+          <div class="field"><label>Mechanical &amp; Plumbing</label><input id="cMp" placeholder="კომპანია / სახელი"></div>
+          <div class="field"><label>Electrical</label><input id="cElec" placeholder="კომპანია / სახელი"></div>
+          <div class="field"><label>კონსტრუქტორი</label><input id="cStruct" placeholder="კომპანია / სახელი"></div>
+        </div>
+        <div class="field" id="cMepOldRow" style="display:none;margin-bottom:10px">
+          <label>MEP (ძველი) <span style="font-weight:400;color:var(--ink-mid)">— გადაიტანე Mechanical &amp; Plumbing-ში ან Electrical-ში და გაასუფთავე</span></label>
+          <input id="cMepOld" placeholder="კომპანია / სახელი">
+        </div>
+        <div id="extraContractorsList"></div>
+        <button type="button" class="btn-add-link" id="btnAddContractor" style="margin-bottom:16px">+ სხვა კონტრაქტორის დამატება</button>
+        <div class="pm-cols2">
+          <div>
+            <div class="detail-label" style="margin-bottom:8px">პროექტში ჩართული კონტრაქტორები</div>
+            <div class="member-search-row">
+              <input id="memberSearch" placeholder="მომხმარებლის ძებნა...">
+            </div>
+            <div class="member-list" id="memberList"></div>
+          </div>
+          <div>
+            <div class="detail-label" style="margin-bottom:8px">IFC ვიუერის ფაილები</div>
+            <div id="ifcFilesList" style="margin-bottom:8px"></div>
+            <input type="file" id="ifcFileInput" accept=".frag" style="display:none">
+            <button type="button" class="btn-add-link" id="btnAddIfcFile">+ Fragments ფაილის ატვირთვა (.frag)</button>
+          </div>
+        </div>
       </div>
-      <div class="field" id="cMepOldRow" style="display:none;margin-bottom:10px">
-        <label>MEP (ძველი) <span style="font-weight:400;color:var(--ink-mid)">— გადაიტანე Mechanical &amp; Plumbing-ში ან Electrical-ში და გაასუფთავე</span></label>
-        <input id="cMepOld" placeholder="კომპანია / სახელი">
-      </div>
-      <div id="extraContractorsList"></div>
-      <button type="button" class="btn-add-link" id="btnAddContractor" style="margin-bottom:16px">+ სხვა კონტრაქტორის დამატება</button>
-
-      <div class="detail-label" style="margin-bottom:8px">პროექტში ჩართული კონტრაქტორები</div>
-      <div class="member-search-row">
-        <input id="memberSearch" placeholder="მომხმარებლის ძებნა...">
-      </div>
-      <div class="member-list" id="memberList"></div>
-
-      <div class="detail-label" style="margin-bottom:8px;margin-top:16px">IFC ვიუერის ფაილები</div>
-      <div id="ifcFilesList" style="margin-bottom:8px"></div>
-      <input type="file" id="ifcFileInput" accept=".frag" style="display:none">
-      <button type="button" class="btn-add-link" id="btnAddIfcFile">+ Fragments ფაილის ატვირთვა (.frag)</button>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" id="btnDeleteProject" style="display:none;color:var(--warn);border-color:var(--warn-lo);margin-right:auto">🗑 პროექტის წაშლა</button>
@@ -1280,7 +1310,6 @@ body.has-footer .site-footer{display:flex}
     </div>
   </div>
 </div>
-
 <!-- New project -->
 <div class="modal-overlay" id="newProjModal">
   <div class="modal" style="max-width:420px">
@@ -1430,6 +1459,13 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"ძირითადი": "Main",
+"პერსონალი": "People",
+"კონტრაქტორები და ფაილები": "Contractors and files",
+"საინფორმაციო — უფლებებზე გავლენას არ ახდენს": "Informative only — it does not affect permissions",
+"GBA (მ²)": "GBA (m²)",
+"პროექტის ფერი": "Project colour",
+"გადაიტანე MP ან Electrical რევიზორში და გაასუფთავე": "Move it to the MP or Electrical reviewer and clear it",
 "ხარისხის ინსპექტორები": "Quality inspectors",
 "არჩევა შეიძლება დარეგისტრირებული მომხმარებლებიდან (ხარისხის ინსპექტორის ნიშნის მქონეები სიის თავშია)": "You can choose among the registered users (those marked as quality inspectors are at the top of the list)",
 " · ხარისხის ინსპექტორი": " · quality inspector",
@@ -8821,9 +8857,25 @@ document.getElementById('btnClearColor').addEventListener('click', () => {
 let pendingMemberChanges = {};
 // Opens the project settings form and fills it from the current project: details, GBA, PM, MEP reviewer, contractors,
 // design manager, members and IFC files.
+// The tabs of the project window (the fields of all of them are in the one window, so one "შენახვა" saves everything).
+window.pmShowTab = name => {
+  document.querySelectorAll('#projectModal .pm-pane').forEach(pane => { pane.style.display = pane.dataset.pane === name ? '' : 'none'; });
+  document.querySelectorAll('#pmTabs .pm-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  const body = document.querySelector('#projectModal .modal-body'); if (body) body.scrollTop = 0;
+};
+// The "i" beside a label: its text is in the title (a tooltip with the mouse); a tap or a click also shows it under the field (a phone shows no tooltips).
+window.pmInfo = el => {
+  const row = el.closest('.pm-row'); if (!row) return;
+  const had = row.querySelector('.pm-tip');
+  document.querySelectorAll('#projectModal .pm-tip').forEach(t => t.remove());
+  if (had) return;
+  const tip = document.createElement('div'); tip.className = 'pm-tip'; tip.textContent = el.getAttribute('title') || ''; row.appendChild(tip);
+};
 async function openProjectModal(pid) {
   await loadAllUsers();
   pendingMemberChanges = {};
+  pmShowTab('basic');   // the window always opens on its first tab
+  document.querySelectorAll('#projectModal .pm-tip').forEach(t => t.remove());
   document.getElementById('projectModalTitle').textContent = pid ? 'პროექტის მართვა' : 'ახალი პროექტი';
   const pd = pid ? currentProjectData : {};
   document.getElementById('pName').value = pd.name||'';
@@ -9036,8 +9088,8 @@ async function syncPublicProject(pid) {
 async function saveProjectData(pid) {
   const name = document.getElementById('pName').value.trim();
   const code = document.getElementById('pCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
-  if (!name) { alert('სახელი სავალდებულოა'); return; }
-  if (!code) { alert('პროექტის კოდი სავალდებულოა (მაგ. MZK)'); return; }
+  if (!name) { pmShowTab('basic'); document.getElementById('pName').focus(); alert('სახელი სავალდებულოა'); return; }   // (the field is on the first tab: the window goes there)
+  if (!code) { pmShowTab('basic'); document.getElementById('pCode').focus(); alert('პროექტის კოდი სავალდებულოა (მაგ. MZK)'); return; }
   const currentMembers = pid ? (currentProjectData.members||{}) : {};
   const newMembers = {...currentMembers};
   Object.entries(pendingMemberChanges).forEach(([uid,role]) => {
