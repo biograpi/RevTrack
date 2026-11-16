@@ -36,6 +36,7 @@ onSnapshot(collection(db, 'publicProjects'), (snap) => {
       reviewer: p.createdByName || 'ადმინი',
       manager: p.managerName || '— არავინ',
       pm: p.pmName || '— არავინ',
+      pms: (p.pmNames && p.pmNames.length) ? p.pmNames : (p.pmName && p.pmName !== '— არავინ' ? [p.pmName] : []),   // the project managers (a list); an old public record has the one name
       sites: (p.siteManagerNames && p.siteManagerNames.length) ? p.siteManagerNames : (p.siteManagerName ? [p.siteManagerName] : []),
       logo: p.logo || '',   // the project's own logo (a data URL)   // [] = none set; the diagram then shows "— არავინ"
       arch: (p.contractors && p.contractors.arch) || '— არქიტექტორი არ არის',
@@ -105,6 +106,13 @@ function withInitial(n) {
   if (parts.length < 2) return parts[0] || n;
   return parts[0] + ' ' + parts[1][0] + '.';
 }
+// A person's name on TWO lines: the first name, and under it the surname (everything after the first word). A name of one word, a placeholder and an e-mail stay on one line.
+function personLines(full) {
+  var t = String(full || '').trim();
+  if (!t || /^[—–-]/.test(t) || t.indexOf('@') >= 0 || t.indexOf(',') >= 0 || t === 'უცნობი') return [t];
+  var parts = t.split(/\s+/);
+  return parts.length < 2 ? [t] : [parts[0], parts.slice(1).join(' ')];
+}
 function colorFor(map, name, palette) {
   if (!map[name]) map[name] = palette[Object.keys(map).length % palette.length];
   return map[name];
@@ -131,8 +139,8 @@ var PROJECTS = (window.PROJECTS || []).slice().sort(function(a, b) { return PROJ
 
   var reviewerColors = {}, managerColors = {}, pmColors = {}, siteColors = {}, archColors = {}, structColors = {}, mepColors = {}, elecColors = {};
   var nodesById = {};
-  function addNode(id, name, color) {
-    if (!nodesById[id]) nodesById[id] = { id: id, name: name, color: color };
+  function addNode(id, name, color, full) {
+    if (!nodesById[id]) nodesById[id] = full ? { id: id, name: name, color: color, person: true, full: full } : { id: id, name: name, color: color };
     return id;
   }
   var links = [];
@@ -143,20 +151,23 @@ var PROJECTS = (window.PROJECTS || []).slice().sort(function(a, b) { return PROJ
     var value = Math.max(p.gba || 1000, 1);
     var projectId = addNode('p:' + p.id, p.name, projectColor);
     nodesById[projectId].logo = p.logo || '';   // the project's own logo, if it has one
-    var reviewerId = showReviewer ? addNode('r:' + p.reviewer, firstName(p.reviewer), reviewerColor) : null;
+    var reviewerId = showReviewer ? addNode('r:' + p.reviewer, firstName(p.reviewer), reviewerColor, p.reviewer) : null;
     var preId = projectId, preColor = projectColor;
 
     if (showDm) {
       var managerColor = colorFor(managerColors, p.manager, MANAGER_PALETTE);
-      var managerId = addNode('m:' + p.manager, withInitial(p.manager), managerColor);
+      var managerId = addNode('m:' + p.manager, withInitial(p.manager), managerColor, p.manager);
       links.push({ source: projectId, target: managerId, value: value, pid: p.id, c1: projectColor, c2: managerColor });
       preId = managerId; preColor = managerColor;
     }
 
-    var pmId = null, pmColor = null;
+    // a project can have several project managers: one node each, the project's value shared equally between them (one, or none = "— არავინ": exactly as before)
+    var pmTargets = [];
     if (showPm) {
-      pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
-      pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor);
+      (p.pms && p.pms.length ? p.pms : [p.pm || '— არავინ']).forEach(function(pmName) {
+        var pmColor = colorFor(pmColors, pmName, PM_PALETTE);
+        pmTargets.push({ id: addNode('pm:' + pmName, withInitial(pmName), pmColor, pmName), color: pmColor });
+      });
     }
     // the site managers: the last column, after the project managers (it takes the PM's place when the PM column is off). A project can have
     // several: one node each, and the project's value is shared equally between them (one, or none = "— არავინ": exactly as before).
@@ -164,12 +175,12 @@ var PROJECTS = (window.PROJECTS || []).slice().sort(function(a, b) { return PROJ
     if (showSite) {
       (p.sites && p.sites.length ? p.sites : ['— არავინ']).forEach(function(siteName) {
         var siteColor = colorFor(siteColors, siteName, SITE_PALETTE);
-        siteTargets.push({ id: addNode('sm:' + siteName, withInitial(siteName), siteColor), color: siteColor });
+        siteTargets.push({ id: addNode('sm:' + siteName, withInitial(siteName), siteColor, siteName), color: siteColor });
       });
     }
-    var tails = pmId ? [{ id: pmId, color: pmColor }] : siteTargets;
+    var tails = pmTargets.length ? pmTargets : siteTargets;
     var after = showReviewer ? [{ id: reviewerId, color: reviewerColor }] : tails;
-    var linkTo = function(sourceId, sourceColor, targets) { targets.forEach(function(t) { links.push({ source: sourceId, target: t.id, value: value / targets.length, pid: p.id, c1: sourceColor, c2: t.color }); }); };
+    var linkTo = function(sourceId, sourceColor, targets, sources) { targets.forEach(function(t) { links.push({ source: sourceId, target: t.id, value: value / (targets.length * (sources || 1)), pid: p.id, c1: sourceColor, c2: t.color }); }); };
 
     if (showContractors) {
       if (showArch) {
@@ -202,7 +213,7 @@ var PROJECTS = (window.PROJECTS || []).slice().sort(function(a, b) { return PROJ
         var mepReviewerName = m.kind === 'mp' ? p.mpReviewer : (m.kind === 'elec' ? p.elecReviewer : p.mepReviewerOld);
         if (showReviewer && mepReviewerName) {
           var mepReviewerColor = colorFor(reviewerColors, mepReviewerName, REVIEWER_PALETTE);
-          var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor);
+          var mepReviewerId = addNode('r:' + mepReviewerName, mepReviewerName, mepReviewerColor, mepReviewerName);
           links.push({ source: mepId, target: mepReviewerId, value: value, pid: p.id, c1: mepColor, c2: mepReviewerColor });
           if (tails.length && !reviewerLinkedToPm[mepReviewerId]) { linkTo(mepReviewerId, mepReviewerColor, tails); reviewerLinkedToPm[mepReviewerId] = true; }
         }
@@ -214,7 +225,7 @@ var PROJECTS = (window.PROJECTS || []).slice().sort(function(a, b) { return PROJ
     if (showReviewer && tails.length) {
       linkTo(reviewerId, reviewerColor, tails);
     }
-    if (pmId && siteTargets.length) linkTo(pmId, pmColor, siteTargets);
+    if (pmTargets.length && siteTargets.length) pmTargets.forEach(function(src) { linkTo(src.id, src.color, siteTargets, pmTargets.length); });
   });
 
   var counts = {};
@@ -296,10 +307,24 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
     return graph.links.filter(function(l) { return pids[l.pid]; });
   }
 
+  // Is there room for a name on two lines? The centres of two neighbouring labels of a column must be at least 2.5 lines apart; if not, the short form stays on one line.
+  var rowRoom = {};
+  (function() {
+    var cols = {};
+    graph.nodes.forEach(function(n) { var k = Math.round(n.x0); (cols[k] = cols[k] || []).push(n); });
+    Object.keys(cols).forEach(function(k) {
+      var list = cols[k].sort(function(a, b) { return (a.y0 + a.y1) - (b.y0 + b.y1); });
+      list.forEach(function(n, i) {
+        var c = (n.y0 + n.y1) / 2, up = i ? c - (list[i - 1].y0 + list[i - 1].y1) / 2 : Infinity, down = i < list.length - 1 ? (list[i + 1].y0 + list[i + 1].y1) / 2 - c : Infinity;
+        rowRoom[n.id] = Math.min(up, down);
+      });
+    });
+  })();
+  function twoLineOk(d) { return !(rowRoom[d.id] < 11 * 2.5); }
   var node = svg.append('g').selectAll('g').data(graph.nodes).join('g');
   node.append('rect').attr('x', function(d) { return d.x0; }).attr('y', function(d) { return d.y0; })
     .attr('height', function(d) { return Math.max(1, d.y1 - d.y0); }).attr('width', function(d) { return d.x1 - d.x0; })
-    .attr('fill', function(d) { return d.color; }).append('title').text(function(d) { return d.name; });
+    .attr('fill', function(d) { return d.color; }).append('title').text(function(d) { return d.person ? d.full : d.name; });
   // The project's logo in its square, left of the project's bar (part of the project's node): no plate, drawn in light cream, only its shape.
   node.filter(function(d) { return d.id.indexOf('p:') === 0; }).each(function(d) {
     var cy = (d.y0 + d.y1) / 2;
@@ -321,7 +346,14 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
     .attr('text-anchor', function(d) { return d.x0 < width / 2 ? 'start' : 'end'; })
     .attr('fill', 'rgba(255,255,255,.85)').attr('font-size', function(d) { return d.id.indexOf('p:') === 0 ? projectFont : '11px'; })
     .style('font-size', function(d) { return d.id.indexOf('p:') === 0 ? projectFont : null; })
-    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(function(d) { return d.name; });
+    .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif")
+    .each(function(d) {
+      var ls = (d.person && twoLineOk(d)) ? personLines(d.full) : [d.name], t = d3.select(this);
+      if (ls.length < 2) { t.text(ls[0]); return; }
+      var x = t.attr('x');
+      t.attr('dy', null);
+      ls.forEach(function(line, i) { t.append('tspan').attr('x', x).attr('dy', i ? '1.15em' : '-0.2em').text(line); });
+    });
 
   node.each(function(d) {
     var el = this;

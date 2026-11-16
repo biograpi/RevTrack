@@ -1244,8 +1244,11 @@ body.has-footer .site-footer{display:flex}
             <div class="pm-ctl"><select id="pManager"><option value="">— არჩეული არ არის —</option></select></div>
           </div>
           <div class="pm-row">
-            <label>პროექტის მენეჯერი (PM) <span class="pm-info" tabindex="0" title="სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „პროექტ მენეჯერი“" onclick="pmInfo(this)">i</span></label>
-            <div class="pm-ctl"><select id="pPmUser"><option value="">— თავად ჩავწერ —</option></select><input id="pPmName" placeholder="სახელი გვარი"></div>
+            <label>პროექტის მენეჯერები <span class="pm-info" tabindex="0" title="სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „პროექტ მენეჯერი“. პროექტის განვითარების გრაფიკს გეგმავს ყველა დამატებული პროექტ მენეჯერი" onclick="pmInfo(this)">i</span></label>
+            <div class="pm-ctl pm-col">
+              <div id="pPmList"></div>
+              <button type="button" class="btn-secondary" style="font-size:12px;padding:4px 10px;align-self:flex-start" onclick="addPm()">+ პროექტ მენეჯერის დამატება</button>
+            </div>
           </div>
           <div class="pm-row">
             <label>საიტ მენეჯერები <span class="pm-info" tabindex="0" title="სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „საიტ მენეჯერი“. ოქმებს წერს ყველა მონიშნული საიტ მენეჯერი ნებისმიერ პროექტზე; ეს სია მხოლოდ ჩვენებისთვისაა (პროექტის ბარათზე და სქემაზე)" onclick="pmInfo(this)">i</span></label>
@@ -1459,6 +1462,10 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"პროექტის მენეჯერები": "Project managers",
+"+ პროექტ მენეჯერის დამატება": "+ Add a project manager",
+"პროექტ მენეჯერი არ არის დამატებული": "No project manager added",
+"სიაში ჩანს მხოლოდ ის User, ვისაც მომხმარებლების სიაში მონიშნული აქვს „პროექტ მენეჯერი“. პროექტის განვითარების გრაფიკს გეგმავს ყველა დამატებული პროექტ მენეჯერი": "Only a User marked as \\\"Project manager\\\" in the users list appears here. Every project manager added plans the project's development chart",
 "ძირითადი": "Main",
 "პერსონალი": "People",
 "კონტრაქტორები და ფაილები": "Contractors and files",
@@ -2359,7 +2366,7 @@ let myMarkProjects = { site: [], pm: [] };   // names of the projects where this
 function computeMyMarkProjects(projects) {
   const uid = currentUser && currentUser.uid; if (!uid) return;
   const names = list => sortProjectsByName(list).map(p => p.name || '').filter(Boolean);
-  myMarkProjects = { site: names(projects.filter(p => projectSiteManagerEntries(p).some(e => e.uid === uid))), pm: names(projects.filter(p => p.pmUid === uid)) };
+  myMarkProjects = { site: names(projects.filter(p => projectSiteManagerEntries(p).some(e => e.uid === uid))), pm: names(projects.filter(p => projectPmEntries(p).some(e => e.uid === uid))) };
 }
 function userMarks() {   // [{ text, title }]: the marks of the signed-in person, for a User account only
   if (currentGlobalRole !== 'viewer') return [];
@@ -2683,6 +2690,18 @@ function projectSiteManagerEntries(p) {
   if (p.siteMgrUid || (p.siteMgrName || '').trim()) return [{ uid: p.siteMgrUid || null, name: (p.siteMgrName || '').trim() }];
   return [];
 }
+// A project's PROJECT MANAGERS as entries [{ uid, name }]: the list saved with the project (pms) or — for a project saved before there was a list — the one PM of the
+// old fields (pmUid / pmName). Every one of them plans the project (its development chart).
+function projectPmEntries(p) {
+  if (Array.isArray(p.pms)) return p.pms;
+  if (p.pmUid || (p.pmName || '').trim()) return [{ uid: p.pmUid || null, name: (p.pmName || '').trim() }];
+  return [];
+}
+// Their names as shown (a registered user by the current name, a typed one as typed; each name once). [] = none.
+function projectPms(p) {
+  const names = projectPmEntries(p).map(e => e.uid ? (allUsers[e.uid]?.name || allUsers[e.uid]?.email || (e.name || '').trim() || 'უცნობი') : (e.name || '').trim()).filter(Boolean);
+  return [...new Set(names)];
+}
 // Their names as shown: a registered user by the current name, a typed one as typed; each name once. [] = none.
 function projectSiteManagers(p) {
   const names = projectSiteManagerEntries(p).map(e => e.uid ? (allUsers[e.uid]?.name || allUsers[e.uid]?.email || (e.name || '').trim() || 'უცნობი') : (e.name || '').trim()).filter(Boolean);
@@ -2721,9 +2740,7 @@ function computeMaxColumnNodeCount(projects) {
     if (sankeyManagerTypes.dm) {
       managers.add(p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ');
     }
-    if (sankeyManagerTypes.pm) {
-      pms.add(p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'));
-    }
+    if (sankeyManagerTypes.pm) { const pn = projectPms(p); (pn.length ? pn : ['— არავინ']).forEach(n => pms.add(n)); }
     if (sankeyManagerTypes.site) { const sm = projectSiteManagers(p); (sm.length ? sm : ['— არავინ']).forEach(n => sites.add(n)); }
     if (sankeyManagerTypes.qc) qcs.add(p.qcUid ? (allUsers[p.qcUid]?.name || allUsers[p.qcUid]?.email || 'უცნობი') : '— არავინ');
     if (sankeyDisciplines.arch) contractors.add((p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის');
@@ -2975,11 +2992,15 @@ function renderReviewerManagerChart(projects, opts) {
     // whatever the last visible stage before it turns out to be — reviewer
     // normally, but contractors (or the direct link) when reviewer itself
     // is hidden.
-    let pmId = null, pmColor = null;
+    // A project can have several PROJECT MANAGERS: each one is a node of its own and the project's value is shared equally between them (one, or none = the "— არავინ" node: as before).
+    let pmCol = null;
     if (sankeyManagerTypes.pm) {
-      const pmFullName = p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ');
-      pmColor = colorFor(pmColorByName, pmFullName, SANKEY_PM_PALETTE);
-      pmId = addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor, pmFullName);
+      pmCol = [];
+      const pmNames = projectPms(p);
+      for (const pmFullName of (pmNames.length ? pmNames : ['— არავინ'])) {
+        const pmColor = colorFor(pmColorByName, pmFullName, SANKEY_PM_PALETTE);
+        pmCol.push({ id: addNode(`pm:${pmFullName}`, nameWithLastInitial(pmFullName), pmColor, pmFullName), color: pmColor });
+      }
     }
     // The site manager is the last column, after the project managers. It follows the PM when the PM column is shown, otherwise it
     // takes the PM's place (reviewers / contractors lead straight to it).
@@ -3001,7 +3022,7 @@ function renderReviewerManagerChart(projects, opts) {
       const qcColor = colorFor(qcColorByName, qcFullName, SANKEY_QC_PALETTE);
       qcCol = [{ id: addNode(`qc:${qcFullName}`, nameWithLastInitial(qcFullName), qcColor, qcFullName), color: qcColor }];
     }
-    const tailCols = [pmId ? [{ id: pmId, color: pmColor }] : null, siteTargets.length ? siteTargets : null, qcCol].filter(Boolean);
+    const tailCols = [pmCol, siteTargets.length ? siteTargets : null, qcCol].filter(Boolean);
     const tails = tailCols[0] || [];   // where the reviewers lead: the first column that is shown after them
     // What contractors (or the direct link) should point to: the reviewer
     // if it's shown, otherwise the last manager column (PM, else site managers), otherwise nothing further.
@@ -3390,7 +3411,7 @@ function buildForceData(projects, st) {
     nodes.set(`p:${p.id}`, { id: `p:${p.id}`, type: 'project', projectId: p.id, name: projLabel(p.name), color: p.color || DEFAULT_CARD_COLOR, logo: p.logo || '', count: 0, r: FG_PROJECT_R });
     if (st.reviewer) attach(p, 'r', 'r', p.createdByName || 'ადმინი', true);
     if (st.dm) attach(p, 'm', 'm', p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '', true);
-    if (st.pm) attach(p, 'pm', 'pm', p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : (p.pmName || ''), true);
+    if (st.pm) projectPms(p).forEach(n => attach(p, 'pm', 'pm', n, true));
     if (st.site) projectSiteManagers(p).forEach(n => attach(p, 'sm', 'sm', n, true));
     if (st.qc) attach(p, 'qc', 'qc', p.qcUid ? (allUsers[p.qcUid]?.name || allUsers[p.qcUid]?.email || 'უცნობი') : '', true);   // the quality inspector of the project (chosen in the project)
     if (st.arch) attach(p, 'c', 'arch', (p.contractors || {}).arch, false);
@@ -3505,7 +3526,8 @@ window.downloadSankeyAsHtml = function() {
     gba: p.gba || 1000,
     reviewer: p.createdByName || 'ადმინი',
     manager: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
-    pm: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
+    pm: projectPms(p).join(', ') || '— არავინ',   // (the old single field)
+    pms: projectPms(p),                           // [] = none set (the page shows "— არავინ")
     sites: projectSiteManagers(p),   // [] = none set (the page shows "— არავინ")
     logo: p.logo || '',              // the project's own logo (a data URL); without one the page shows the Biograpi spiral
     arch: (p.contractors?.arch||'').trim() || '— არქიტექტორი არ არის',
@@ -3629,10 +3651,13 @@ function render() {
 
     // PM built up front (if shown) so it's available as a fallback target
     // when reviewer is hidden.
-    var pmId = null, pmColor = null;
+    // a project can have several project managers: one node each, the project's value shared equally between them (one, or none = "— არავინ": exactly as before)
+    var pmTargets = [];
     if (showPm) {
-      pmColor = colorFor(pmColors, p.pm, PM_PALETTE);
-      pmId = addNode('pm:' + p.pm, withInitial(p.pm), pmColor, p.pm);
+      (p.pms && p.pms.length ? p.pms : [p.pm || '— არავინ']).forEach(function(pmName) {
+        var pmColor = colorFor(pmColors, pmName, PM_PALETTE);
+        pmTargets.push({ id: addNode('pm:' + pmName, withInitial(pmName), pmColor, pmName), color: pmColor });
+      });
     }
     // the site managers: the last column, after the project managers (it takes the PM's place when the PM column is off). A project can have
     // several: one node each, and the project's value is shared equally between them (one, or none = "— არავინ": exactly as before).
@@ -3643,9 +3668,9 @@ function render() {
         siteTargets.push({ id: addNode('sm:' + siteName, withInitial(siteName), siteColor, siteName), color: siteColor });
       });
     }
-    var tails = pmId ? [{ id: pmId, color: pmColor }] : siteTargets;
+    var tails = pmTargets.length ? pmTargets : siteTargets;
     var after = showReviewer ? [{ id: reviewerId, color: reviewerColor }] : tails;
-    var linkTo = function(sourceId, sourceColor, targets) { targets.forEach(function(t) { links.push({ source: sourceId, target: t.id, value: value / targets.length, pid: p.id, c1: sourceColor, c2: t.color }); }); };
+    var linkTo = function(sourceId, sourceColor, targets, sources) { targets.forEach(function(t) { links.push({ source: sourceId, target: t.id, value: value / (targets.length * (sources || 1)), pid: p.id, c1: sourceColor, c2: t.color }); }); };
 
     if (showContractors) {
       if (showArch) {
@@ -3689,7 +3714,7 @@ function render() {
     if (showReviewer && tails.length) {
       linkTo(reviewerId, reviewerColor, tails);
     }
-    if (pmId && siteTargets.length) linkTo(pmId, pmColor, siteTargets);
+    if (pmTargets.length && siteTargets.length) pmTargets.forEach(function(src) { linkTo(src.id, src.color, siteTargets, pmTargets.length); });
   });
 
   // Height sized to the busiest column, same spirit as the live app.
@@ -4774,7 +4799,7 @@ const devAddDays = (d, n) => { const r = new Date(d.getFullYear(), d.getMonth(),
 const devState = { pid: null, project: null, canEdit: false, isAdmin: false, exists: false, server: [], log: [], updatedAt: null, draft: [], todayOverride: null, dirty: false, popIdx: -1, cmId: null };
 const devTodayNow = () => devState.todayOverride || devTodayLocal();
 const canReadDevelopment = () => currentGlobalRole !== 'contractor' || isAdminLike();     // everybody but contractors
-const isProjectPmOf = project => !!project && !!currentUser && project.pmUid === currentUser.uid && currentGlobalRole === 'viewer' && currentUserIsProjectManager === true;
+const isProjectPmOf = project => !!project && !!currentUser && projectPmEntries(project).some(e => e.uid === currentUser.uid) && currentGlobalRole === 'viewer' && currentUserIsProjectManager === true;
 const canEditDevelopment = project => isAdminLike() || isProjectPmOf(project);
 const devClone = o => JSON.parse(JSON.stringify(o));
 const devNewId = () => 's' + Math.random().toString(36).slice(2, 9);
@@ -5162,7 +5187,7 @@ window.showProjectSections = async function(pid) {
   try { await loadAllUsers(); } catch (e) { unload(); showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
   const managerName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email) : null;
   // the project manager: the chosen account (its current name), or, for an older project, the name that was typed
-  const pmName = p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName || '').trim() || null);
+  const pmName = projectPms(p).join(', ') || null;   // (several project managers: all the names)
 
   const brandColor = p.color || DEFAULT_CARD_COLOR;
   const cardStyle = brandColor ? `style="--card-color:${brandColor};border-color:${brandColor}"` : '';
@@ -8759,6 +8784,7 @@ window.clearProjectLogo = () => { pendingProjectLogo = ''; renderProjectLogoPrev
 
 // ── The site managers in the project form: rows, each a registered user marked as a site manager (one person once) or a typed name. ──
 let pendingSiteManagers = [];   // [{ uid ('' = typed), name }]
+let pendingPms = [];             // the project managers of the form: [{ uid ('' = typed), name }]
 function renderSiteManagerRows() {
   const box = document.getElementById('pSiteList');
   const chosen = pendingSiteManagers.map(r => r.uid).filter(Boolean);
@@ -8777,6 +8803,27 @@ window.setSiteManagerUser = (i, uid) => {
   if (!uid) { const box = document.querySelectorAll('#pSiteList .rp-work input')[i]; if (box) box.focus(); }   // "I'll type it myself": the cursor goes straight into the box
 };
 window.setSiteManagerName = (i, v) => { if (pendingSiteManagers[i]) pendingSiteManagers[i].name = v; };
+// The project managers in the project form: a row each (a registered user or a typed name), "+ add", ✕ to remove.
+function renderPmRows() {
+  const box = document.getElementById('pPmList');
+  const chosen = pendingPms.map(r => r.uid).filter(Boolean);
+  const pool = Object.values(allUsers).filter(u => u.role === 'viewer' && u.approved && (u.projectManager || chosen.includes(u.id)))   // (a chosen one that lost the mark stays visible, flagged)
+    .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
+  box.innerHTML = pendingPms.map((r, i) => `<div class="rp-work">
+      <select onchange="setPmUser(${i}, this.value)"><option value="">— თავად ჩავწერ —</option>${pool.filter(u => u.id === r.uid || !chosen.includes(u.id)).map(u => `<option value="${u.id}" ${u.id === r.uid ? 'selected' : ''}>${esc(u.name || u.email)}${u.projectManager ? '' : ' (არ არის მონიშნული პროექტ მენეჯერად)'}</option>`).join('')}</select>
+      <input placeholder="სახელი გვარი" value="${esc(r.uid ? '' : r.name)}" ${r.uid ? 'disabled' : ''} oninput="setPmName(${i}, this.value)">
+      <button type="button" class="rp-x" title="წაშლა" onclick="removePm(${i})">✕</button>
+    </div>`).join('') || '<div class="auth-hint" style="margin-bottom:6px">პროექტ მენეჯერი არ არის დამატებული</div>';
+}
+window.setPmUser = (i, uid) => {
+  const r = pendingPms[i]; if (!r) return;
+  r.uid = uid || ''; if (uid) r.name = '';
+  renderPmRows();
+  if (!uid) { const box = document.querySelectorAll('#pPmList .rp-work input')[i]; if (box) box.focus(); }   // "I'll type it myself": the cursor goes straight into the box
+};
+window.setPmName = (i, v) => { if (pendingPms[i]) pendingPms[i].name = v; };
+window.addPm = () => { pendingPms.push({ uid: '', name: '' }); renderPmRows(); };
+window.removePm = i => { pendingPms.splice(i, 1); renderPmRows(); };
 window.addSiteManager = () => { pendingSiteManagers.push({ uid: '', name: '' }); renderSiteManagerRows(); };
 window.removeSiteManager = i => { pendingSiteManagers.splice(i, 1); renderSiteManagerRows(); };
 
@@ -8889,18 +8936,10 @@ async function openProjectModal(pid) {
   document.getElementById('pManager').innerHTML = '<option value="">— არჩეული არ არის —</option>' +
     managers.map(m => `<option value="${m.id}" ${pd.managerUid===m.id?'selected':''}>${esc(m.name||m.email)}</option>`).join('');
   document.getElementById('pGba').value = pd.gba != null ? pd.gba : 1000;
-  // The PM: only the accounts marked "project manager" in the users list are offered — and the one already chosen, so an earlier choice never disappears.
-  const pmCandidates = Object.values(allUsers).filter(u => u.role==='viewer' && u.approved && (u.projectManager || u.id === pd.pmUid))
-    .sort((a, b) => (a.name || a.email || '').localeCompare(b.name || b.email || ''));
-  const pmKnown = pmCandidates.some(u => u.id === pd.pmUid);   // a chosen user who no longer exists / is no longer a User is shown as a typed name
-  document.getElementById('pPmUser').innerHTML = '<option value="">— თავად ჩავწერ —</option>' +
-    pmCandidates.map(u => `<option value="${u.id}" ${pmKnown && pd.pmUid===u.id?'selected':''}>${esc(u.name||u.email)}${u.projectManager?'':' (არ არის მონიშნული პროექტ მენეჯერად)'}</option>`).join('');
-  document.getElementById('pPmName').value = pmKnown ? '' : (pd.pmName || '');
-  document.getElementById('pPmName').disabled = pmKnown;
-  document.getElementById('pPmUser').onchange = e => {
-    document.getElementById('pPmName').disabled = !!e.target.value;
-    if (e.target.value) document.getElementById('pPmName').value = '';
-  };
+  // The PROJECT MANAGERS: a list of rows, each a registered user (only the accounts marked "project manager" in the users list are offered, and the ones already chosen) or a typed name.
+  // A registered entry whose user no longer exists is kept as a typed name.
+  pendingPms = projectPmEntries(pd).map(e => (e.uid && allUsers[e.uid]) ? { uid: e.uid, name: '' } : { uid: '', name: (e.name || '').trim() });
+  renderPmRows();
   // Site managers: a list of rows, each a registered user (only accounts marked as site managers in the users list are offered) or a typed name.
   // A registered entry whose user no longer exists is kept as a typed name.
   // The quality inspector of the project: one of the registered users (the ones marked as quality inspectors first); the one already chosen is always in the list.
@@ -9065,7 +9104,8 @@ async function syncPublicProject(pid) {
       gba: p.gba != null ? p.gba : 1000,
       createdByName: p.createdByName || 'ადმინი',
       managerName: p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email || 'უცნობი') : '— არავინ',
-      pmName: p.pmUid ? (allUsers[p.pmUid]?.name || allUsers[p.pmUid]?.email || 'უცნობი') : ((p.pmName||'').trim() || '— არავინ'),
+      pmName: projectPms(p).join(', ') || '— არავინ',   // (the old single field: all the names in one line, for an old public page)
+      pmNames: projectPms(p),                           // the public page cannot look users up: it gets the names
       siteManagerNames: projectSiteManagers(p),   // the public page cannot look users up: it gets the names
       logo: p.logo || '',                          // the project's own logo (a data URL), shown in its square on the public diagram
       mepReviewer: projectMepReviewers(p).legacy, // the old single MEP reviewer text
@@ -9104,8 +9144,14 @@ async function saveProjectData(pid) {
     struct: document.getElementById('cStruct').value.trim(),
     extra: pendingExtraContractors.filter(e => (e.name||'').trim()).map(e => ({label:(e.label||'').trim()||'სხვა', name:e.name.trim()}))
   };
-  const pmUid = document.getElementById('pPmUser').value || null;
-  const pmName = pmUid ? (allUsers[pmUid]?.name || allUsers[pmUid]?.email || '') : document.getElementById('pPmName').value.trim();
+  // The project managers: the rows of the form; empty rows and a person listed twice are dropped. pmUids (just the registered ones) is what the database rules look at (the right
+  // to plan the project); the old single fields are cleared, pmName keeps all the names in one line for whatever still reads it.
+  const pms = [], seenPmUid = new Set(), seenPmName = new Set();
+  for (const r of pendingPms) {
+    if (r.uid) { if (seenPmUid.has(r.uid)) continue; seenPmUid.add(r.uid); pms.push({ uid: r.uid, name: allUsers[r.uid]?.name || allUsers[r.uid]?.email || '' }); }
+    else { const nm = (r.name || '').trim(); if (!nm || seenPmName.has(nm)) continue; seenPmName.add(nm); pms.push({ uid: null, name: nm }); }
+  }
+  const pmUids = pms.filter(e => e.uid).map(e => e.uid);
   // The site managers: the rows of the form; empty rows and a person listed twice are dropped. siteMgrUids (just the registered ones) is what the
   // database rules look at; the old single fields are cleared (a project saved before the list had them).
   const siteManagers = [], seenSiteUid = new Set(), seenSiteName = new Set();
@@ -9126,7 +9172,7 @@ async function saveProjectData(pid) {
     color: pendingColorCleared ? null : document.getElementById('pColor').value,
     managerUid: document.getElementById('pManager').value || null,
     gba: Number.isFinite(gba) && gba >= 0 ? gba : 1000,
-    pmUid, pmName,
+    pms, pmUids, pmUid: null, pmName: pms.map(e => e.name).filter(Boolean).join(', '),
     siteManagers, siteMgrUids, siteMgrUid: null, siteMgrName: '',
     qcUid, qcName: qcUid ? (allUsers[qcUid]?.name || allUsers[qcUid]?.email || '') : '',
     ...reviewerFields('mp', 'pMpReviewerUser', 'pMpReviewerName'),
