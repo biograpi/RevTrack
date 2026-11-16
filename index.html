@@ -1522,6 +1522,9 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"ინტერიერის საკითხები": "Interior issues",
+"ინტერიერის დიზაინერები": "Interior designers",
+"ინტერიერი": "Interior",
 "მშენებლობის კონტრაქტორები": "Construction contractors",
 "ინფორმაცია არ არის დამატებული": "No information added",
 "ინფორმაცია ჯერ არ არის დამატებული.": "No information has been added yet.",
@@ -2425,11 +2428,11 @@ function isAdminLike() {
 // The signed-in Firebase Auth user (null when logged out).
 let currentUser = null;
 let currentUserName = ''; // real name from Firestore users/{uid}.name — Auth displayName is never set, so don't rely on it
-let currentUserCanOpenDmIssues = false; // User-role accounts can be individually granted DM issue-creation
-function canOpenDmAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenDmIssues === true; }
+let currentUserCanOpenDmIssues = false; // User-role accounts can be individually granted issue-creation in the INTERIOR section (the tick-box "ინტერიერის დიზაინერი"; the field keeps its old name)
+function canOpenInteriorAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenDmIssues === true; }   // an interior designer: opens issues in the INTERIOR section (not in the DM section any more)
 let currentUserCanOpenMepIssues = false; // ...and, separately, issue-creation in the MEP review section
 function canOpenMepAsUser() { return currentGlobalRole === 'viewer' && currentUserCanOpenMepIssues === true; }
-// A User-role account's individually granted rights: may it open issues in this section? (DM: 'internal', MEP: 'mep')
+// A User-role account's individually granted rights: may it open issues in this section? (interior designers: 'interior', MEP: 'mep'; the DM section 'internal' is for the design managers)
 // The weekly site reports ("ოქმები") of a project are written by an admin (the super reviewer included) and by that project's
 // SITE MANAGER: a User account an admin has marked as a site manager (users/{uid}.siteManager — the tick-box in the users list) AND
 // who is one of the project's site managers (the list siteManagers / siteMgrUids). `project` = the project's data.
@@ -2476,7 +2479,7 @@ function renderHeaderUser(nameId, roleBadgeId) {
 // A QUALITY report can no longer be changed after 24 hours, but anybody who may write reports on the project can still add "defect corrected" entries to its issues.
 const canAddReportFix = (r, project) => reportKind(r) === 'quality' && canWriteQualityReportsOn(project);
 const canReadReports = () => currentGlobalRole !== 'contractor' || isAdminLike(); // everybody but contractors
-function canOpenInSectionAsUser(section) { return (section === 'internal' && canOpenDmAsUser()) || (section === 'mep' && canOpenMepAsUser()); }
+function canOpenInSectionAsUser(section) { return (section === 'interior' && canOpenInteriorAsUser()) || (section === 'mep' && canOpenMepAsUser()); }
 let isRegistering = false; // guards onAuthStateChanged from racing with the registration flow
 // Role used for permission checks while a project is open. Right now it always equals currentGlobalRole (see openProject).
 let currentRole = 'viewer';
@@ -2486,17 +2489,19 @@ let currentGlobalRole = 'contractor';
 let currentProjectId = null;
 // That project's Firestore document (name, code, contractors, members, ifcFiles, ...) plus its id.
 let currentProjectData = null;
-let currentSection = null; // 'review' | 'mep' | 'internal'
+let currentSection = null; // 'review' | 'mep' | 'internal' (the design managers' DM section) | 'interior' (the interior designers' section)
 let sectionsViewProjectId = null; // set while viewing a project's section cards (before picking one)
 let mainListView = 'chart'; // 'grid' | 'chart' — which view shows on the main projects list; defaults to the chart (grid for contractors)
 let mainListViewDefaulted = false; // set once the role-based initial default has been applied
 let unsubActivityChart = null; // listeners for the project-level activity chart (see showProjectSections)
 let activityChartInstance = null;
-const SECTION_LABEL = { review: 'რევიზია', mep: 'MEP რევიზია', internal: 'DM საკითხები' };
+const SECTION_LABEL = { review: 'რევიზია', mep: 'MEP რევიზია', internal: 'DM საკითხები', interior: 'ინტერიერის საკითხები' };
 // Sections whose issues can be hidden from contractors ('biograpi' visibility):
-// the internal DM section and the MEP review section. Contractors only ever
+// the internal DM section, the interior section and the MEP review section. Contractors only ever
 // get 'everyone'; everyone else also gets the hidden ones in these sections.
-const sectionCanHide = sec => sec === 'internal' || sec === 'mep';
+const sectionCanHide = sec => sec === 'internal' || sec === 'interior' || sec === 'mep';
+// The DM section and the interior section work the same way: the person responsible is free text, the number gets a suffix, the first choice of visibility is "biograpi".
+const isInternalLike = sec => sec === 'internal' || sec === 'interior';
 const visibilityStatesFor = sec => (sectionCanHide(sec) && currentGlobalRole !== 'contractor') ? ['biograpi','everyone'] : ['everyone'];
 let currentProjectDesignManagers = []; // [{uid, name}] — cached names of design managers assigned to the open project
 // The issues of the CURRENT project section, keyed by issue id. Kept live by subscribeIssues().
@@ -5319,6 +5324,13 @@ window.showProjectSections = async function(pid) {
         <div class="project-card-creator">დიზაინ მენეჯერი: ${managerName?esc(managerName):'—'}</div>
       </div>
     </div>
+    <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','interior')">
+      <div class="project-card-count" id="pcount-interior"></div>
+      <div class="project-card-body">
+        <div class="project-card-name">ინტერიერის საკითხები</div>
+        <div class="project-card-creator">ინტერიერის დიზაინერები</div>
+      </div>
+    </div>
     <div class="project-card project-card-filled" ${cardStyle} onclick="openProject('${pid}','mep')">
       <div class="project-card-count" id="pcount-mep"></div>
       <div class="project-card-body">
@@ -5365,7 +5377,7 @@ window.showProjectSections = async function(pid) {
   if (canReadBc()) getDoc(doc(db,'projects',pid,'buildContractors','main')).then(sn => bcFillCardLine(sn.exists() ? bcCleanDirections(sn.data().directions) : [])).catch(() => { const e = document.getElementById('pbc-line'); if (e) e.textContent = ''; });
   if (canReadReports()) getCountFromServer(collection(db,'projects',pid,'reports')).then(c => { const el = document.getElementById('pcount-reports'); if (el) el.textContent = c.data().count; }).catch(() => { const el = document.getElementById('pcount-reports'); if (el) el.textContent = '0'; });
 
-  ['review','internal','mep'].forEach(async sec => {
+  ['review','internal','interior','mep'].forEach(async sec => {
     const el = document.getElementById(`pcount-${sec}`);
     if (!el) return;
     const visStates = visibilityStatesFor(sec);
@@ -5608,7 +5620,7 @@ function setupActivityChart(pid, reviewerName, managerName) {
   }
 
   const unsubFns = [];
-  for (const sec of ['review','mep','internal']) {
+  for (const sec of ['review','mep','internal','interior']) {
     const visStates = visibilityStatesFor(sec);
     const q = query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates));
     const unsub = onSnapshot(q, snap => {
@@ -5666,12 +5678,12 @@ function bumpCurve(times, startTime, endTime) {
   }
   return points;
 }
-const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mp', 'review:elec', 'review:mep', 'review:other', 'internal', 'mep', 'comments', 'report:weekly', 'report:daily', 'report:quality']; // order inside a person's group
+const ROW_SLOTS = ['review:arch', 'review:struct', 'review:mp', 'review:elec', 'review:mep', 'review:other', 'internal', 'interior', 'mep', 'comments', 'report:weekly', 'report:daily', 'report:quality']; // order inside a person's group
 const ROW_SUB = { // the words shown next to the person's name (each becomes its own translatable piece)
   'review:arch': ['რევიზია', 'არქიტექტურა'], 'review:struct': ['რევიზია', 'კონსტრუქცია'],
   'review:mp': ['რევიზია', 'Mechanical & Plumbing'], 'review:elec': ['რევიზია', 'Electrical'],
   'review:mep': ['რევიზია', 'MEP (ძველი)'], 'review:other': ['რევიზია', 'სხვა'],
-  internal: ['DM'], mep: ['MEP რევიზია'], comments: ['კომენტარები'],
+  internal: ['DM'], interior: ['ინტერიერი'], mep: ['MEP რევიზია'], comments: ['კომენტარები'],
   'report:weekly': ['ოქმი', 'ყოველკვირეული'], 'report:daily': ['ოქმი', 'ყოველდღიური'], 'report:quality': ['ოქმი', 'ხარისხის'],   // the weekly, the daily and the quality reports a person wrote
 };
 // The data of the "rows" view (renderActivityRows), finer than the line chart: every person gets a SEPARATE line for
@@ -5752,6 +5764,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   }
   const reviewPoints = buildSectionLine('review');
   const internalPoints = buildSectionLine('internal');
+  const interiorPoints = buildSectionLine('interior');
   const mepPoints = buildSectionLine('mep');
 
   // Turns a sparse, step-like cumulative series (jumps instantly at each
@@ -5774,6 +5787,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   const totalRenderPoints = buildStepRenderLine(totalPoints);
   const reviewRenderPoints = buildStepRenderLine(reviewPoints);
   const internalRenderPoints = buildStepRenderLine(internalPoints);
+  const interiorRenderPoints = buildStepRenderLine(interiorPoints);
   const mepRenderPoints = buildStepRenderLine(mepPoints);
 
   // Step function lookup: how many issues existed in total as of time t.
@@ -5798,14 +5812,17 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   // (the bump curves themselves are made by bumpCurve(), defined above this function)
   const perCreatorReviewPoints = {};
   const perCreatorInternalPoints = {};
+  const perCreatorInteriorPoints = {};
   const perCreatorMepPoints = {};
   for (const name of creators) {
     const events = activityEventsByCreator[name];
     const reviewTimes = events.filter(e => e.section === 'review').map(e => e.time);
     const internalTimes = events.filter(e => e.section === 'internal').map(e => e.time);
+    const interiorTimes = events.filter(e => e.section === 'interior').map(e => e.time);
     const mepTimes = events.filter(e => e.section === 'mep').map(e => e.time);
     if (reviewTimes.length) perCreatorReviewPoints[name] = buildPlainBumpCurve(reviewTimes);
     if (internalTimes.length) perCreatorInternalPoints[name] = buildPlainBumpCurve(internalTimes);
+    if (interiorTimes.length) perCreatorInteriorPoints[name] = buildPlainBumpCurve(interiorTimes);
     if (mepTimes.length) perCreatorMepPoints[name] = buildPlainBumpCurve(mepTimes);
   }
 
@@ -5878,6 +5895,17 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       pointRadius: 0,
       hidden: true,
     }] : []),
+    ...(interiorRenderPoints.length ? [{
+      label: 'ინტერიერის საკითხები',
+      data: interiorRenderPoints,
+      borderColor: '#f59e0b',
+      backgroundColor: 'transparent',
+      borderWidth: 1.75,
+      tension: 0,
+      fill: false,
+      pointRadius: 0,
+      hidden: true,
+    }] : []),
     ...(mepRenderPoints.length ? [{
       label: 'MEP რევიზია',
       data: mepRenderPoints,
@@ -5906,6 +5934,7 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
       const sets = [];
       if (perCreatorReviewPoints[name]) sets.push({ ...base, label: firstName(name), data: perCreatorReviewPoints[name] });
       if (perCreatorInternalPoints[name]) sets.push({ ...base, label: `${firstName(name)} (DM)`, data: perCreatorInternalPoints[name] });
+      if (perCreatorInteriorPoints[name]) sets.push({ ...base, label: `${firstName(name)} (ინტერიერი)`, data: perCreatorInteriorPoints[name] });
       // MEP curves are never filled, even for the project's own reviewer/manager.
       if (perCreatorMepPoints[name]) sets.push({ ...base, fill: false, backgroundColor: 'transparent', label: `${firstName(name)} (MEP)`, data: perCreatorMepPoints[name] });
       // Report curves: never filled; long dashes for the weekly reports, short ones for the daily reports, dash-and-dot for the quality reports.
@@ -6515,7 +6544,7 @@ window.downloadActivityWallpaper = async function() {
 // so the waves come out the same).
 async function loadProjectActivityRaw(project) {
   const issues = [];
-  for (const sec of ['review', 'mep', 'internal']) {
+  for (const sec of ['review', 'mep', 'internal', 'interior']) {
     const snap = await getDocs(query(collection(db,'projects',project.id,'issues'), where('section','==',sec), where('visibility','in',visibilityStatesFor(sec))));
     snap.forEach(d => {
       const x = d.data();
@@ -6751,9 +6780,8 @@ async function openProject(pid, section) {
   const myRole = currentGlobalRole;
   currentRole = myRole;
 
-  // Review section: only reviewer/admin may open issues. DM (internal) section: also design managers, and "User"
-  // accounts individually granted the DM permission. MEP section: reviewer/admin, and "User" accounts individually
-  // granted the MEP permission.
+  // Review section: only reviewer/admin may open issues. DM (internal) section: also design managers. Interior section: also "User" accounts
+  // individually granted the interior designer permission. MEP section: reviewer/admin, and "User" accounts individually granted the MEP permission.
   const canEdit = myRole==='admin'||myRole==='reviewer'||(myRole==='design_manager'&&currentSection==='internal')||canOpenInSectionAsUser(currentSection);
   const canComment = true; // any real (registered, approved) role can comment
   const isMyOwnProject = currentProjectData.createdBy === currentUser.uid;
@@ -6929,7 +6957,7 @@ document.getElementById('btnExportExcel').addEventListener('click', async () => 
     const xlsxBuffer = await wb.xlsx.writeBuffer();
     const safeName = (currentProjectData?.name || 'პროექტი').replace(/[\\\/*?:[\]]/g,'').slice(0,30);
     const dateStr = new Date().toISOString().slice(0,10);
-    const sectionTag = currentSection === 'internal' ? 'DM' : (currentSection === 'mep' ? 'MEP' : 'rev');
+    const sectionTag = currentSection === 'internal' ? 'DM' : (currentSection === 'interior' ? 'INT' : (currentSection === 'mep' ? 'MEP' : 'rev'));
     const baseName = `${dateStr}_${safeName}-${sectionTag}`;
     zip.file(`${baseName}.xlsx`, xlsxBuffer);
 
@@ -6995,7 +7023,7 @@ function render() {
   }
   const canCreateHere = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||canOpenInSectionAsUser(currentSection);
   const canEditIssue = issue => isAdminLike() || issue.createdBy===currentUser?.uid;
-  const canDeleteIssue = issue => isAdminLike() || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'||canOpenDmAsUser()||canOpenMepAsUser()));
+  const canDeleteIssue = issue => isAdminLike() || (issue.createdBy===currentUser?.uid && (currentRole==='reviewer'||currentRole==='design_manager'||canOpenInteriorAsUser()||canOpenMepAsUser()));
   const canDuplicate = currentRole==='admin'||currentRole==='reviewer'||(currentRole==='design_manager'&&currentSection==='internal')||canOpenInSectionAsUser(currentSection);
   const showUnread = UNREAD_ROLES.includes(currentRole);
   const ph = icon => `<button class="icon-btn" style="visibility:hidden;pointer-events:none" tabindex="-1">${icon}</button>`;
@@ -7099,7 +7127,7 @@ function formatIssueNum(seqMajor, seqMinor) {
   const code = currentProjectData?.code || '???';
   const major = String(seqMajor).padStart(3,'0');
   const base = seqMinor ? `${code}-${major}.${seqMinor}` : `${code}-${major}`;
-  return currentSection === 'internal' ? `${base}-DM` : (currentSection === 'mep' ? `${base}-MEP` : base);
+  return currentSection === 'internal' ? `${base}-DM` : (currentSection === 'interior' ? `${base}-INT` : (currentSection === 'mep' ? `${base}-MEP` : base));
 }
 // Parses manual entry like "3" or "2.1" -> {major, minor} (minor 0 = none). Returns null if not a valid positive number pattern.
 function parseManualSeq(text) {
@@ -7113,10 +7141,10 @@ function parseManualSeq(text) {
 }
 
 // ── CLOSE PERMISSION: an admin (the super reviewer included — they have an admin's rights everywhere), or whoever opened the
-// issue: a reviewer, a design manager, or a User with the DM / MEP opening right. The same as the database rules for editing. ──
+// issue: a reviewer, a design manager, or a User with the interior / MEP opening right. The same as the database rules for editing. ──
 function canCloseIssue(issue) {
   if (isAdminLike()) return true;
-  const mayOpenIssues = currentRole === 'reviewer' || currentRole === 'design_manager' || canOpenDmAsUser() || canOpenMepAsUser();
+  const mayOpenIssues = currentRole === 'reviewer' || currentRole === 'design_manager' || canOpenInteriorAsUser() || canOpenMepAsUser();
   return mayOpenIssues && (!issue || issue.createdBy === currentUser?.uid);
 }
 // Greys out the "closed" choice in the form for people who may not close this issue.
@@ -7161,7 +7189,7 @@ function renderPersonSelect(selected, preferDisc = document.getElementById('fDis
   sel.innerHTML = html;
 }
 const PERSON_MANUAL = '__manual__', PERSON_MAX = 100;
-const personManual = () => currentSection !== 'internal' && document.getElementById('fPerson').value === PERSON_MANUAL;
+const personManual = () => !isInternalLike(currentSection) && document.getElementById('fPerson').value === PERSON_MANUAL;
 // The names that were typed by hand in this project's issues of this section (not the project's own performers), the most used first: offered while a name is typed, so one person is not written two ways.
 function fillPersonSuggestions() {
   const inList = new Set(contractorOptions().map(o => o.value)), counts = new Map();
@@ -7171,7 +7199,7 @@ function fillPersonSuggestions() {
 // The Responsible as it will be saved: the chosen performer, or (the "type by hand" choice) the typed text: one line, at most 100 letters; the internal section is free text as before.
 function personFieldValue() {
   const raw = document.getElementById('fPersonText').value;
-  if (currentSection === 'internal') return raw.trim();
+  if (isInternalLike(currentSection)) return raw.trim();
   if (personManual()) return raw.replace(/\s+/g, ' ').trim().slice(0, PERSON_MAX);
   return document.getElementById('fPerson').value.trim();
 }
@@ -7180,7 +7208,7 @@ function personFieldValue() {
 function setPersonField(selected) {
   const sel = document.getElementById('fPerson');
   const txt = document.getElementById('fPersonText');
-  if (currentSection === 'internal') {
+  if (isInternalLike(currentSection)) {
     sel.style.display = 'none';
     txt.style.display = 'block';
     txt.value = selected || '';
@@ -7198,7 +7226,7 @@ function setPersonField(selected) {
 // Choosing a discipline suggests the matching contractor as Responsible (if the one already selected fits that discipline too —
 // e.g. one company doing both mechanical and electrical — that company stays, shown under the choice that matches the discipline)...
 document.getElementById('fDisc').addEventListener('change', () => {
-  if (currentSection === 'internal') return; // free-text field in the internal section — no contractor auto-suggest
+  if (isInternalLike(currentSection)) return; // free-text field in the DM and interior sections — no contractor auto-suggest
   if (personManual()) return;                // typed by hand: the discipline stays what it is chosen, the person stays what was typed
   const disc = document.getElementById('fDisc').value;
   const fitting = contractorOptions().filter(o => o.discs.includes(disc));
@@ -7208,7 +7236,7 @@ document.getElementById('fDisc').addEventListener('change', () => {
 });
 // ...and choosing a contractor sets the discipline of THAT choice (kept if it already fits; only disciplines that exist in the list count).
 document.getElementById('fPerson').addEventListener('change', () => {
-  if (currentSection === 'internal') return; // fPerson isn't used in this section
+  if (isInternalLike(currentSection)) return; // fPerson isn't used in these sections
   const txt = document.getElementById('fPersonText');
   if (personManual()) { txt.style.display = 'block'; txt.value = ''; txt.focus(); return; }   // "type by hand": an empty line opens, the discipline is not touched
   txt.style.display = 'none';
@@ -7291,7 +7319,7 @@ async function openAdd() {
   // section's responsible field is free text for internal people, so it's
   // left empty there.
   const projContractors = (currentProjectData && currentProjectData.contractors) || {};
-  const defaultResponsible = currentSection === 'internal' ? '' : (currentSection === 'mep' ? (projContractors.mp || projContractors.mep || '') : (projContractors.arch || ''));
+  const defaultResponsible = isInternalLike(currentSection) ? '' : (currentSection === 'mep' ? (projContractors.mp || projContractors.mep || '') : (projContractors.arch || ''));
   setPersonField(defaultResponsible);
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
 }
@@ -7323,7 +7351,7 @@ function openEdit(id) {
   document.getElementById('fTitle').value = issue.title;
   document.getElementById('fDesc').value = issue.desc||'';
   document.getElementById('fVisibleField').style.display = 'block';
-  setupVisibilityField(issue.visibility || (issue.visibleToContractors===true ? 'everyone' : (currentSection==='internal' ? 'biograpi' : 'everyone')));
+  setupVisibilityField(issue.visibility || (issue.visibleToContractors===true ? 'everyone' : (isInternalLike(currentSection) ? 'biograpi' : 'everyone')));
   updateNumFieldForVisibility();
   setPersonField(issue.person||'');
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(issue); om('issueModal');
@@ -9527,7 +9555,7 @@ document.getElementById('btnRecalcIssueCounts').addEventListener('click', async 
     let fixed = 0;
     for (const pDoc of projSnap.docs) {
       let total = 0;
-      for (const sec of ['review','mep','internal']) {
+      for (const sec of ['review','mep','internal','interior']) {
         const visStates = sectionCanHide(sec) ? ['biograpi','everyone'] : ['everyone'];
         const countSnap = await getCountFromServer(query(collection(db,'projects',pDoc.id,'issues'), where('section','==',sec), where('visibility','in',visStates)));
         total += countSnap.data().count;
