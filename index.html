@@ -6885,7 +6885,7 @@ async function openProject(pid, section) {
 
   try {
     const readsSnap = await getDoc(doc(db,'users',currentUser.uid,'meta','commentReads'));
-    myCommentReads = readsSnap.exists() ? readsSnap.data() : {};
+    myCommentReads = readsSnap.exists() ? normalizeCommentReads(readsSnap.data()) : {};
   } catch(e) { myCommentReads = {}; }
 
   const dmUids = Object.entries(currentProjectData.members||{}).filter(([,role])=>role==='design_manager').map(([uid])=>uid);
@@ -7925,15 +7925,22 @@ window.saveEditComment = async (issueId, commentId) => {
   } catch(e) { alert('შეცდომა: '+e.message); }
 };
 // ── UNREAD COMMENTS ──
-// Records "this user has now seen this issue's comments" (a timestamp) in users/{uid}/meta/commentReads.
+// The "seen" marks are in milliseconds. A mark written now is a Timestamp of the SERVER's clock; an older one is a plain number that the person's computer wrote with its own clock.
+const commentReadMs = v => (v && typeof v.toMillis === 'function') ? v.toMillis() : (Number(v) || 0);
+const normalizeCommentReads = data => Object.fromEntries(Object.entries(data || {}).map(([k, v]) => [k, commentReadMs(v)]));
+// Records "this user has now seen this issue's comments" in users/{uid}/meta/commentReads — stamped with the SERVER's clock (serverTimestamp), the same clock that stamps a comment (lastCommentAt).
+// (It used to be the computer's own clock: a computer whose clock was even a second behind the server's saw its OWN, just written comment as newer than what it had seen, so it showed as unread.)
 async function markIssueRead(issueId) {
-  myCommentReads[issueId] = Date.now();
+  myCommentReads[issueId] = Number.MAX_SAFE_INTEGER;   // seen at once, until the server tells its own time (a moment later)
   render(); // reflect the updated read-state immediately in the list, without waiting for a full reload
+  const ref = doc(db,'users',currentUser.uid,'meta','commentReads');
   try {
-    await setDoc(doc(db,'users',currentUser.uid,'meta','commentReads'), {[issueId]: myCommentReads[issueId]}, {merge:true});
-  } catch(e) { console.warn('could not save read-state:', e); }
+    await setDoc(ref, {[issueId]: serverTimestamp()}, {merge:true});
+    const snap = await getDoc(ref);   // the mark as the server wrote it
+    myCommentReads[issueId] = (snap.exists() ? commentReadMs(snap.data()[issueId]) : 0) || Date.now();
+  } catch(e) { console.warn('could not save read-state:', e); myCommentReads[issueId] = Date.now(); }   // (no connection: as before, the computer's own clock)
 }
-// Unread = the issue's latest comment is newer than when this user last opened it. Only comments count (new issues don't).
+// Unread = the issue's latest comment is newer than when this user last opened it (both times on the server's clock). Only comments count (new issues don't).
 function isIssueUnread(issue) {
   if (!issue.lastCommentAt) return false;
   const lastCommentMs = issue.lastCommentAt.toMillis ? issue.lastCommentAt.toMillis() : 0;
@@ -7943,8 +7950,8 @@ function isIssueUnread(issue) {
 // Roles that see unread-comment markers.
 const UNREAD_ROLES = ['design_manager','reviewer','contractor','admin','viewer'];
 
-// Posts a comment (text and/or photos) and updates the issue's commentCount and lastCommentAt — the latter is what makes
-// the issue show as unread for everyone else.
+// Posts a comment (text and/or photos) and updates the issue's commentCount and lastCommentAt (the server's time) — the latter is what makes
+// the issue show as unread for everyone else; the writer's own "seen" mark is then made later on the same clock, so the writer never sees his own comment as unread.
 async function sendComment(issueId) {
   if (commentPhotoUploadsInFlight > 0) { alert('სურათი ჯერ იტვირთება — დაელოდე ატვირთვის დასრულებას და მერე გააგზავნე.'); return; }
   const inp = document.getElementById('commentInput');
