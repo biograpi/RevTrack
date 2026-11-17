@@ -127,15 +127,17 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .project-card-pill{border-radius:999px;aspect-ratio:984/323;min-height:0;padding:16px 32px;border-color:var(--primary);background:transparent}   /* all the cards are transparent; on hover the card fills with the project's colour (.project-card:hover) */
 .project-card-compact{aspect-ratio:984/260}
 .project-card-bare.project-card-compact .project-card-name{font-size:21px}
-.project-card-pill:hover{border-color:var(--soft-black)}   /* the outline of the hovered pill takes the dark colour of the page behind, so the coloured pill looks cut out of the page */
+.project-card-pill:hover{background:transparent;border-color:var(--card-color)}   /* the list card is NOT filled when the mouse is on it: its outline, its name and its logo take the project's colour (this and the next two rules) */
+.project-card-bare.project-card-pill:hover .project-card-name{color:var(--card-color)}
+.project-card-bare.project-card-pill:hover .project-card-mark{background-color:var(--card-color)}
 .project-card-pill .project-card-body{align-items:center;justify-content:center}
 .project-card-logo{width:100%;display:flex;align-items:center;justify-content:center}
 .project-card-logo svg{width:auto;height:clamp(34px,8vw,58px);display:block;max-width:92%}
 .project-card-pill .project-card-logo svg{max-width:100%}
-.project-card-bare .project-card-name{margin-bottom:0;text-align:center;font-size:26px;color:#f1eece}   /* the project names of the list: the same light cream as the logo in front of them */
+.project-card-bare .project-card-name{margin-bottom:0;text-align:center;font-size:26px;color:#f1eece;transition:color .2s ease}   /* the project names of the list: the same light cream as the logo in front of them */
 /* the project's logo in front of its name on the card of the project list */
 .project-card-title{display:flex;align-items:center;justify-content:center;gap:12px;max-width:100%}
-.project-card-mark{flex:none;width:45px;height:45px}   /* the logo before the name on the cards of the list: 1.5 times the earlier 30px, in proportion (the picture keeps its shape) */
+.project-card-mark{flex:none;width:45px;height:45px;display:block;background-color:#f1eece;-webkit-mask:var(--logo) center/contain no-repeat;mask:var(--logo) center/contain no-repeat;transition:background-color .2s ease}   /* the logo: the shape of the picture (a mask) in the cream colour of the name; its colour follows the name's on hover */   /* the logo before the name on the cards of the list: 1.5 times the earlier 30px, in proportion (the picture keeps its shape) */
 .section-bar{grid-column:1/-1;display:grid;grid-template-columns:minmax(max-content,1fr) minmax(0,auto) minmax(max-content,1fr);align-items:center;gap:12px;margin-bottom:4px}
 .section-bar>:first-child{justify-self:start}.section-bar>:last-child{justify-self:end}
 .section-bar>.section-back{grid-column:auto;margin-bottom:0}   /* (the back arrow and the settings are direct children of the card grid elsewhere, where they span the whole row: inside this bar each keeps its own column) */
@@ -4243,6 +4245,8 @@ window.setMainListView = function(view) {
 
 // The project list screen. Admins, reviewers, design managers and Users see every project; contractors only the projects
 // they are members of (memberIds). Draws the card grid and the diagram, then picks the view: the grid for everybody who enters the site.
+// A picture as a CSS url("...") value (the quotes and backslashes of the address are escaped; line breaks removed)
+const cssUrl = u => 'url("' + String(u).replace(/[\r\n]+/g, '').replace(/["\\]/g, '\\$&') + '")';
 async function showProjects() {
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
   if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
@@ -4299,7 +4303,7 @@ async function showProjects() {
       // Re-enable by restoring the PROJECT_LOGOS lookup once exact SVGs are ready.
       // The project's logo (its own, or the Biograpi spiral) in light cream in front of the name. Only a real SVG picture is accepted as the logo.
       const logoSrc = (typeof p.logo === 'string' && p.logo.startsWith('data:image/svg+xml')) ? p.logo : DEFAULT_PROJECT_LOGO;
-      const nameHtml = `<div class="project-card-title"><svg class="project-card-mark" viewBox="0 0 30 30" aria-hidden="true"><image href="${esc(logoSrc)}" filter="url(#project-card-ink)" x="0" y="0" width="30" height="30" preserveAspectRatio="xMidYMid meet"/></svg><div class="project-card-name">${esc(p.name)}</div></div>`;
+      const nameHtml = `<div class="project-card-title"><span class="project-card-mark" aria-hidden="true" style="--logo:${esc(cssUrl(logoSrc))}"></span><div class="project-card-name">${esc(p.name)}</div></div>`;
       html += `<div class="project-card project-card-bare project-card-pill" ${cardStyle} onclick="showProjectSections('${p.id}')">
         <div class="project-card-body">
           ${nameHtml}
