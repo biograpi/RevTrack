@@ -2539,9 +2539,28 @@ let currentProjectId = null;
 let currentProjectData = null;
 let currentSection = null; // 'review' | 'mep' | 'internal' (the design managers' DM section) | 'interior' (the interior designers' section)
 let sectionsViewProjectId = null; // set while viewing a project's section cards (before picking one)
+// Grows with every move to another screen (the list, a project's cards, an issue list). A slow move that finishes AFTER the person has gone somewhere else sees that its number is old and stops:
+// it must not draw its screen over theirs, nor start its listeners (they were never stopped: five more listeners and hundreds of reads for every quick "in and out").
+let navToken = 0;
 let mainListView = 'chart'; // 'grid' | 'chart' — which view shows on the main projects list; defaults to the chart (grid for contractors)
 let mainListViewDefaulted = false; // set once the role-based initial default has been applied
 let unsubActivityChart = null; // listeners for the project-level activity chart (see showProjectSections)
+let activityBuildLines = null; // builds the LINE chart (Chart.js) from the last drawing's data; run only when that view is shown (the default view, the rows, does not need it)
+// The comments of every issue of a project, read ONCE and read again only when the issue's commentCount changes: 'projectId:issueId' -> { count, list: [{ authorName, authorId, createdAt }] }.
+// (Every drawing of the chart used to read the comments of EVERY issue: 3-4 times the number of issues in reads each time a project's cards were opened or returned to.)
+const activityCommentsCache = new Map();
+// Leaving the project's cards: the listeners stop, everything still waiting stops with them, the line chart is freed.
+function stopActivityChart() {
+  if (unsubActivityChart) { unsubActivityChart.forEach(u => u()); unsubActivityChart = null; }
+  if (activityChartInstance) { activityChartInstance.destroy(); activityChartInstance = null; }
+  activityBuildLines = null;
+}
+// Runs fn over the items with at most `limit` at a time (a few hundred reads are not sent all at once).
+async function mapLimit(items, limit, fn) {
+  let i = 0;
+  const worker = async () => { while (i < items.length) { const k = i++; await fn(items[k]); } };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+}
 let activityChartInstance = null;
 const SECTION_LABEL = { review: 'რევიზია', mep: 'MEP რევიზია', internal: 'DM საკითხები', interior: 'ინტერიერის საკითხები' };
 // Sections whose issues can be hidden from contractors ('biograpi' visibility):
@@ -4273,8 +4292,9 @@ window.setMainListView = function(view) {
 // A picture as a CSS url("...") value (the quotes and backslashes of the address are escaped; line breaks removed)
 const cssUrl = u => 'url("' + String(u).replace(/[\r\n]+/g, '').replace(/["\\]/g, '\\$&') + '")';
 async function showProjects() {
+  const myNav = ++navToken;
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
-  if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
+  stopActivityChart();
   sectionsViewProjectId = null;
   document.body.classList.add('on-main-list');   // (the house icon of the list screen's bar is hidden on the main list)
   document.getElementById('activityChartWrap').style.display = 'none';
@@ -4305,11 +4325,13 @@ async function showProjects() {
       projects = snap.docs.map(d=>({id:d.id,...d.data()}));
     }
   } catch (e) {   // the screen must not stay dimmed and dead
+    if (myNav !== navToken) return;
     grid.classList.remove('is-loading'); _wrap.classList.remove('is-loading');
     if (!grid.children.length || /იტვირთება/.test(grid.textContent)) grid.innerHTML = '';
     showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return;
   }
 
+  if (myNav !== navToken) return;   // the person has gone elsewhere while the list was coming: it is not drawn over their screen
   projects = sortProjectsByName(projects);   // the cards in alphabetical order
   let html = '';
   if (!projects.length) {
@@ -5339,6 +5361,7 @@ function devFillCardLine(pid, stages) {
 }
 
 window.showProjectSections = async function(pid) {
+  const myNav = ++navToken;
   sectionsViewProjectId = pid;
   document.body.classList.remove('on-main-list');
   // While the data comes, the list stays exactly where it is (only dimmed, so the click is seen): hiding the switch first made the cards jump up, and the
@@ -5348,11 +5371,13 @@ window.showProjectSections = async function(pid) {
   const unload = () => { _wrap.classList.remove('is-loading'); _grid0.classList.remove('is-loading'); };
   let pd;
   try { pd = await getDoc(doc(db,'projects',pid)); } catch (e) { unload(); showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
+  if (myNav !== navToken) { unload(); return; }   // (the person has already gone elsewhere)
   if (!pd.exists()) { unload(); showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   const p = {id:pid,...pd.data()};
   currentProjectData = p;
 
   try { await loadAllUsers(); } catch (e) { unload(); showToast('მონაცემების ჩატვირთვა ვერ მოხერხდა'); console.error(e); return; }
+  if (myNav !== navToken) { unload(); return; }   // (the person has already gone elsewhere: no cards, no chart listeners)
   const managerName = p.managerUid ? (allUsers[p.managerUid]?.name || allUsers[p.managerUid]?.email) : null;
   // the project manager: the chosen account (its current name), or, for an older project, the name that was typed
   const pmName = projectPms(p).join(', ') || null;   // (several project managers: all the names)
@@ -5719,26 +5744,42 @@ bcWire();
 // fetches contractors' comments (not MEP ones) for the comment curves. redrawToken makes sure a slow, older redraw
 // can never overwrite a newer one.
 function setupActivityChart(pid, reviewerName, managerName) {
+  stopActivityChart();   // (never two sets of listeners for one screen)
   activityRowsOff.clear(); // a different project: all lines on again, and start at its most recent month
   activityRowsScrollToEnd = true;
   document.getElementById('activityChartWrap').style.display = 'block';
   const chartIssues = {}; // compositeKey -> {id, section, disc, createdAt, createdByName}
   const chartReports = {}; // report id -> { type, time, authorName } — filled only for those who may read reports
   let redrawToken = 0; // guards against an older, slower-finishing redraw overwriting a newer one
+  let cancelled = false, redrawTimer = null; // set when the screen is left: nothing more is read or drawn
+  // The snapshots of the four sections and of the reports arrive one after another: they ask for ONE drawing, a moment after the last of them.
+  const scheduleRedraw = () => { clearTimeout(redrawTimer); redrawTimer = setTimeout(() => { if (!cancelled) redrawChart(); }, 200); };
 
   async function redrawChart() {
+    if (cancelled) return;
     const myToken = ++redrawToken;
     document.getElementById('activityChartStatus').textContent = 'იტვირთება...';
     const contractorCommentsByName = { review: {}, internal: {} }; // what the line chart uses (contractors only, review + DM)
     const commentsByAuthor = {}; // everyone's comments in every section, for the rows view: name -> [timestamps]
     try {
-      const commentFetches = Object.values(chartIssues).map(async (iss) => {
+      // Only the issues that have comments, and only those not read yet (or with a new comment since): a few reads once, none when coming back.
+      const all = Object.values(chartIssues), need = [];
+      for (const iss of all) {
+        const hit = activityCommentsCache.get(pid + ':' + iss.id), cnt = iss.commentCount;
+        if (cnt === 0) { activityCommentsCache.delete(pid + ':' + iss.id); continue; }   // no comments at all: nothing to read
+        if (hit && (cnt === undefined || hit.count === cnt)) continue;                   // read already, no new comment since
+        need.push(iss);
+      }
+      await mapLimit(need, 6, async (iss) => {
+        if (cancelled) return;
         try {
           const snap = await getDocs(collection(db,'projects',pid,'issues',iss.id,'comments'));
-          return snap.docs.map(d => ({ ...d.data(), section: iss.section }));
-        } catch(e) { return []; }
+          activityCommentsCache.set(pid + ':' + iss.id, { count: iss.commentCount, list: snap.docs.map(d => { const x = d.data(); return { authorName: x.authorName, authorId: x.authorId, createdAt: x.createdAt }; }) });
+        } catch(e) { /* a comment list that can't be read just isn't counted */ }
       });
-      const results = (await Promise.all(commentFetches)).flat();
+      if (cancelled) return;
+      const results = [];
+      for (const iss of all) { const hit = activityCommentsCache.get(pid + ':' + iss.id); if (hit) for (const c of hit.list) results.push({ ...c, section: iss.section }); }
       for (const c of results) {
         if (!c.createdAt?.toDate) continue;
         const authorName = c.authorName || allUsers[c.authorId]?.name || 'უცნობი';
@@ -5756,7 +5797,7 @@ function setupActivityChart(pid, reviewerName, managerName) {
     // A newer redraw (triggered by a later snapshot) has already started —
     // this older one finished its network fetches too late and would only
     // overwrite the chart with stale data, so it stops here instead of drawing.
-    if (myToken !== redrawToken) return;
+    if (myToken !== redrawToken || cancelled) return;
     try {
       renderActivityChart(chartIssues, reviewerName, managerName, contractorCommentsByName, commentsByAuthor, Object.values(chartReports));
       document.getElementById('activityChartStatus').textContent = `${Object.keys(chartIssues).length} საკითხი`;
@@ -5772,12 +5813,12 @@ function setupActivityChart(pid, reviewerName, managerName) {
     const q = query(collection(db,'projects',pid,'issues'), where('section','==',sec), where('visibility','in',visStates));
     const unsub = onSnapshot(q, snap => {
       for (const d of snap.docs) {
-        chartIssues[`${sec}:${d.id}`] = { id: d.id, section: sec, disc: d.data().disc, createdAt: d.data().createdAt, createdByName: d.data().createdByName || 'უცნობი' };
+        chartIssues[`${sec}:${d.id}`] = { id: d.id, section: sec, disc: d.data().disc, createdAt: d.data().createdAt, createdByName: d.data().createdByName || 'უცნობი', commentCount: d.data().commentCount };
       }
       snap.docChanges().forEach(change => {
         if (change.type === 'removed') delete chartIssues[`${sec}:${change.doc.id}`];
       });
-      redrawChart();
+      scheduleRedraw();
     }, err => console.error('activity chart issues listener error:', err));
     unsubFns.push(unsub);
   }
@@ -5788,9 +5829,10 @@ function setupActivityChart(pid, reviewerName, managerName) {
         if (x.createdAt?.toDate) chartReports[d.id] = { type: reportKind(x), time: x.createdAt.toDate().getTime(), authorName: x.authorName || 'უცნობი' };
       }
       snap.docChanges().forEach(change => { if (change.type === 'removed') delete chartReports[change.doc.id]; });
-      redrawChart();
+      scheduleRedraw();
     }, err => console.warn('activity chart: reports could not be read', err)));
   }
+  unsubFns.push(() => { cancelled = true; clearTimeout(redrawTimer); });   // leaving the screen stops the waiting drawing and the reading of comments
   unsubActivityChart = unsubFns;
 }
 
@@ -5880,6 +5922,7 @@ function buildActivityRowsData(issues, commentsByAuthor, startTime, endTime, rep
 function renderActivityChart(issuesMap, reviewerName, managerName, contractorCommentsByName, commentsByAuthor, reports = []) {
   const issues = Object.values(issuesMap).filter(i => i.createdAt?.toDate);
   if (activityChartInstance) { activityChartInstance.destroy(); activityChartInstance = null; }
+  activityBuildLines = null;
   activityRowsData = null; // refilled below; cleared here so a project without issues doesn't show the previous project's rows
   if (!issues.length && !reports.length) { if (activityViewMode === 'rows') renderActivityRows(); return; }   // (a project with only reports is drawn too)
 
@@ -6117,12 +6160,15 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
   activityRowsData = buildActivityRowsData(issues, commentsByAuthor, startTime, endTime, reports); // for the rows view
   if (activityViewMode === 'rows') renderActivityRows();
 
+  // The LINE chart is the heavy part (Chart.js: about half of the time of a drawing) and the rows are shown by default: it is built when its view is shown (setActivityView), or here when that view is the chosen one.
+  const buildLinesChart = () => {
   const ctx = document.getElementById('activityChartCanvas').getContext('2d');
   activityChartInstance = new Chart(ctx, {
     type: 'line',
     data: { datasets },
     options: {
       responsive: true,
+      animation: false,
       interaction: { mode: 'nearest', axis: 'x', intersect: false },
       scales: {
         x: {
@@ -6176,6 +6222,9 @@ function renderActivityChart(issuesMap, reviewerName, managerName, contractorCom
 
   attachActivityChartDateTooltip(activityChartInstance);
   buildActivityChartLegend(activityChartInstance);
+  };
+  activityBuildLines = buildLinesChart;
+  if (activityViewMode === 'lines') buildLinesChart();
 }
 
 // Shortest distance from point (px,py) to the segment a→b, plus the x of the
@@ -6326,6 +6375,7 @@ window.setActivityView = function(mode) {
   if (tip) tip.style.display = 'none';
   if (rows) { activityRowsScrollToEnd = true; renderActivityRows(); }
   else if (activityChartInstance) activityChartInstance.resize(); // it may have been drawn while hidden
+  else if (activityBuildLines) activityBuildLines();           // not built yet (the rows were shown): built now, its box is visible
 };
 
 // The "1 month / all" switch of the rows view.
@@ -6903,8 +6953,10 @@ function syncRowsSlider() {
 // Opens one section of a project (the issue list): loads the project, the user's read-state and the design managers,
 // works out what this user may do here, shows the screen, and starts listening to the issues.
 async function openProject(pid, section) {
-  if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
+  stopActivityChart();
+  const myNav = ++navToken;
   const pd = await getDoc(doc(db,'projects',pid));
+  if (myNav !== navToken) return;
   if (!pd.exists()) { showToast('პროექტი ვერ მოიძებნა'); await showProjects(); return; }
   currentProjectId = pid;
   currentProjectData = {id:pid,...pd.data()};
@@ -6924,6 +6976,7 @@ async function openProject(pid, section) {
     } catch(e) { console.warn('could not load design manager names:', e); }
   }
 
+  if (myNav !== navToken) return;   // the person has gone elsewhere while the issue list was coming: it is not shown, its listeners are not started
   const myRole = currentGlobalRole;
   currentRole = myRole;
 
