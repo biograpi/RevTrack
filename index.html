@@ -486,6 +486,30 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
   .bc-table td.bc-acts{display:flex;width:auto;justify-content:flex-end}
   .bc-table td.bc-acts::before,.bc-table td.bc-empty::before{content:none}
 }
+.projects-left{display:flex;align-items:center;gap:12px;min-width:0}
+.btn-hdr.hdr-home{background:none;padding:2px 4px;height:auto;flex:none;transition:opacity .15s ease}   /* no plate behind the icon: just the pyramid, as big as the turning logo next to it */
+.btn-hdr.hdr-home:hover{background:none;opacity:.7}   /* the pyramid itself gets a little fainter when the mouse is on it */
+.hdr-home svg{height:36px;width:auto;display:block;fill:currentColor}   /* 36 px = the height of the spiral (.hdr-spiral) */
+body.on-main-list .projects-header .hdr-home{display:none}   /* on the main list itself the icon would do nothing */
+@media (max-width:720px){   /* a narrow screen: the bars wrap into a second row instead of running past the edge of the screen (the long project name is cut with dots) */
+  header,.projects-header{height:auto;min-height:52px;flex-wrap:wrap;row-gap:4px;padding-top:6px;padding-bottom:6px;padding-right:8px}
+  .header-left{flex-wrap:wrap;min-width:0;row-gap:4px}
+  .header-sep{display:none}
+  .project-name-hdr{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .header-right,.projects-user{flex-wrap:wrap;justify-content:flex-end;margin-left:auto;row-gap:4px}
+  .user-chip,#projScreenUser{display:none}   /* (who is signed in, with the role: not shown on a phone, to leave room for the buttons) */
+  .btn-hdr{padding:5px 9px;font-size:11.5px}
+  /* the bars of the issue list and of the reports: the first row = the mark, the house, the buttons on the right; the second row = the arrow "back" and the name of the project / section */
+  header{justify-content:flex-start}   /* (the items stand one after another; only the right group is pushed to the right) */
+  header .header-left{display:contents}
+  header .header-logo{order:1}
+  header .hdr-home{order:2;margin-left:12px}   /* (the gap of the group that is no longer a group) */
+  header .header-right{order:3;margin-left:auto}
+  header::after{content:'';flex:1 0 100%;height:0;order:4}   /* (a line break) */
+  header #btnBackExplicit,header #btnReportsBack{order:5;margin-left:0 !important;font-size:0;padding:5px 11px}
+  header #btnBackExplicit::before,header #btnReportsBack::before{content:'←';font-size:15px;line-height:1}
+  header .project-name-hdr{order:6;flex:1 1 0}
+}
 .rp-chart-card{background:#1a1120;border-radius:12px;padding:18px 24px 22px;margin:14px 0}
 .rp-chart-box{position:relative;height:clamp(270px,36vw,430px)}   /* a phone gets a chart that is tall enough to read, a wide screen a comfortable one */
 .rp-chart-card .activity-chart-head{gap:14px;flex-wrap:wrap;justify-content:flex-start}
@@ -759,7 +783,7 @@ body.has-footer .site-footer{display:flex}
 <!-- ══ PROJECTS ══ -->
 <div class="projects-screen" id="projectsScreen">
   <div class="projects-header">
-    <div class="projects-logo"><svg class="hdr-spiral" aria-hidden="true"><use href="#spiralIcon" width="100%" height="100%"/></svg><span>RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></span></div>
+    <div class="projects-left"><div class="projects-logo"><svg class="hdr-spiral" aria-hidden="true"><use href="#spiralIcon" width="100%" height="100%"/></svg><span>RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></span></div><button type="button" class="btn-hdr hdr-home" title="მთავარ გვერდზე" aria-label="მთავარ გვერდზე" onclick="goHome()"><svg viewBox="109.959 26.162 14.598 11.614" aria-hidden="true" focusable="false"><path fill-rule="nonzero" d="M 122.398438 34.367188 L 122.398438 31.457031 L 120.730469 31.457031 L 120.730469 28.554688 L 118.792969 28.554688 L 118.792969 26.261719 L 115.734375 26.261719 L 115.734375 28.554688 L 113.792969 28.554688 C 113.792969 29.496094 113.90625 30.519531 113.769531 31.441406 C 113.242188 31.507812 112.667969 31.457031 112.128906 31.453125 C 112.121094 32.355469 112.117188 33.257812 112.117188 34.164062 C 112.117188 34.230469 110.066406 34.300781 110.066406 34.367188 C 110.066406 35.375 110.058594 36.382812 110.070312 37.386719 C 110.203125 37.675781 113.980469 37.394531 114.339844 37.394531 C 116.539062 37.394531 118.742188 37.390625 120.945312 37.386719 C 121.523438 37.386719 124.457031 37.386719 124.457031 37.386719 C 124.457031 36.378906 124.457031 35.375 124.457031 34.367188 Z M 122.398438 34.367188"/></svg></button></div>
     <div class="projects-user">
       <button class="btn-hdr" id="btnNewProjectHdr" style="display:none">+ ახალი პროექტი</button>
       <button class="btn-hdr" id="btnGlobalUsers" style="display:none">👥 მომხმარებლები<span class="pending-badge" id="pendingBadge" style="display:none"></span></button>
@@ -829,7 +853,7 @@ body.has-footer .site-footer{display:flex}
 
 <header>
   <div class="header-left">
-    <span class="header-logo" id="btnBackProjects"><svg class="hdr-spiral" aria-hidden="true"><use href="#spiralIcon" width="100%" height="100%"/></svg><span>RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></span></span>
+    <span class="header-logo" id="btnBackProjects"><svg class="hdr-spiral" aria-hidden="true"><use href="#spiralIcon" width="100%" height="100%"/></svg><span>RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></span></span><button type="button" class="btn-hdr hdr-home" title="მთავარ გვერდზე" aria-label="მთავარ გვერდზე" onclick="goHome()"><svg viewBox="109.959 26.162 14.598 11.614" aria-hidden="true" focusable="false"><path fill-rule="nonzero" d="M 122.398438 34.367188 L 122.398438 31.457031 L 120.730469 31.457031 L 120.730469 28.554688 L 118.792969 28.554688 L 118.792969 26.261719 L 115.734375 26.261719 L 115.734375 28.554688 L 113.792969 28.554688 C 113.792969 29.496094 113.90625 30.519531 113.769531 31.441406 C 113.242188 31.507812 112.667969 31.457031 112.128906 31.453125 C 112.121094 32.355469 112.117188 33.257812 112.117188 34.164062 C 112.117188 34.230469 110.066406 34.300781 110.066406 34.367188 C 110.066406 35.375 110.058594 36.382812 110.070312 37.386719 C 110.203125 37.675781 113.980469 37.394531 114.339844 37.394531 C 116.539062 37.394531 118.742188 37.390625 120.945312 37.386719 C 121.523438 37.386719 124.457031 37.386719 124.457031 37.386719 C 124.457031 36.378906 124.457031 35.375 124.457031 34.367188 Z M 122.398438 34.367188"/></svg></button>
     <span class="header-sep">/</span>
     <span class="project-name-hdr" id="hdrProjectName">პროექტი</span>
     <button class="btn-hdr" id="btnBackExplicit" style="margin-left:10px">← უკან დაბრუნება</button>
@@ -903,7 +927,7 @@ body.has-footer .site-footer{display:flex}
 <div id="reportsScreen" style="display:none">
 <header>
   <div class="header-left">
-    <span class="header-logo" id="btnReportsBackLogo"><svg class="hdr-spiral" aria-hidden="true"><use href="#spiralIcon" width="100%" height="100%"/></svg><span>RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></span></span>
+    <span class="header-logo" id="btnReportsBackLogo"><svg class="hdr-spiral" aria-hidden="true"><use href="#spiralIcon" width="100%" height="100%"/></svg><span>RevTrack <span class="app-version" style="opacity:.6;font-weight:400">1.0</span></span></span><button type="button" class="btn-hdr hdr-home" title="მთავარ გვერდზე" aria-label="მთავარ გვერდზე" onclick="goHome()"><svg viewBox="109.959 26.162 14.598 11.614" aria-hidden="true" focusable="false"><path fill-rule="nonzero" d="M 122.398438 34.367188 L 122.398438 31.457031 L 120.730469 31.457031 L 120.730469 28.554688 L 118.792969 28.554688 L 118.792969 26.261719 L 115.734375 26.261719 L 115.734375 28.554688 L 113.792969 28.554688 C 113.792969 29.496094 113.90625 30.519531 113.769531 31.441406 C 113.242188 31.507812 112.667969 31.457031 112.128906 31.453125 C 112.121094 32.355469 112.117188 33.257812 112.117188 34.164062 C 112.117188 34.230469 110.066406 34.300781 110.066406 34.367188 C 110.066406 35.375 110.058594 36.382812 110.070312 37.386719 C 110.203125 37.675781 113.980469 37.394531 114.339844 37.394531 C 116.539062 37.394531 118.742188 37.390625 120.945312 37.386719 C 121.523438 37.386719 124.457031 37.386719 124.457031 37.386719 C 124.457031 36.378906 124.457031 35.375 124.457031 34.367188 Z M 122.398438 34.367188"/></svg></button>
     <span class="header-sep">/</span>
     <span class="project-name-hdr" id="reportsHdrProject">პროექტი</span>
     <button class="btn-hdr" id="btnReportsBack" style="margin-left:10px">← უკან დაბრუნება</button>
@@ -1541,6 +1565,7 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"მთავარ გვერდზე": "To the main page",
 "✎ შევსების დაწყება": "✎ Start filling in",
 "✎ რედაქტირების რეჟიმი": "✎ Editing mode",
 "შეუნახავი ცვლილებებია. გაუქმდეს?": "There are unsaved changes. Cancel them?",
@@ -4251,6 +4276,7 @@ async function showProjects() {
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
   if (unsubActivityChart) { unsubActivityChart.forEach(u=>u()); unsubActivityChart = null; }
   sectionsViewProjectId = null;
+  document.body.classList.add('on-main-list');   // (the house icon of the list screen's bar is hidden on the main list)
   document.getElementById('activityChartWrap').style.display = 'none';
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'none';
@@ -5314,6 +5340,7 @@ function devFillCardLine(pid, stages) {
 
 window.showProjectSections = async function(pid) {
   sectionsViewProjectId = pid;
+  document.body.classList.remove('on-main-list');
   // While the data comes, the list stays exactly where it is (only dimmed, so the click is seen): hiding the switch first made the cards jump up, and the
   // empty gap before the new cards made them jump again. Everything changes in one step below.
   const _wrap = document.getElementById('reviewerManagerChartWrap'), _grid0 = document.getElementById('projectsGrid');
@@ -7981,6 +8008,12 @@ document.getElementById('detailEditBtn').addEventListener('click', () => { cm('d
 document.getElementById('detailDupBtn').addEventListener('click', () => { duplicateIssueHandler(currentDetailId); });
 
 // ── NAVIGATION ──
+// The house icon of the top bars: from wherever a person is (a project's cards, an issue list, the reports) straight to the MAIN VIEW, the list of projects.
+window.goHome = async () => {
+  if (workChartInstance) { workChartInstance.destroy(); workChartInstance = null; }   // (the chart of the reports screen)
+  reportsProjectId = null; currentProjectId = null; currentSection = null; currentRole = currentGlobalRole;
+  await showProjects();   // (it also stops the live subscriptions of the screen that is left, and hides every other screen)
+};
 // From an issue list back to the project's section cards.
 function goBackToSections() {
   if (unsubIssues) { unsubIssues.forEach(u=>u()); unsubIssues = null; }
