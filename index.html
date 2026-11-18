@@ -399,7 +399,6 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .fg-link{fill:none;stroke-linecap:round;transition:opacity .15s}
 .fg-node{cursor:default;transition:opacity .15s}
 .fg-dim{opacity:.12}
-.fg-hint{text-align:center;font-size:11.5px;color:rgba(255,255,255,.45);margin-top:6px}
 /* the tick boxes above the diagrams are painted in the colours of their columns: they work the boxes AND say what the colours mean */
 #sankeyControlsRow .activity-legend-item input[type=checkbox]{width:13px;height:13px}
 .activity-legend-item.has-colour input[type=checkbox]{border-color:var(--box-color);background:var(--box-color)}
@@ -818,8 +817,7 @@ body.has-footer .site-footer{display:flex}
   <!-- the third view: the graph of connections (the projects and the people and companies that work on them); the row of boxes above the diagram moves up here when this view is shown -->
   <div class="activity-chart-wrap" id="forceGraphWrap" style="display:none;position:relative">
     <svg id="forceGraphSvg"></svg>
-    <div class="fg-hint" id="forceGraphHint">წერტილის გადათრევა შეგიძლია · მასშტაბი: Ctrl + ბორბალი ან ორი თითი</div>
-  </div>
+      </div>
   <div class="activity-chart-wrap" id="activityChartWrap" style="display:none">
     <div class="activity-chart-head">
       <h3>აქტივობა დროში</h3>
@@ -1609,7 +1607,6 @@ body.has-footer .site-footer{display:flex}
 "არჩევა შეიძლება დარეგისტრირებული მომხმარებლებიდან (ხარისხის ინსპექტორის ნიშნის მქონეები სიის თავშია)": "You can choose among the registered users (those marked as quality inspectors are at the top of the list)",
 " · ხარისხის ინსპექტორი": " · quality inspector",
 "კავშირები": "Connections",
-"წერტილის გადათრევა შეგიძლია · მასშტაბი: Ctrl + ბორბალი ან ორი თითი": "You can drag a node · zoom: Ctrl + wheel or two fingers",
 "პროექტები არ არის": "There are no projects",
 "✎ ხელით ჩაწერა…": "✎ Type by hand…",
 "თქვენი როლი და ობიექტი": "Your role and project",
@@ -2922,6 +2919,28 @@ function personLines(full) {
   const parts = t.split(/\s+/);
   return parts.length < 2 ? [t] : [parts[0], parts.slice(1).join(' ')];
 }
+// Labels that would touch each other (a name on two lines needs about 2.3 lines of height, and people with small bars stand only about 20 px apart) are moved apart a little.
+// Only the LABELS move (a few pixels at most, beside their own bar); the bars and the size of the diagram stay as they are.
+function spreadLabels(nodeSel) {
+  var cols = {};
+  nodeSel.each(function(d) {
+    var t = this.querySelector('text'); if (!t) return;
+    var lines = t.querySelectorAll('tspan').length || 1, fs = parseFloat(t.getAttribute('font-size')) || 11, c = (d.y0 + d.y1) / 2;
+    (cols[Math.round(d.x0)] = cols[Math.round(d.x0)] || []).push({ t: t, c: c, p: c, h: lines > 1 ? fs * 2.3 : fs * 1.3 });
+  });
+  Object.keys(cols).forEach(function(k) {
+    var list = cols[k].sort(function(a, b) { return a.c - b.c; });
+    for (var it = 0; it < 60; it++) {
+      var moved = false;
+      for (var i = 1; i < list.length; i++) {
+        var gap = list[i].p - list[i - 1].p - ((list[i - 1].h + list[i].h) / 2 + 1);
+        if (gap < -0.05) { list[i - 1].p += gap / 2; list[i].p -= gap / 2; moved = true; }
+      }
+      if (!moved) break;
+    }
+    list.forEach(function(e) { var p = Math.max(e.h / 2, e.p); if (Math.abs(p - e.c) > 0.3) e.t.setAttribute('y', p); });
+  });
+}
 function nameWithLastInitial(fullName) {
   const parts = (fullName||'').trim().split(/\s+/);
   if (parts.length < 2) return parts[0] || fullName;
@@ -3363,22 +3382,6 @@ function renderReviewerManagerChart(projects, opts) {
     return new Set(graph.links.filter(l => projectIds.has(l.projectId)));
   }
 
-  // Is there room for a name on two lines? The centres of two neighbouring labels of one column must be at least 2.5 lines apart (a PDF with many projects on one page, or a
-  // phone, can be tight: then the short form "გიორგი გ." stays on one line).
-  const rowRoom = new Map();
-  (() => {
-    const cols = new Map();
-    graph.nodes.forEach(n => { const k = Math.round(n.x0); if (!cols.has(k)) cols.set(k, []); cols.get(k).push(n); });
-    cols.forEach(list => {
-      list.sort((a, b) => (a.y0 + a.y1) - (b.y0 + b.y1));
-      list.forEach((n, i) => {
-        const c = (n.y0 + n.y1) / 2;
-        const up = i ? c - (list[i - 1].y0 + list[i - 1].y1) / 2 : Infinity, down = i < list.length - 1 ? (list[i + 1].y0 + list[i + 1].y1) / 2 - c : Infinity;
-        rowRoom.set(n.id, Math.min(up, down));
-      });
-    });
-  })();
-  const twoLineOk = d => !(rowRoom.get(d.id) < parseFloat(fontPx) * 2.5);
 
   const node = svg.append('g')
     .selectAll('g')
@@ -3447,13 +3450,14 @@ function renderReviewerManagerChart(projects, opts) {
     .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif")
     .each(function(d) {
       // a person: first name, and under it the surname, when the row has room for two lines (else the short form on one line, as before)
-      const ls = (d.person && twoLineOk(d)) ? personLines(d.full) : [d.name];
+      const ls = d.person ? personLines(d.full) : [d.name];
       const t = d3.select(this);
       if (ls.length < 2) { t.text(ls[0]); return; }
       const x = t.attr('x');
       t.attr('dy', null);
       ls.forEach((line, i) => t.append('tspan').attr('x', x).attr('dy', i ? '1.15em' : '-0.2em').text(line));
     });
+  if (!noLabels) spreadLabels(node);   // (people with small bars close together: their labels, always the full name, are moved apart a little)
 
   // Bound with plain addEventListener (rather than D3's .on chained earlier
   // in the selection's lifecycle) directly on each node's own DOM element,
@@ -3787,6 +3791,28 @@ function personLines(full) {
   var parts = t.split(/\\s+/);
   return parts.length < 2 ? [t] : [parts[0], parts.slice(1).join(' ')];
 }
+// Labels that would touch each other (a name on two lines needs about 2.3 lines of height, and people with small bars stand only about 20 px apart) are moved apart a little.
+// Only the LABELS move (a few pixels at most, beside their own bar); the bars and the size of the diagram stay as they are.
+function spreadLabels(nodeSel) {
+  var cols = {};
+  nodeSel.each(function(d) {
+    var t = this.querySelector('text'); if (!t) return;
+    var lines = t.querySelectorAll('tspan').length || 1, fs = parseFloat(t.getAttribute('font-size')) || 11, c = (d.y0 + d.y1) / 2;
+    (cols[Math.round(d.x0)] = cols[Math.round(d.x0)] || []).push({ t: t, c: c, p: c, h: lines > 1 ? fs * 2.3 : fs * 1.3 });
+  });
+  Object.keys(cols).forEach(function(k) {
+    var list = cols[k].sort(function(a, b) { return a.c - b.c; });
+    for (var it = 0; it < 60; it++) {
+      var moved = false;
+      for (var i = 1; i < list.length; i++) {
+        var gap = list[i].p - list[i - 1].p - ((list[i - 1].h + list[i].h) / 2 + 1);
+        if (gap < -0.05) { list[i - 1].p += gap / 2; list[i].p -= gap / 2; moved = true; }
+      }
+      if (!moved) break;
+    }
+    list.forEach(function(e) { var p = Math.max(e.h / 2, e.p); if (Math.abs(p - e.c) > 0.3) e.t.setAttribute('y', p); });
+  });
+}
 function colorFor(map, name, palette) {
   if (!map[name]) map[name] = palette[Object.keys(map).length % palette.length];
   return map[name];
@@ -3979,20 +4005,6 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
     return graph.links.filter(function(l) { return pids[l.pid]; });
   }
 
-  // Is there room for a name on two lines? The centres of two neighbouring labels of a column must be at least 2.5 lines apart; if not, the short form stays on one line.
-  var rowRoom = {};
-  (function() {
-    var cols = {};
-    graph.nodes.forEach(function(n) { var k = Math.round(n.x0); (cols[k] = cols[k] || []).push(n); });
-    Object.keys(cols).forEach(function(k) {
-      var list = cols[k].sort(function(a, b) { return (a.y0 + a.y1) - (b.y0 + b.y1); });
-      list.forEach(function(n, i) {
-        var c = (n.y0 + n.y1) / 2, up = i ? c - (list[i - 1].y0 + list[i - 1].y1) / 2 : Infinity, down = i < list.length - 1 ? (list[i + 1].y0 + list[i + 1].y1) / 2 - c : Infinity;
-        rowRoom[n.id] = Math.min(up, down);
-      });
-    });
-  })();
-  function twoLineOk(d) { return !(rowRoom[d.id] < 11 * 2.5); }
   var node = svg.append('g').selectAll('g').data(graph.nodes).join('g');
   node.append('rect').attr('x', function(d) { return d.x0; }).attr('y', function(d) { return d.y0; })
     .attr('height', function(d) { return Math.max(1, d.y1 - d.y0); }).attr('width', function(d) { return d.x1 - d.x0; })
@@ -4020,12 +4032,13 @@ var sankeyGen = d3.sankey().nodeId(function(d) { return d.id; }).nodeWidth(14).n
     .style('font-size', function(d) { return d.id.indexOf('p:') === 0 ? projectFont : null; })
     .attr('font-family', "'Noto Sans Georgian','Inter',sans-serif")
     .each(function(d) {
-      var ls = (d.person && twoLineOk(d)) ? personLines(d.full) : [d.name], t = d3.select(this);
+      var ls = d.person ? personLines(d.full) : [d.name], t = d3.select(this);
       if (ls.length < 2) { t.text(ls[0]); return; }
       var x = t.attr('x');
       t.attr('dy', null);
       ls.forEach(function(line, i) { t.append('tspan').attr('x', x).attr('dy', i ? '1.15em' : '-0.2em').text(line); });
     });
+  spreadLabels(node);
 
   node.each(function(d) {
     var el = this;
