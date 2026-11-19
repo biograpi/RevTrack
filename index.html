@@ -399,6 +399,11 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .fg-link{fill:none;stroke-linecap:round;transition:opacity .15s}
 .fg-node{cursor:default;transition:opacity .15s}
 .fg-dim{opacity:.12}
+.net-link,.net-node{transition:opacity .15s ease}
+.net-head{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;color:rgba(255,255,255,.7)}
+.net-head select{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 8px;font-family:inherit;font-size:12px;cursor:pointer}
+.net-head select option{color:#1b161d}
+#networkSvg{display:block}
 /* the tick boxes above the diagrams are painted in the colours of their columns: they work the boxes AND say what the colours mean */
 #sankeyControlsRow .activity-legend-item input[type=checkbox]{width:13px;height:13px}
 .activity-legend-item.has-colour input[type=checkbox]{border-color:var(--box-color);background:var(--box-color)}
@@ -796,6 +801,7 @@ body.has-footer .site-footer{display:flex}
     <button class="view-toggle-btn" id="mainViewToggleGrid" onclick="chooseMainListView('grid')">ბადე</button>
     <button class="view-toggle-btn" id="mainViewToggleChart" onclick="chooseMainListView('chart')">გრაფიკი</button>
     <button class="view-toggle-btn" id="mainViewToggleForce" onclick="chooseMainListView('force')">კავშირები</button>
+<button class="view-toggle-btn" id="mainViewToggleNet" onclick="chooseMainListView('net')">ქსელი</button>
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
@@ -818,6 +824,10 @@ body.has-footer .site-footer{display:flex}
   <div class="activity-chart-wrap" id="forceGraphWrap" style="display:none;position:relative">
     <svg id="forceGraphSvg"></svg>
       </div>
+<div class="activity-chart-wrap" id="networkWrap" style="display:none;position:relative">
+<div class="net-head"><label for="netOrder">დალაგება:</label><select id="netOrder" onchange="setNetOrder(this.value)"><option value="group">ჯგუფის მიხედვით</option><option value="name">სახელის მიხედვით</option><option value="degree">კავშირების რაოდენობით</option></select></div>
+<svg id="networkSvg"></svg>
+</div>
   <div class="activity-chart-wrap" id="activityChartWrap" style="display:none">
     <div class="activity-chart-head">
       <h3>აქტივობა დროში</h3>
@@ -1563,6 +1573,16 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"კავშირი": "tie",
+"კავშირი (მრ.)": "ties",
+"პროექტი (მრ.)": "projects",
+"ქსელი": "Network",
+"დალაგება:": "Sort by:",
+"ჯგუფის მიხედვით": "By group",
+"სახელის მიხედვით": "By name",
+"კავშირების რაოდენობით": "By number of ties",
+"კონტრაქტორი (ექაუნთი)": "Contractor (account)",
+"ჯერ არავის მიმაგრებული": "Not tied to a project yet",
 "მთავარ გვერდზე": "To the main page",
 "✎ შევსების დაწყება": "✎ Start filling in",
 "✎ რედაქტირების რეჟიმი": "✎ Editing mode",
@@ -2972,7 +2992,7 @@ const SANKEY_BOX_IDS = ['chkSankeyDm', 'chkSankeyInterior', 'chkSankeyPm', 'chkS
 const SANKEY_BOX_COLORS = { chkSankeyDm: SANKEY_MANAGER_PALETTE[0], chkSankeyInterior: SANKEY_INTERIOR_PALETTE[0], chkSankeyPm: SANKEY_PM_PALETTE[0], chkSankeySite: SANKEY_SITE_PALETTE[0], chkSankeyQc: SANKEY_QC_PALETTE[0], chkSankeyArch: SANKEY_ARCH_PALETTE[0], chkSankeyStruct: SANKEY_STRUCT_PALETTE[0], chkSankeyMp: SANKEY_MEP_PALETTE[0], chkSankeyElec: SANKEY_ELEC_PALETTE[0], chkSankeyReviewer: SANKEY_REVIEWER_PALETTE[0] };
 Object.entries(SANKEY_BOX_COLORS).forEach(([id, c]) => { const label = document.getElementById(id).closest('label'); label.classList.add('has-colour'); label.style.setProperty('--box-color', c); });
 // The diagram and the graph of connections each keep THEIR OWN boxes: switching from one to the other brings back the boxes the person left there (the first time: all on).
-const boxesSaved = { chart: null, force: null };
+const boxesSaved = { chart: null, force: null, net: null };
 const BOXES_ALL_ON = { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true };
 const boxesNow = () => ({ dm: sankeyManagerTypes.dm, interior: sankeyManagerTypes.interior, pm: sankeyManagerTypes.pm, site: sankeyManagerTypes.site, qc: sankeyManagerTypes.qc, arch: sankeyDisciplines.arch, struct: sankeyDisciplines.struct, mp: sankeyDisciplines.mp, elec: sankeyDisciplines.elec, reviewer: sankeyShowReviewer });
 function applyBoxes(st) {
@@ -3694,7 +3714,110 @@ function renderForceGraph(projects) {
 // Draws whichever of the two charts is shown (the boxes above them are shared).
 function redrawMainChart() {
   if (!lastChartProjects) return;
-  if (mainListView === 'force') renderForceGraph(lastChartProjects); else renderReviewerManagerChart(lastChartProjects);
+  if (mainListView === 'force') renderForceGraph(lastChartProjects); else if (mainListView === 'net') renderNetwork(lastChartProjects); else renderReviewerManagerChart(lastChartProjects);
+}
+
+// ══ THE NETWORK ("ქსელი"): an ARC DIAGRAM of everybody and every project ══
+// All the registered (approved) users, the projects and the contractor companies stand on ONE vertical line, every one a circle of the same size; a line joins a project to everybody who works on it
+// (drawn as an arc to the right). A person is a node whatever number of projects he works on; the colour of a person is his group (what he is mostly), the colour of an arc is the kind of the tie.
+// Typed-by-hand people (a site manager or an MEP reviewer who has no account) and users waiting for approval are not shown; the contractor COMPANIES (typed names) are, because they are what the contractors' boxes are about.
+const NET_ORDER_KINDS = ['project', 'r', 'm', 'in', 'pm', 'sm', 'qc', 'ca', 'arch', 'struct', 'mp', 'elec', 'none'];
+const NET_COLOR = { r: SANKEY_REVIEWER_PALETTE[0], m: SANKEY_MANAGER_PALETTE[0], in: SANKEY_INTERIOR_PALETTE[0], pm: SANKEY_PM_PALETTE[0], sm: SANKEY_SITE_PALETTE[0], qc: SANKEY_QC_PALETTE[0], ca: '#38bdf8', arch: SANKEY_ARCH_PALETTE[0], struct: SANKEY_STRUCT_PALETTE[0], mp: SANKEY_MEP_PALETTE[0], elec: SANKEY_ELEC_PALETTE[0], none: '#6b7280' };
+const NET_LABEL = { ...FG_LABEL, project: 'პროექტი', ca: 'კონტრაქტორი (ექაუნთი)', none: 'ჯერ არავის მიმაგრებული' };
+let netOrder = 'group';   // 'group' | 'name' | 'degree'
+// The data of the network: { nodes, links } from the projects, the registered users (users: id -> user) and the boxes that are ticked (st). A pure function.
+// opts.showUnconnected: the people who are tied to no project (shown for the admins only; for everybody else only the people of the projects they see).
+function buildNetData(projects, users, st, opts) {
+  opts = opts || {};
+  st = st || { dm: sankeyManagerTypes.dm, pm: sankeyManagerTypes.pm, site: sankeyManagerTypes.site, qc: sankeyManagerTypes.qc, interior: sankeyManagerTypes.interior, arch: sankeyDisciplines.arch, struct: sankeyDisciplines.struct, mp: sankeyDisciplines.mp, elec: sankeyDisciplines.elec, reviewer: sankeyShowReviewer };
+  projects = sortProjectsByName(projects || []);
+  const projLabel = window.__i18nTranslit || (n => n);
+  const approved = Object.values(users || {}).filter(u => u && u.id && u.approved === true), byUid = new Map(approved.map(u => [u.id, u]));
+  const boxOn = kind => ({ r: st.reviewer, m: st.dm, in: st.interior, pm: st.pm, sm: st.site, qc: st.qc, ca: st.arch || st.struct || st.mp || st.elec })[kind];
+  const nodes = new Map(), links = new Map(), tied = new Map();   // tied: uid -> Map(kind -> number of projects), over ALL ties (the group of a person does not depend on the boxes)
+  projects.forEach(p => {
+    nodes.set(`p:${p.id}`, { id: `p:${p.id}`, kind: 'project', group: 'project', name: projLabel(p.name), color: p.color || DEFAULT_CARD_COLOR, degree: 0, roles: [] });
+    const ties = [['r', p.createdBy ? [p.createdBy] : []], ['m', p.managerUid ? [p.managerUid] : []], ['in', p.interiorUid ? [p.interiorUid] : []],
+      ['pm', projectPmEntries(p).map(e => e.uid).filter(Boolean)], ['sm', projectSiteManagerEntries(p).map(e => e.uid).filter(Boolean)], ['qc', p.qcUid ? [p.qcUid] : []],
+      ['ca', Object.entries(p.members || {}).filter(([, role]) => role === 'contractor').map(([uid]) => uid)]];
+    ties.forEach(([kind, uids]) => [...new Set(uids)].forEach(uid => {
+      if (!byUid.has(uid)) return;   // not a registered, approved user (deleted, waiting, or typed by hand): no node
+      const m = tied.get(uid) || new Map(); m.set(kind, (m.get(kind) || 0) + 1); tied.set(uid, m);
+      if (!boxOn(kind)) return;
+      const key = `${uid}|${p.id}`, l = links.get(key) || { source: `u:${uid}`, target: `p:${p.id}`, projectId: p.id, kinds: [] };
+      if (!l.kinds.includes(kind)) l.kinds.push(kind); links.set(key, l);
+    }));
+    // the contractor companies of the project (typed names), one node for a name in a discipline
+    const company = (disc, name) => {
+      name = String(name || '').trim(); if (!name || fgNobody(name)) return;
+      const id = `c:${disc}:${name}`; if (!nodes.has(id)) nodes.set(id, { id, kind: 'company', group: disc, name, color: NET_COLOR[disc], degree: 0, roles: [] });
+      const key = `${id}|${p.id}`; if (!links.has(key)) links.set(key, { source: id, target: `p:${p.id}`, projectId: p.id, kinds: [disc] });
+    };
+    if (st.arch) company('arch', (p.contractors || {}).arch);
+    if (st.struct) company('struct', (p.contractors || {}).struct);
+    sankeyMepContractors(p, st).forEach(m => company(m.kind === 'elec' ? 'elec' : 'mp', m.name));
+  });
+  const roleGroup = { admin: 'r', reviewer: 'r', design_manager: 'm', contractor: 'ca' };
+  approved.forEach(u => {
+    const t = tied.get(u.id);
+    let group = null;
+    if (t) { let best = -1; NET_ORDER_KINDS.forEach(k => { if ((t.get(k) || 0) > best) { best = t.get(k) || 0; group = k; } }); }   // what he is MOST (a tie goes to the first kind in the list)
+    else group = roleGroup[u.role] || 'none';
+    nodes.set(`u:${u.id}`, { id: `u:${u.id}`, kind: 'user', group, name: u.name || u.email || 'უცნობი', color: NET_COLOR[group], degree: 0, roles: t ? [...t.keys()] : [] });
+  });
+  const list = [...links.values()];
+  list.forEach(l => { l.color = NET_COLOR[NET_ORDER_KINDS.find(k => l.kinds.includes(k))]; nodes.get(l.source).degree++; nodes.get(l.target).degree++; });
+  const all = [...nodes.values()].filter(n => n.kind !== 'user' || n.degree > 0 || opts.showUnconnected);
+  const ids = new Set(all.map(n => n.id));
+  return { nodes: all, links: list.filter(l => ids.has(l.source) && ids.has(l.target)) };
+}
+// The order of the nodes on the line: by group (the projects first), by name, or by the number of ties (the most tied first).
+function orderNet(nodes, mode) {
+  const byName = (a, b) => a.name.localeCompare(b.name, 'ka', { numeric: true });
+  const rank = n => NET_ORDER_KINDS.indexOf(n.group);
+  const sorted = [...nodes];
+  if (mode === 'name') sorted.sort(byName);
+  else if (mode === 'degree') sorted.sort((a, b) => b.degree - a.degree || rank(a) - rank(b) || byName(a, b));
+  else sorted.sort((a, b) => rank(a) - rank(b) || byName(a, b));
+  return sorted;
+}
+// A word after a number: Georgian keeps the singular ("3 პროექტი"), English needs the plural ("3 projects"): a separate dictionary entry for the plural, which Georgian does not have.
+function netCount(n, word) {
+  const tr = window.__i18nTr || (w => w), one = tr(word);
+  if (n === 1) return `${n} ${one}`;
+  const plural = tr(word + ' (მრ.)');
+  return `${n} ${plural === word + ' (მრ.)' ? one : plural}`;
+}
+window.setNetOrder = v => { netOrder = v; if (mainListView === 'net' && lastChartProjects) renderNetwork(lastChartProjects); };
+function renderNetwork(projects) {
+  const svgEl = document.getElementById('networkSvg'), wrap = document.getElementById('networkWrap');
+  svgEl.innerHTML = '';
+  const sel = document.getElementById('netOrder'); if (sel && sel.value !== netOrder) sel.value = netOrder;
+  const tr = window.__i18nTr || (w => w);
+  const data = buildNetData(projects || [], allUsers, undefined, { showUnconnected: isAdminLike() }), nodes = orderNet(data.nodes, netOrder), n = nodes.length;
+  const svg = d3.select(svgEl), R = 3, FS = 10, STEP = 14, TOP = 12;   // the ball's radius, the size of the names, the distance between two rows
+  const cs = getComputedStyle(wrap), inner = (wrap.clientWidth || 900) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  if (!n) { svg.attr('viewBox', [0, 0, 400, 120]); svgEl.style.width = '100%'; svg.append('text').attr('x', 200).attr('y', 60).attr('text-anchor', 'middle').attr('fill', 'rgba(255,255,255,.5)').attr('font-size', 13).text(tr('პროექტები არ არის')); return null; }
+  const labelW = Math.min(300, Math.max(...nodes.map(d => measureLabelWidth(d.name, FS))));
+  const x0 = Math.round(labelW + 26), maxArc = ((n - 1) * STEP) / 2;   // the highest arc is as wide as half the line is long, if the width allows
+  const bulge = Math.max(60, Math.min(maxArc, Math.round(inner) - x0 - 14)), width = x0 + bulge + 14, height = TOP + (n - 1) * STEP + 22;
+  const y = new Map(nodes.map((d, i) => [d.id, TOP + i * STEP]));
+  svg.attr('viewBox', [0, 0, width, height]); svgEl.style.width = Math.min(width, Math.max(inner, 320)) + 'px'; svgEl.style.margin = '0 auto';   // (as wide as it needs, in the middle of the block)
+  svg.append('rect').attr('width', width).attr('height', height).attr('fill', '#1a1120');
+  // an arc between two nodes: a half-ellipse to the right of the line; as high as the distance, as wide as the distance allows (never out of the picture)
+  const arc = l => { const y1 = y.get(l.source), y2 = y.get(l.target), r = Math.abs(y2 - y1) / 2; return `M${x0},${y1}A${Math.min(r, bulge)},${r} 0 0,${y1 < y2 ? 1 : 0} ${x0},${y2}`; };
+  const link = svg.append('g').selectAll('path').data(data.links).join('path').attr('class', 'net-link').attr('d', arc).attr('fill', 'none').attr('stroke', d => d.color).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4);
+  const node = svg.append('g').selectAll('g').data(nodes).join('g').attr('class', 'net-node').attr('data-node-id', d => d.id);
+  node.append('title').text(d => d.kind === 'project' ? `${d.name} · ${netCount(d.degree, 'კავშირი')}` : `${d.name} · ${[...new Set(d.roles.length ? d.roles : [d.group])].map(k => tr(NET_LABEL[k])).join(', ')}${d.degree ? ` · ${netCount(d.degree, 'პროექტი')}` : ''}`);
+  node.append('rect').attr('x', 0).attr('y', d => y.get(d.id) - STEP / 2).attr('width', x0 + 12).attr('height', STEP).attr('fill', 'transparent');   // (the whole row answers the mouse)
+  node.append('circle').attr('cx', x0).attr('cy', d => y.get(d.id)).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+  node.append('text').attr('x', x0 - 9).attr('y', d => y.get(d.id)).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(d => d.name);
+  // hover: the node, what it is tied to and the arcs between (everything else fades)
+  const highlight = d => { const mine = data.links.filter(l => l.source === d.id || l.target === d.id), keep = new Set([d.id]); mine.forEach(l => { keep.add(l.source); keep.add(l.target); }); node.classed('fg-dim', m => !keep.has(m.id)); link.classed('fg-dim', l => !mine.includes(l)).attr('stroke-opacity', l => mine.includes(l) ? 0.95 : 0.55).attr('stroke-width', l => mine.includes(l) ? 2.2 : 1.4); };   // (his own arcs are lit and thicker)
+  const clear = () => { node.classed('fg-dim', false); link.classed('fg-dim', false).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4); };
+  node.on('mouseenter', (e, d) => highlight(d)).on('mouseleave', clear);
+  svgEl.__net = { nodes, links: data.links, highlight, clear, width, height, x0, y };
+  return svgEl.__net;
 }
 
 // Downloads the diagram as a standalone page (projects.zip containing projects.html): a snapshot of the data is
@@ -4276,28 +4399,31 @@ window.downloadSankeyAsPdf = function() {
 // A click of the person on the "ბადე" / "გრაფიკი" / "კავშირები" buttons. Going from the grid to a chart switches ALL the boxes above it on (the whole structure at once). Coming back to the list
 // from a project does not go through here: the view and the boxes stay as the person left them.
 window.chooseMainListView = function(view) {
-  const toChart = (view === 'chart' || view === 'force') && mainListView === 'grid';
+  const toChart = view !== 'grid' && mainListView === 'grid';
   setMainListView(view);
   if (toChart) setAllSankeyBoxes(true);
 };
 window.setMainListView = function(view) {
   const prev = mainListView;
-  mainListView = view;   // 'grid' | 'chart' | 'force'
-  // each chart keeps its own boxes: leaving one saves them, going straight to the other brings back the ones it had
-  if (prev !== view && (prev === 'chart' || prev === 'force')) boxesSaved[prev] = boxesNow();
-  const between = prev !== view && (prev === 'chart' || prev === 'force') && (view === 'chart' || view === 'force');
+  mainListView = view;   // 'grid' | 'chart' | 'force' | 'net'
+  // each chart keeps its own boxes: leaving one saves them, going straight to another brings back the ones it had
+  const isChart = v => v === 'chart' || v === 'force' || v === 'net';
+  if (prev !== view && isChart(prev)) boxesSaved[prev] = boxesNow();
+  const between = prev !== view && isChart(prev) && isChart(view);
   if (between) applyBoxes(boxesSaved[view] || BOXES_ALL_ON);
   const $ = id => document.getElementById(id);
   $('projectsGrid').style.display = view === 'grid' ? 'grid' : 'none';
   $('reviewerManagerChartWrap').style.display = view === 'chart' ? 'block' : 'none';
   $('forceGraphWrap').style.display = view === 'force' ? 'block' : 'none';
+  $('networkWrap').style.display = view === 'net' ? 'block' : 'none';
   $('mainViewToggleGrid').classList.toggle('active', view === 'grid');
   $('mainViewToggleChart').classList.toggle('active', view === 'chart');
   $('mainViewToggleForce').classList.toggle('active', view === 'force');
+  $('mainViewToggleNet').classList.toggle('active', view === 'net');
   // the row of boxes stands above whichever chart is shown
-  const row = $('sankeyControlsRow'), host = $(view === 'force' ? 'forceGraphWrap' : 'reviewerManagerChartWrap');
+  const row = $('sankeyControlsRow'), host = $(view === 'force' ? 'forceGraphWrap' : view === 'net' ? 'networkWrap' : 'reviewerManagerChartWrap');
   if (view !== 'grid' && row.parentElement !== host) host.insertBefore(row, host.firstChild);
-  if (view === 'force') { if (lastChartProjects) renderForceGraph(lastChartProjects); } else { stopForceGraph(); if (between && lastChartProjects) renderReviewerManagerChart(lastChartProjects); }   // (back to the diagram: it is drawn with ITS boxes)
+  if (view === 'force') { if (lastChartProjects) renderForceGraph(lastChartProjects); } else if (view === 'net') { stopForceGraph(); if (lastChartProjects) renderNetwork(lastChartProjects); } else { stopForceGraph(); if (between && lastChartProjects) renderReviewerManagerChart(lastChartProjects); }   // (back to the diagram: it is drawn with ITS boxes)
 };
 
 // The project list screen. Admins, reviewers, design managers and Users see every project; contractors only the projects
