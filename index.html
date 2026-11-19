@@ -248,6 +248,18 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .ifc-viewer-shell{position:relative;width:100%;height:100%;display:flex}
 .ifc-viewer-shell iframe{width:100%;height:100%;border:none}
 .ifc-viewer-shell .lightbox-close{z-index:2;top:14px;right:14px}
+.ifc-check-btn{position:absolute;z-index:2;top:14px;right:64px;height:34px;padding:0 14px;border:none;border-radius:17px;background:rgba(255,255,255,.14);color:#fff;font-family:inherit;font-size:12px;cursor:pointer}
+.ifc-check-btn:hover{background:rgba(255,255,255,.26)}
+.ifcchk{font-size:13px;line-height:1.5}
+.ifcchk .ck-h{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-light);margin:16px 0 6px;padding-top:10px;border-top:1px solid var(--rule)}
+.ifcchk .ck-h:first-child{margin-top:0;padding-top:0;border-top:none}
+.ifcchk .ck-l{display:flex;gap:8px;padding:2px 0;word-break:break-word}
+.ifcchk .ck-i{flex:none;width:16px;text-align:center;font-weight:700}
+.ifcchk .ck-ok .ck-i{color:#16a34a}.ifcchk .ck-warn .ck-i{color:#d97706}.ifcchk .ck-bad .ck-i{color:#dc2626}.ifcchk .ck-info .ck-i{color:var(--ink-light)}
+.ifcchk .ck-verdict{margin-top:14px;padding:12px 14px;border-radius:8px;background:var(--accent-lo);font-size:13px}
+.ifcchk .ck-verdict.bad{background:#fde8e8}.ifcchk .ck-verdict.ok{background:#e4f6ea}
+.ifcchk .ck-verdict b{display:block;margin-bottom:4px}
+.ifcchk pre{margin:6px 0 0;padding:8px 10px;background:#f3f1f6;border-radius:6px;font-size:11.5px;white-space:pre-wrap;word-break:break-all}
 .lightbox-content img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:4px;transition:transform .12s ease-out;cursor:zoom-in}
 .lightbox-close{position:absolute;top:-44px;right:0;background:rgba(255,255,255,.1);border:none;color:white;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer}
 .lightbox-close:hover{background:rgba(255,255,255,.2)}
@@ -1422,6 +1434,7 @@ body.has-footer .site-footer{display:flex}
             <div id="ifcFilesList" style="margin-bottom:8px"></div>
             <input type="file" id="ifcFileInput" accept=".frag" style="display:none">
             <button type="button" class="btn-add-link" id="btnAddIfcFile">+ Fragments ფაილის ატვირთვა (.frag)</button>
+            <button type="button" class="btn-add-link" id="btnCheckIfc" onclick="runIfcCheck()" style="margin-left:6px">🔍 IFC ფაილების შემოწმება</button>
           </div>
         </div>
       </div>
@@ -1457,7 +1470,16 @@ body.has-footer .site-footer{display:flex}
 <div class="modal-overlay" id="ifcViewerModal" style="background:rgba(10,8,12,.96)">
   <div class="ifc-viewer-shell">
     <button class="lightbox-close" onclick="closeIfcViewer()">✕</button>
+    <button type="button" class="ifc-check-btn" onclick="closeIfcViewer();runIfcCheck()" title="ჩაკეტავს viewer-ს და შეამოწმებს ფაილებს და ქსელს">🔍 შემოწმება</button>
     <iframe id="ifcViewerFrame" title="IFC ვიუერი" allow="fullscreen"></iframe>
+  </div>
+</div>
+
+<div class="modal-overlay" id="ifcCheckModal">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header"><h2>IFC ფაილების შემოწმება</h2><button class="modal-close" onclick="ifcCheckClose()">✕</button></div>
+    <div class="modal-body"><div id="ifcCheckBody" class="ifcchk"></div></div>
+    <div class="modal-footer"><button type="button" class="btn-secondary" id="ifcCheckCopy">📋 ანგარიშის კოპირება</button><button type="button" class="btn-secondary" id="ifcCheckAgain">↻ ხელახლა</button><button type="button" class="btn-secondary" onclick="ifcCheckClose()">დახურვა</button></div>
   </div>
 </div>
 
@@ -1582,6 +1604,13 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"წავშალო ეს კომენტარი? მისი ფოტოებიც წაიშლება.": "Delete this comment? Its photos will be deleted too.",
+"კომენტარის რედაქტირება და წაშლა მხოლოდ გამოქვეყნებიდან 24 საათის განმავლობაშია შესაძლებელი.": "A comment can be edited or deleted only within 24 hours of posting it.",
+"IFC ფაილების შემოწმება": "Check the IFC files",
+"🔍 IFC ფაილების შემოწმება": "🔍 Check the IFC files",
+"🔍 შემოწმება": "🔍 Check",
+"📋 ანგარიშის კოპირება": "📋 Copy the report",
+"↻ ხელახლა": "↻ Again",
 "ქორდები": "Chords",
 "კავშირი": "tie",
 "ქსელი": "Network",
@@ -2680,6 +2709,158 @@ window.openIfcViewer = (pid) => {
   const param = encodeURIComponent(JSON.stringify(files));
   document.getElementById('ifcViewerFrame').src = `${IFC_VIEWER_URL}?files=${param}`;
   om('ifcViewerModal');
+};
+// ══ THE CHECK OF THE IFC FILES: why does the viewer show nothing, or take so long? ══
+// It runs in the browser of the person who pressed the button (so it sees HIS network), from the same address the viewer lives at (so the CORS answer is the viewer's answer), and measures, in turn:
+// the device (the graphics: a viewer on software rendering is very slow), the viewer's own page and what its program loads, the places it takes things from, every uploaded file (does it open, how large,
+// how fast does it come: a speed test of up to 8 seconds) — and says in words which of these is the cause. The report can be copied and sent.
+let ifcCheckRun = 0, ifcCheckCtl = null;
+window.ifcCheckClose = () => { ifcCheckRun++; if (ifcCheckCtl) ifcCheckCtl.abort(); cm('ifcCheckModal'); };
+window.runIfcCheck = async () => {
+  const myRun = ++ifcCheckRun; if (ifcCheckCtl) ifcCheckCtl.abort();
+  const ctl = ifcCheckCtl = new AbortController(), alive = () => myRun === ifcCheckRun && !ctl.signal.aborted;
+  const body = document.getElementById('ifcCheckBody'), rows = [];   // rows: { id, level: 'ok'|'warn'|'bad'|'info'|'head'|'verdict', text, extra }
+  const ICON = { ok: '✓', warn: '!', bad: '✗', info: '·' };
+  const draw = () => {
+    body.innerHTML = rows.map(r => r.level === 'head' ? `<div class="ck-h">${esc(r.text)}</div>`
+      : r.level === 'verdict' ? `<div class="ck-verdict ${r.kind || ''}"><b>${esc(r.title)}</b>${esc(r.text)}${r.extra ? `<pre>${esc(r.extra)}</pre>` : ''}</div>`
+      : `<div class="ck-l ck-${r.level}"><span class="ck-i">${ICON[r.level]}</span><span>${esc(r.text)}</span></div>`).join('');
+  };
+  const add = (level, text) => { const r = { level, text }; rows.push(r); draw(); return r; };
+  const head = text => { rows.push({ level: 'head', text }); draw(); };
+  const mb = n => (n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(n >= 10485760 ? 1 : 2) + ' MB'), sec = n => (n < 10 ? n.toFixed(1) : Math.round(n)) + ' წმ';
+  const flags = { corsBlocked: [], netFailed: [], notFound: [], empty: [], slow: null, slowWarn: null, hostsDown: [], appBad: false, noWebgl: false, softGl: false, bigTotal: 0, lowMem: false, filesOk: 0 };
+  document.getElementById('ifcCheckAgain').onclick = () => runIfcCheck();
+  document.getElementById('ifcCheckCopy').onclick = async () => {
+    const txt = [`IFC ფაილების შემოწმება — ${new Date().toLocaleString('ka-GE')}`, `გვერდი: ${location.href}`, `პროექტი: ${currentProjectData?.name || ''} (${currentProjectData?.id || ''})`, `ბრაუზერი: ${navigator.userAgent}`, '']
+      .concat(rows.map(r => r.level === 'head' ? `\n== ${r.text} ==` : r.level === 'verdict' ? `\n>> ${r.title}\n${r.text}${r.extra ? '\n' + r.extra : ''}` : `${ICON[r.level]} ${r.text}`)).join('\n');
+    try { await navigator.clipboard.writeText(txt); } catch (e) { const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    showToast('ანგარიში დაკოპირდა');
+  };
+  om('ifcCheckModal');
+  // a request that must not be left hanging: ends after `ms` (and when the window is closed)
+  const withTimeout = (ms) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms); ctl.signal.addEventListener('abort', () => c.abort()); return { signal: c.signal, done: () => clearTimeout(t), abort: () => c.abort() }; };
+  // is a place reachable at all (whatever it answers)? a "no-cors" request succeeds if the server answered, fails if the network or a firewall stopped it
+  const probe = async (url, ms = 9000) => { const w = withTimeout(ms), t0 = performance.now(); try { const sep = url.includes('?') ? '&' : '?'; const r = await fetch(url + sep + '_ck=' + Date.now(), { mode: 'no-cors', cache: 'no-store', signal: w.signal }); w.done(); return { ok: true, ms: performance.now() - t0 }; } catch (e) { w.done(); return { ok: false, ms: performance.now() - t0, timeout: e.name === 'AbortError' && alive() }; } };
+  try {
+    // ═ 1. THE DEVICE
+    head('1. კომპიუტერი და ბრაუზერი');
+    const nc = navigator.connection;
+    if (nc) add('info', `ბრაუზერის აზრით ქსელი: ${nc.effectiveType || '?'}, ~${nc.downlink || '?'} Mbps, დაყოვნება ${nc.rtt ?? '?'} მს${nc.saveData ? ', ტრაფიკის დაზოგვა ჩართულია' : ''}`);
+    add('info', `პროცესორის ბირთვები: ${navigator.hardwareConcurrency || '?'}${navigator.deviceMemory ? `, მეხსიერება დაახლ. ${navigator.deviceMemory} GB` : ''}`);
+    flags.lowMem = !!navigator.deviceMemory && navigator.deviceMemory <= 4;
+    try {
+      const cv = document.createElement('canvas'), gl = cv.getContext('webgl2') || cv.getContext('webgl');
+      if (!gl) { flags.noWebgl = true; add('bad', 'WebGL არ მუშაობს: 3D მოდელი ვერ გამოჩნდება. ჩართე ჰარდვერული აჩქარება ბრაუზერის პარამეტრებში.'); }
+      else {
+        const dbg = gl.getExtension('WEBGL_debug_renderer_info'), name = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+        if (/swiftshader|llvmpipe|software|basic render|microsoft basic/i.test(String(name))) { flags.softGl = true; add('warn', `3D ხატვა პროგრამულია, ვიდეოკარტის გარეშე (${name}): მოდელი ძალიან ნელა გაიხსნება. ჩართე ჰარდვერული აჩქარება (Chrome: პარამეტრები → სისტემა → „გამოიყენე ჰარდვერული აჩქარება“).`); }
+        else add('ok', `3D ხატვა: ${name}`);
+      }
+    } catch (e) { add('warn', 'WebGL-ის შემოწმება ვერ მოხერხდა: ' + e.message); }
+    if (!alive()) return;
+    // ═ 2. THE VIEWER ITSELF AND WHAT ITS PROGRAM LOADS
+    head('2. viewer-ის გვერდი და რასაც ის ტვირთავს');
+    const baseUrl = new URL(IFC_VIEWER_URL), externals = new Map(), relatives = new Set();
+    try {
+      const w = withTimeout(15000), t0 = performance.now(), r = await fetch(IFC_VIEWER_URL + '?_ck=' + Date.now(), { cache: 'no-store', signal: w.signal }); const html = await r.text(); w.done();
+      if (!r.ok) { flags.appBad = true; add('bad', `viewer-ის გვერდი არ იხსნება: პასუხი ${r.status} (${IFC_VIEWER_URL})`); }
+      else {
+        add('ok', `viewer-ის გვერდი იხსნება (${Math.round(performance.now() - t0)} მს)`);
+        const doc = new DOMParser().parseFromString(html, 'text/html'), assets = [...doc.querySelectorAll('script[src], link[rel="modulepreload"][href], link[rel="stylesheet"][href]')].map(e => new URL(e.getAttribute('src') || e.getAttribute('href'), baseUrl));
+        let biggest = null;
+        for (const u of assets.slice(0, 8)) {
+          if (!alive()) return;
+          if (u.origin !== baseUrl.origin) { externals.set(u.href, 'viewer-ის გვერდი'); continue; }
+          try { const w2 = withTimeout(30000), t1 = performance.now(), a = await fetch(u.href, { cache: 'no-store', signal: w2.signal }); const txt = await a.text(); w2.done(); const secs = (performance.now() - t1) / 1000, bytes = new Blob([txt]).size;
+            add(a.ok ? 'ok' : 'bad', `${u.pathname.split('/').pop()}: ${a.ok ? mb(bytes) + ', ' + sec(secs) : 'პასუხი ' + a.status}`); if (!a.ok) flags.appBad = true;
+            if (a.ok && /\.m?js$/.test(u.pathname) && (!biggest || bytes > biggest.bytes)) biggest = { txt, bytes, name: u.pathname.split('/').pop() };
+          } catch (e) { flags.appBad = true; add('bad', `${u.pathname.split('/').pop()} ვერ ჩამოიტვირთა: ${e.name === 'AbortError' ? 'ძალიან დიდხანს გრძელდებოდა' : e.message}`); }
+        }
+        if (biggest) {   // what does the program itself reach for? (addresses of workers, wasm and scripts that are written in it)
+          for (const m of biggest.txt.matchAll(/https?:\/\/[A-Za-z0-9._~:\/%@!$&'()*+,;=-]+?\.(?:wasm|mjs|js|json)(?=["'`\s)\\?#])/g)) { const u = m[0]; if (!/w3\.org|reactjs\.org|github\.com\/|mozilla\.org|example\.com|schema\.org|localhost/.test(u) && new URL(u).origin !== baseUrl.origin) externals.set(u, biggest.name); }
+          for (const m of biggest.txt.matchAll(/["'`]((?:\.{0,2}\/)?[\w.\-\/]*(?:web-ifc[\w.\-]*\.wasm|worker[\w.\-]*\.mjs|[\w.\-]+\.wasm))["'`]/g)) relatives.add(m[1]);
+        }
+      }
+    } catch (e) { flags.appBad = true; add('bad', 'viewer-ის გვერდი ვერ ჩამოიტვირთა: ' + (e.name === 'AbortError' ? 'ძალიან დიდხანს გრძელდებოდა' : e.message)); }
+    // the files the viewer's program refers to by a short address (next to it)
+    for (const rel of [...relatives].slice(0, 6)) {
+      if (!alive()) return;
+      try { const u = new URL(rel, baseUrl); if (u.origin !== baseUrl.origin) { externals.set(u.href, 'viewer-ის პროგრამა'); continue; } const w = withTimeout(20000), r = await fetch(u.href + '?_ck=' + Date.now(), { cache: 'no-store', signal: w.signal }); w.done();
+        add(r.ok ? 'ok' : 'warn', `${rel}: ${r.ok ? 'მოიძებნა' + (r.headers.get('content-length') ? ' (' + mb(+r.headers.get('content-length')) + ')' : '') : 'ვერ მოიძებნა (' + r.status + ')'}`); } catch (e) { /* not a real address */ }
+    }
+    if (!alive()) return;
+    // ═ 3. THE PLACES THE VIEWER TAKES THINGS FROM
+    head('3. გარე წყაროები (viewer მათგან იღებს სკრიპტებს)');
+    const hostList = new Map([['https://unpkg.com/', 'unpkg.com'], ['https://cdn.jsdelivr.net/', 'cdn.jsdelivr.net'], ['https://thatopen.github.io/', 'thatopen.github.io'], ['https://cdnjs.cloudflare.com/', 'cdnjs.cloudflare.com'], ['https://firebasestorage.googleapis.com/', 'firebasestorage.googleapis.com (ფაილების საცავი)']]);
+    // (an address in the viewer's program: its status and size are read when the place allows it, otherwise only whether it answers)
+    const probeFull = async (url) => { const w = withTimeout(12000), t0 = performance.now(); try { const r = await fetch(url, { cache: 'no-store', signal: w.signal }); const ms = performance.now() - t0, len = +r.headers.get('content-length') || 0, st = r.status; w.done(); w.abort(); return { ok: true, status: st, len, ms, detail: true }; } catch (e) { w.done(); return probe(url, 10000); } };   // (only the answer is wanted: the body is not downloaded, w.abort())
+    const specific = [...externals].filter(([u]) => !hostList.has(u)).slice(0, 6);
+    const results = await Promise.all([...[...hostList].map(async ([u, label]) => ({ u, label, r: await probe(u) })), ...specific.map(async ([u, why]) => ({ u, label: `${new URL(u).host} / ${new URL(u).pathname.split('/').pop()} (viewer-ის პროგრამა ითხოვს)`, r: await probeFull(u) }))]);
+    if (!alive()) return;
+    results.forEach(({ label, r }) => {
+      if (!r.ok) { flags.hostsDown.push(label); add('bad', `${label}: ${r.timeout ? 'არ პასუხობს (9 წამში)' : 'ვერ იხსნება თქვენი ქსელიდან'}`); }
+      else if (r.detail && r.status >= 400) { flags.hostsDown.push(label); add('bad', `${label}: პასუხი ${r.status} (მისამართი აღარ არსებობს)`); }
+      else add(r.ms > 4000 ? 'warn' : 'ok', `${label}: ${r.detail ? `პასუხი ${r.status}${r.len ? ', ' + mb(r.len) : ''}, ` : 'ხელმისაწვდომია, '}${Math.round(r.ms)} მს`);
+    });
+    // ═ 4. THE UPLOADED FILES
+    const files = currentProjectData?.ifcFiles || [];
+    head(`4. ატვირთული ფაილები (${files.length})`);
+    if (!files.length) add('info', 'ამ პროექტში IFC (.frag) ფაილი ატვირთული არ არის.');
+    const speeds = []; let totalBytes = 0;
+    for (const f of files) {
+      if (!alive()) return;
+      const line = add('info', `${f.name}: მოწმდება...`);
+      const set = (level, text) => { line.level = level; line.text = `${f.name}: ${text}`; draw(); };
+      if (!/\.frag$/i.test(f.name)) add('warn', `ფაილის სახელი არ მთავრდება „.frag“-ით (${f.name}): viewer-ს .frag სჭირდება, არა .ifc`);
+      const w = withTimeout(60000), t0 = performance.now();
+      try {
+        const res = await fetch(f.url, { cache: 'no-store', signal: w.signal }), ttfb = performance.now() - t0;
+        if (!res.ok) { flags[res.status === 404 || res.status === 403 ? 'notFound' : 'netFailed'].push(f.name); set('bad', `Storage პასუხობს ${res.status}${res.status === 404 ? ': ფაილი საცავში აღარ არის (ხელახლა ატვირთე)' : res.status === 403 ? ': ბმულის ტოკენი არასწორია ან ფაილი წაიშალა' : ''}`); w.done(); continue; }
+        const size = +res.headers.get('content-length') || 0, reader = res.body.getReader(), tS = performance.now();
+        let got = 0, cut = false;
+        for (;;) {
+          let chunk; try { chunk = await reader.read(); } catch (e) { if (e.name === 'AbortError') break; throw e; }
+          if (chunk.done) break; got += chunk.value.length;
+          const el = performance.now() - tS; set('info', `იტვირთება${size ? ` ${Math.round(got / size * 100)}%` : ''}: ${mb(got)}${size ? ' / ' + mb(size) : ''}, ${(got * 8 / Math.max(el / 1000, .001) / 1e6).toFixed(1)} Mbps`);
+          if (el > 8000) { cut = true; w.done(); try { await reader.cancel(); } catch (e) {} break; }
+        }
+        w.done();
+        const secs = Math.max((performance.now() - tS) / 1000, 0.001), mbps = got * 8 / secs / 1e6; if (got >= 1024) speeds.push(mbps); totalBytes += size || got; flags.filesOk++;
+        const est = size && mbps ? size * 8 / (mbps * 1e6) : 0;
+        const empty = (size || got) < 1024; if (empty) flags.empty.push(f.name);
+        set(empty ? 'bad' : 'ok', `${mb(size || got)}, პირველი ბაიტი ${Math.round(ttfb)} მს${empty ? '' : `, სიჩქარე ${mbps.toFixed(1)} Mbps${cut ? ' (გაიზომა პირველ 8 წამში)' : ''}${est ? `, მთლიანი ჩამოტვირთვა ≈ ${sec(est)}` : ''}`}${empty ? ' — ფაილი ცარიელია ან თითქმის ცარიელი, ხელახლა ატვირთე' : ''}`);
+      } catch (e) {
+        w.done(); if (!alive()) return;
+        // it failed: was it the network, or does the server answer but forbid us (CORS)?
+        const pr = await probe(f.url, 10000);
+        if (pr.ok) { flags.corsBlocked.push(f.name); set('bad', 'Storage პასუხობს, მაგრამ ბრაუზერი კითხვას არ უშვებს (CORS): viewer-ს ფაილი ამიტომ არ ეხსნება. დაყენება საჭიროა ქვემოთ (დასკვნაში).'); }
+        else { flags.netFailed.push(f.name); set('bad', `ფაილი ვერ იხსნება: ${pr.timeout ? 'არ პასუხობს' : 'ქსელი ან firewall აჩერებს'}`); }
+      }
+    }
+    if (!alive()) return;
+    flags.bigTotal = totalBytes;
+    if (files.length > 1 && totalBytes) add('info', `ყველა ფაილი ერთად: ${mb(totalBytes)}`);
+    if (speeds.length) { const avg = speeds.reduce((a, b) => a + b, 0) / speeds.length; if (avg < 5) flags.slow = avg; else if (avg < 15) flags.slowWarn = avg; flags.avg = avg; }
+    // ═ THE VERDICT
+    const bucket = (typeof storage !== 'undefined' && storage.app && storage.app.options && storage.app.options.storageBucket) || 'revtrack-f8341.firebasestorage.app';
+    const causes = [];
+    if (flags.corsBlocked.length) causes.push({ t: 'ფაილების საცავს (Firebase Storage) CORS არ აქვს დაყენებული.', d: `ბრაუზერი viewer-ს ფაილის წაკითხვას უკრძალავს, ამიტომ ის ცარიელი რჩება ან სამუდამოდ „იტვირთება“. ეს რეალური მიზეზია. გამოსწორება ერთხელ: Google Cloud Shell-ში გაუშვი ეს ბრძანებები (პროექტი revtrack-f8341):`, extra: `echo '[{"origin":["https://biograpi.github.io"],"method":["GET","HEAD"],"maxAgeSeconds":3600,"responseHeader":["Content-Type","Content-Length","Range"]}]' > cors.json\ngsutil cors set cors.json gs://${bucket}` });
+    if (flags.empty.length) causes.push({ t: 'ფაილი ცარიელია ან თითქმის ცარიელი.', d: `ხელახლა გადააკონვერტირე და ატვირთე: ${flags.empty.join(', ')}.` });
+    if (flags.notFound.length) causes.push({ t: 'ფაილი Storage-ში აღარ არსებობს ან ბმული გაუქმებულია.', d: `ხელახლა ატვირთე: ${flags.notFound.join(', ')}.` });
+    if (flags.netFailed.length && !flags.corsBlocked.length) causes.push({ t: 'ფაილი ამ ქსელიდან ვერ იხსნება.', d: 'ეს ინტერნეტია ან firewall: სცადე სხვა ქსელი (მობილური ინტერნეტი).' });
+    if (flags.hostsDown.length) causes.push({ t: 'viewer-ის გარე წყაროებიდან ზოგი ამ ქსელიდან არ იხსნება.', d: `${flags.hostsDown.join('; ')}. თუ viewer მათგან იღებს სკრიპტს (worker ან wasm), ის სამუდამოდ „იტვირთება“. სცადე სხვა ქსელი ან სთხოვე IT-ს ამ მისამართების გახსნა; გრძელვადიანად ეს ფაილები viewer-ის საქაღალდეში უნდა ინახებოდეს.` });
+    if (flags.appBad) causes.push({ t: 'viewer-ის საკუთარი ფაილები ვერ იხსნება.', d: 'ზემოთ (მე-2 ნაწილი) წითლადაა ნაჩვენები რომელი.' });
+    if (flags.noWebgl) causes.push({ t: 'ბრაუზერში WebGL არ მუშაობს.', d: 'ჩართე ჰარდვერული აჩქარება და განაახლე გრაფიკის დრაივერი.' });
+    if (flags.softGl) causes.push({ t: 'ბრაუზერი 3D-ს პროცესორით ხატავს და არა ვიდეოკარტით.', d: 'დიდი მოდელი ამ დროს წუთობით იტვირთება. ჩართე ჰარდვერული აჩქარება.' });
+    if (flags.slow) causes.push({ t: `ინტერნეტი ნელია (≈ ${flags.slow.toFixed(1)} Mbps).`, d: `ყველა ფაილის ჩამოტვირთვას დაახლოებით ${sec(flags.bigTotal * 8 / (flags.slow * 1e6))} სჭირდება, მხოლოდ ჩამოტვირთვას, მოდელის გახსნის წინ.` });
+    else if (flags.slowWarn) causes.push({ t: `ინტერნეტი საშუალოა (≈ ${flags.slowWarn.toFixed(1)} Mbps).`, d: `ყველა ფაილის ჩამოტვირთვა დაახლოებით ${sec(flags.bigTotal * 8 / (flags.slowWarn * 1e6))} გაგრძელდება.` });
+    if (flags.bigTotal > 150 * 1048576 || (flags.lowMem && flags.bigTotal > 40 * 1048576)) causes.push({ t: 'ფაილები დიდია ამ კომპიუტერისთვის.', d: `ერთად ${mb(flags.bigTotal)}${flags.lowMem ? ', მეხსიერება ≤ 4 GB' : ''}: გახსნისას ბევრჯერ მეტ მეხსიერებას დაიკავებს. სცადე ერთდროულად ნაკლები ფაილი.` });
+    head('დასკვნა');
+    if (!causes.length) { rows.push({ level: 'verdict', kind: 'ok', title: 'ქსელი, ფაილები და გარე წყაროები რიგზეა.', text: files.length ? 'მაშინ ჩამოტვირთვა პრობლემა არ არის და მიზეზი viewer-ის კოდშია: ბიბლიოთეკის ვერსიის შეუსაბამობა .frag ფაილთან, ან ფაილის შიგთავსი. გახსენი viewer-ში F12 → Console და გამომიგზავნე წითელი ტექსტი, ან ეს ანგარიში (📋 ღილაკი) და ifcviewer-ის კოდი.' : 'ფაილი ატვირთული არ არის, ამიტომ viewer-ს ჩასატვირთი არაფერი აქვს.' }); }
+    else causes.forEach((c, i) => rows.push({ level: 'verdict', kind: 'bad', title: `${causes.length > 1 ? (i + 1) + '. ' : ''}${c.t}`, text: c.d, extra: c.extra }));
+    draw();
+  } catch (e) { if (alive()) add('bad', 'შემოწმებას შეცდომა შეექმნა: ' + e.message); }
 };
 window.closeIfcViewer = () => {
   cm('ifcViewerModal');
@@ -8224,7 +8405,7 @@ async function loadComments(issueId) {
     const withinEditWindow = createdMs && (now - createdMs) < 24*60*60*1000;
     const isOwn = c.authorId === currentUser?.uid;
     const canEditComment = isAdminLike() || (isOwn && withinEditWindow);
-    const canDeleteComment = isAdminLike();
+    const canDeleteComment = isAdminLike() || (isOwn && withinEditWindow);   // the same 24 hours as for editing (an admin: always)
     return `<div class="comment-item">
       <div class="comment-avatar">${initials(c.authorName)}</div>
       <div class="comment-bubble">
@@ -8240,14 +8421,24 @@ async function loadComments(issueId) {
     </div>`;
   }).join('');
 }
+// Editing and deleting a comment: its author for the first 24 hours after posting it, an admin always. The database keeps the same limit (it counts from ITS clock), so a click that comes a moment after the
+// 24 hours have run out is refused there: then the buttons go and the person is told why.
+const COMMENT_WINDOW_MSG = 'კომენტარის რედაქტირება და წაშლა მხოლოდ გამოქვეყნებიდან 24 საათის განმავლობაშია შესაძლებელი.';
 window.deleteCommentHandler = async (issueId, commentId) => {
-  if (!confirm('წავშალო ეს კომენტარი?')) return;
+  const ref = doc(db,'projects',currentProjectId,'issues',issueId,'comments',commentId);
+  let photos = [];
+  try { const snap = await getDoc(ref); photos = (snap.exists() && snap.data().photos) || []; } catch(e) {}
+  if (!confirm(photos.length ? 'წავშალო ეს კომენტარი? მისი ფოტოებიც წაიშლება.' : 'წავშალო ეს კომენტარი?')) return;
   try {
-    await deleteDoc(doc(db,'projects',currentProjectId,'issues',issueId,'comments',commentId));
-    try { await updateDoc(doc(db,'projects',currentProjectId,'issues',issueId), {commentCount: increment(-1)}); } catch(e) {}
+    await deleteDoc(ref);
+    try { await updateDoc(doc(db,'projects',currentProjectId,'issues',issueId), {commentCount: increment(-1)}); } catch(e) {}   // (the list's counter goes down by one)
+    for (const url of photos) { try { await deleteObject(storageRef(storage, url)); } catch(e) {} }   // (the comment's photos go with it; a photo that cannot be removed is no reason to fail)
     loadComments(issueId);
     showToast('კომენტარი წაიშალა');
-  } catch(e) { alert('შეცდომა: '+e.message); }
+  } catch(e) {
+    if (e && e.code === 'permission-denied') { alert(COMMENT_WINDOW_MSG); loadComments(issueId); }
+    else alert('შეცდომა: '+e.message);
+  }
 };
 window.startEditComment = (issueId, commentId) => {
   const textEl = document.getElementById(`ctext-${commentId}`);
@@ -8268,7 +8459,10 @@ window.saveEditComment = async (issueId, commentId) => {
   try {
     await updateDoc(doc(db,'projects',currentProjectId,'issues',issueId,'comments',commentId), {text: newText, editedAt: serverTimestamp()});
     loadComments(issueId);
-  } catch(e) { alert('შეცდომა: '+e.message); }
+  } catch(e) {
+    if (e && e.code === 'permission-denied') { alert(COMMENT_WINDOW_MSG); loadComments(issueId); }
+    else alert('შეცდომა: '+e.message);
+  }
 };
 // ── UNREAD COMMENTS ──
 // The "seen" marks are in milliseconds. A mark written now is a Timestamp of the SERVER's clock; an older one is a plain number that the person's computer wrote with its own clock.
