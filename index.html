@@ -3724,7 +3724,7 @@ function renderForceGraph(projects) {
 // Draws whichever of the two charts is shown (the boxes above them are shared).
 function redrawMainChart(animate = true) {
   if (!lastChartProjects) return;
-  if (mainListView === 'force') renderForceGraph(lastChartProjects); else if (mainListView === 'net') renderNetwork(lastChartProjects, { animate }); else if (mainListView === 'chords') renderChords(lastChartProjects); else renderReviewerManagerChart(lastChartProjects);
+  if (mainListView === 'force') renderForceGraph(lastChartProjects); else if (mainListView === 'net') renderNetwork(lastChartProjects, { animate }); else if (mainListView === 'chords') renderChords(lastChartProjects, { animate }); else renderReviewerManagerChart(lastChartProjects);
 }
 
 // ══ THE NETWORK ("ქსელი"): an ARC DIAGRAM of everybody and every project ══
@@ -3736,7 +3736,7 @@ const NET_COLOR = { r: SANKEY_REVIEWER_PALETTE[0], m: SANKEY_MANAGER_PALETTE[0],
 const NET_LABEL = { ...FG_LABEL, project: 'პროექტი', ca: 'კონტრაქტორი (ექაუნთი)', none: 'ჯერ არავის მიმაგრებული' };
 let netOrder = 'group';   // 'group' | 'name' | 'degree'
 // The data of the network: { nodes, links } from the projects, the registered users (users: id -> user) and the boxes that are ticked (st). A pure function.
-// opts.showUnconnected: the people who are tied to no project (shown for the admins only; for everybody else only the people of the projects they see).
+// A registered user is shown only when he has at least ONE tie (that is shown by the boxes that are ticked): the people who are tied to nobody (plain users) are not shown, for anybody.
 function buildNetData(projects, users, st, opts) {
   opts = opts || {};
   st = st || { dm: sankeyManagerTypes.dm, pm: sankeyManagerTypes.pm, site: sankeyManagerTypes.site, qc: sankeyManagerTypes.qc, interior: sankeyManagerTypes.interior, arch: sankeyDisciplines.arch, struct: sankeyDisciplines.struct, mp: sankeyDisciplines.mp, elec: sankeyDisciplines.elec, reviewer: sankeyShowReviewer };
@@ -3777,7 +3777,7 @@ function buildNetData(projects, users, st, opts) {
   });
   const list = [...links.values()];
   list.forEach(l => { l.color = NET_COLOR[NET_ORDER_KINDS.find(k => l.kinds.includes(k))]; nodes.get(l.source).degree++; nodes.get(l.target).degree++; });
-  const all = [...nodes.values()].filter(n => n.kind !== 'user' || n.degree > 0 || opts.showUnconnected);
+  const all = [...nodes.values()].filter(n => n.kind !== 'user' || n.degree > 0);
   const ids = new Set(all.map(n => n.id));
   return { nodes: all, links: list.filter(l => ids.has(l.source) && ids.has(l.target)) };
 }
@@ -3803,17 +3803,20 @@ function netCount(n, word) {
 // companies; every one a ball of the same size, its name beside it, turned along the radius), and every tie is a curve that is pulled towards the group it leaves and the group it reaches (a tree:
 // the centre, the groups, the nodes) so that the ties between the same two groups run together as one bundle. The centre and the radius do not depend on the boxes (they follow ALL the nodes),
 // so ticking a box never moves the circle; only the nodes that appear or go change the places on it.
-function renderChords(projects) {
+function renderChords(projects, opts) {
   const svgEl = document.getElementById('chordsSvg'), wrap = document.getElementById('chordsWrap');
+  // A redraw because a box changed (opts.animate) starts from the picture that is there (also one that is still moving): the balls slide round the circle to their new places, the curves bend with them
+  const old = opts && opts.animate && svgEl.__chords && svgEl.__chords.root ? svgEl.__chords : null;
+  const oldLeaf = old ? new Map(old.leaves.map(l => [l.data.id, { x: l.x, y: l.y }])) : null, oldGroup = old ? new Map(old.root.children.map(c => [c.data.name, { x: c.x, y: c.y }])) : null;
+  if (svgEl.__chordsTimer) { svgEl.__chordsTimer.stop(); svgEl.__chordsTimer = null; }
   svgEl.innerHTML = '';
   const tr = window.__i18nTr || (w => w);
-  const showUnconnected = isAdminLike();
-  const data = buildNetData(projects || [], allUsers, undefined, { showUnconnected }), nodes = data.nodes;
+  const data = buildNetData(projects || [], allUsers, undefined, {}), nodes = data.nodes;
   const svg = d3.select(svgEl), FS = 10, DOT = 3, GAP = 13.5, OUT = 6;
   const cs = getComputedStyle(wrap), inner = (wrap.clientWidth || 900) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
   if (!nodes.length) { svg.attr('viewBox', [0, 0, 400, 120]); svgEl.style.width = '100%'; svg.append('text').attr('x', 200).attr('y', 60).attr('text-anchor', 'middle').attr('fill', 'rgba(255,255,255,.5)').attr('font-size', 13).text(tr('პროექტები არ არის')); return null; }
   // the size of the circle: from EVERY node there can be (all the boxes ticked), not from the ones shown now
-  const every = buildNetData(projects || [], allUsers, { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true }, { showUnconnected }).nodes;
+  const every = buildNetData(projects || [], allUsers, { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true }, {}).nodes;
   const kinds = NET_ORDER_KINDS.filter(k => every.some(d => d.group === k));
   const labelW = Math.min(220, Math.max(...every.map(d => measureLabelWidth(d.name, FS))));
   const R = Math.max(110, Math.round(((every.length + 0.8 * kinds.length) * GAP) / (2 * Math.PI))), W = 2 * (R + labelW + OUT + DOT + 14);
@@ -3830,19 +3833,58 @@ function renderChords(projects) {
   svg.append('rect').attr('width', W).attr('height', W).attr('fill', '#1a1120');
   const g = svg.append('g').attr('transform', `translate(${W / 2},${W / 2})`);
   const line = d3.lineRadial().curve(d3.curveBundle.beta(0.85)).radius(d => d.y).angle(d => d.x);
-  const link = g.append('g').selectAll('path').data(ties).join('path').attr('class', 'chord-link').attr('d', l => line(l.s.path(l.t))).attr('fill', 'none').attr('stroke', l => l.color).attr('stroke-opacity', 0.42).attr('stroke-width', 1.2);
-  const node = g.append('g').selectAll('g').data(leaves).join('g').attr('class', 'chord-node').attr('data-node-id', l => l.data.id).attr('transform', l => `rotate(${(l.x * 180) / Math.PI - 90}) translate(${l.y},0)`);
-  const d0 = l => l.data;
+  const link = g.append('g').selectAll('path').data(ties).join('path').attr('class', 'chord-link').attr('fill', 'none').attr('stroke', l => l.color).attr('stroke-opacity', 0.42).attr('stroke-width', 1.2);
+  const node = g.append('g').selectAll('g').data(leaves).join('g').attr('class', 'chord-node').attr('data-node-id', l => l.data.id);
+  const d0 = l => l.data, TAU = 2 * Math.PI, norm = x => ((x % TAU) + TAU) % TAU;
   node.append('title').text(l => { const d = d0(l); return d.kind === 'project' ? `${d.name} · ${netCount(d.degree, 'კავშირი')}` : `${d.name} · ${[...new Set(d.roles.length ? d.roles : [d.group])].map(k => tr(NET_LABEL[k])).join(', ')}${d.degree ? ` · ${netCount(d.degree, 'პროექტი')}` : ''}`; });
   node.append('rect').attr('x', -4).attr('y', -GAP / 2).attr('width', labelW + OUT + DOT + 14).attr('height', GAP).attr('fill', 'transparent');   // (the whole name answers the mouse)
   node.append('circle').attr('r', DOT).attr('fill', l => d0(l).color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
-  node.append('text').attr('x', l => (l.x < Math.PI ? 1 : -1) * (DOT + OUT)).attr('dy', '0.31em').attr('text-anchor', l => (l.x < Math.PI ? 'start' : 'end')).attr('transform', l => (l.x >= Math.PI ? 'rotate(180)' : null))
-    .attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(l => d0(l).name);
+  node.append('text').attr('dy', '0.31em').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(l => d0(l).name);
+  // the elements follow the positions of the nodes of the tree (angle x, radius y): at rest the final ones, while they move the ones of that moment
+  const place = () => {
+    node.attr('transform', l => `rotate(${(l.x * 180) / Math.PI - 90}) translate(${l.y},0)`);
+    node.select('text').attr('x', l => (norm(l.x) < Math.PI ? 1 : -1) * (DOT + OUT)).attr('text-anchor', l => (norm(l.x) < Math.PI ? 'start' : 'end')).attr('transform', l => (norm(l.x) >= Math.PI ? 'rotate(180)' : null));
+    link.attr('d', l => line(l.s.path(l.t)));
+  };
+  place();
   // hover: the node, what it is tied to and the curves between (everything else fades; his own curves are lit and thicker)
   const highlight = l => { const id = l.data.id, mine = ties.filter(t => t.source === id || t.target === id), keep = new Set([id]); mine.forEach(t => { keep.add(t.source); keep.add(t.target); }); node.classed('fg-dim', m => !keep.has(m.data.id)); link.classed('fg-dim', t => !mine.includes(t)).attr('stroke-opacity', t => mine.includes(t) ? 0.95 : 0.42).attr('stroke-width', t => mine.includes(t) ? 2.2 : 1.2); };
   const clear = () => { node.classed('fg-dim', false); link.classed('fg-dim', false).attr('stroke-opacity', 0.42).attr('stroke-width', 1.2); };
   node.on('mouseenter', (e, l) => highlight(l)).on('mouseleave', clear);
-  svgEl.__chords = { leaves, ties, R, W, highlight, clear };
+  // THE MOVEMENT (0.65 s): a ball that was there slides round the circle (the short way) from where it stood, and the curves bend with it; a new ball starts at its group and fades in; one that goes
+  // stays where it was with its curves and fades out
+  const animate = !!oldLeaf;   // (not held back by the system's "reduce motion": it is a short, small movement that the owner asked for)
+  const all = root.descendants();
+  let ghostLayer = null;
+  const finishMove = () => {
+    if (!svgEl.__chordsTimer) return;
+    svgEl.__chordsTimer.stop(); svgEl.__chordsTimer = null;
+    all.forEach(n => { n.x = n.tx; n.y = n.ty; }); node.attr('opacity', null); link.attr('opacity', null); if (ghostLayer) ghostLayer.remove(); place();
+  };
+  if (animate) {
+    all.forEach(n => { n.tx = n.x; n.ty = n.y; n.sx = n.x; n.sy = n.y; });
+    const isNewLeaf = l => !oldLeaf.has(l.data.id), tieKey = t => `${t.source}|${t.target}`, oldKeys = new Set(old.ties.map(tieKey)), newKeys = new Set(ties.map(tieKey)), isNewTie = t => !oldKeys.has(tieKey(t));
+    all.forEach(n => {
+      if (n.height === 0) { const o = oldLeaf.get(n.data.id) || oldGroup.get(n.parent.data.name) || null; if (o) { n.sx = o.x; n.sy = o.y; } }   // a leaf: where it stood; a new one: at its group
+      else if (n.parent) { const o = oldGroup.get(n.data.name); if (o) { n.sx = o.x; n.sy = o.y; } }                                          // a group: where it stood
+    });
+    const goneLeaves = old.leaves.filter(l => !byId.has(l.data.id)), goneTies = old.ties.filter(t => !newKeys.has(tieKey(t)));
+    ghostLayer = g.insert('g', ':first-child').attr('class', 'chord-gone');
+    const gLink = ghostLayer.append('g').selectAll('path').data(goneTies).join('path').attr('fill', 'none').attr('stroke', t => t.color).attr('stroke-opacity', 0.42).attr('stroke-width', 1.2).attr('d', t => line(t.s.path(t.t)));
+    const gNode = ghostLayer.append('g').selectAll('g').data(goneLeaves).join('g').attr('transform', l => `rotate(${(l.x * 180) / Math.PI - 90}) translate(${l.y},0)`);
+    gNode.append('circle').attr('r', DOT).attr('fill', l => d0(l).color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+    gNode.append('text').attr('dy', '0.31em').attr('x', l => (norm(l.x) < Math.PI ? 1 : -1) * (DOT + OUT)).attr('text-anchor', l => (norm(l.x) < Math.PI ? 'start' : 'end')).attr('transform', l => (norm(l.x) >= Math.PI ? 'rotate(180)' : null)).attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(l => d0(l).name);
+    const lerpAngle = (a, b, k) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU - Math.PI; return a + d * k; };   // (the short way round the circle)
+    all.forEach(n => { n.x = n.sx; n.y = n.sy; }); node.attr('opacity', l => (isNewLeaf(l) ? 0 : null)); link.attr('opacity', t => (isNewTie(t) ? 0 : null)); place();
+    const D = 650, ease = d3.easeCubicInOut;
+    svgEl.__chordsTimer = d3.timer(elapsed => {
+      const k = Math.min(1, elapsed / D), e = ease(k);
+      all.forEach(n => { n.x = lerpAngle(n.sx, n.tx, e); n.y = n.sy + (n.ty - n.sy) * e; });
+      place(); node.filter(isNewLeaf).attr('opacity', e); link.filter(isNewTie).attr('opacity', e); gNode.attr('opacity', 1 - e); gLink.attr('opacity', 1 - e);
+      if (k >= 1) finishMove();
+    });
+  }
+  svgEl.__chords = { leaves, ties, root, R, W, highlight, clear };
   return svgEl.__chords;
 }
 window.setNetOrder = v => { netOrder = v; if (mainListView === 'net' && lastChartProjects) renderNetwork(lastChartProjects, { animate: true }); };
@@ -3855,12 +3897,12 @@ function renderNetwork(projects, opts) {
   svgEl.innerHTML = '';
   const sel = document.getElementById('netOrder'); if (sel && sel.value !== netOrder) sel.value = netOrder;
   const tr = window.__i18nTr || (w => w);
-  const data = buildNetData(projects || [], allUsers, undefined, { showUnconnected: isAdminLike() }), nodes = orderNet(data.nodes, netOrder), n = nodes.length;
+  const data = buildNetData(projects || [], allUsers, undefined, {}), nodes = orderNet(data.nodes, netOrder), n = nodes.length;
   const svg = d3.select(svgEl), R = 3, FS = 10, STEP = 14, TOP = 12;   // the ball's radius, the size of the names, the distance between two rows
   const cs = getComputedStyle(wrap), inner = (wrap.clientWidth || 900) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
   if (!n) { svg.attr('viewBox', [0, 0, 400, 120]); svgEl.style.width = '100%'; svg.append('text').attr('x', 200).attr('y', 60).attr('text-anchor', 'middle').attr('fill', 'rgba(255,255,255,.5)').attr('font-size', 13).text(tr('პროექტები არ არის')); return null; }
   // The line of balls stands at the same place whatever is ticked: the width of the names is that of the WIDEST name of all (all the boxes ticked), not of the ones shown now.
-  const everyNode = buildNetData(projects || [], allUsers, { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true }, { showUnconnected: isAdminLike() }).nodes;
+  const everyNode = buildNetData(projects || [], allUsers, { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true }, {}).nodes;
   const labelW = Math.min(300, Math.max(...everyNode.map(d => measureLabelWidth(d.name, FS))));
   const x0 = Math.round(labelW + 26), maxArc = ((n - 1) * STEP) / 2;   // the highest arc is as wide as half the line is long, if the width allows
   const bulge = Math.max(60, Math.min(maxArc, Math.round(inner) - x0 - 14)), width = x0 + bulge + 14, height = TOP + (n - 1) * STEP + 22;
@@ -3882,7 +3924,7 @@ function renderNetwork(projects, opts) {
   node.on('mouseenter', (e, d) => highlight(d)).on('mouseleave', clear);
   const place = () => { node.select('rect').attr('y', d => Y(d.id) - STEP / 2); node.select('circle').attr('cy', d => Y(d.id)); node.select('text').attr('y', d => Y(d.id)); link.attr('d', arc); };   // the elements follow `cur`
   // THE MOVEMENT (0.65 s): a ball that was there glides from where it stood to its new place (and its arcs bend with it); a new one fades in; one that goes stays where it was and fades out
-  const animate = !!oldY && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const animate = !!oldY;   // (not held back by the system's "reduce motion": it is a short, small movement that the owner asked for)
   let ghostLayer = null;
   const finishMove = () => {
     if (!svgEl.__netTimer) return;
