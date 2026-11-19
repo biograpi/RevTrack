@@ -1584,15 +1584,11 @@ body.has-footer .site-footer{display:flex}
   var D = {
 "ქორდები": "Chords",
 "კავშირი": "tie",
-"კავშირი (მრ.)": "ties",
-"პროექტი (მრ.)": "projects",
 "ქსელი": "Network",
 "დალაგება:": "Sort by:",
 "ჯგუფის მიხედვით": "By group",
 "სახელის მიხედვით": "By name",
 "კავშირების რაოდენობით": "By number of ties",
-"კონტრაქტორი (ექაუნთი)": "Contractor (account)",
-"ჯერ არავის მიმაგრებული": "Not tied to a project yet",
 "მთავარ გვერდზე": "To the main page",
 "✎ შევსების დაწყება": "✎ Start filling in",
 "✎ რედაქტირების რეჟიმი": "✎ Editing mode",
@@ -3733,7 +3729,6 @@ function redrawMainChart(animate = true) {
 // Typed-by-hand people (a site manager or an MEP reviewer who has no account) and users waiting for approval are not shown; the contractor COMPANIES (typed names) are, because they are what the contractors' boxes are about.
 const NET_ORDER_KINDS = ['project', 'r', 'm', 'in', 'pm', 'sm', 'qc', 'ca', 'arch', 'struct', 'mp', 'elec', 'none'];
 const NET_COLOR = { r: SANKEY_REVIEWER_PALETTE[0], m: SANKEY_MANAGER_PALETTE[0], in: SANKEY_INTERIOR_PALETTE[0], pm: SANKEY_PM_PALETTE[0], sm: SANKEY_SITE_PALETTE[0], qc: SANKEY_QC_PALETTE[0], ca: '#38bdf8', arch: SANKEY_ARCH_PALETTE[0], struct: SANKEY_STRUCT_PALETTE[0], mp: SANKEY_MEP_PALETTE[0], elec: SANKEY_ELEC_PALETTE[0], none: '#6b7280' };
-const NET_LABEL = { ...FG_LABEL, project: 'პროექტი', ca: 'კონტრაქტორი (ექაუნთი)', none: 'ჯერ არავის მიმაგრებული' };
 let netOrder = 'group';   // 'group' | 'name' | 'degree'
 // The data of the network: { nodes, links } from the projects, the registered users (users: id -> user) and the boxes that are ticked (st). A pure function.
 // A registered user is shown only when he has at least ONE tie (that is shown by the boxes that are ticked): the people who are tied to nobody (plain users) are not shown, for anybody.
@@ -3791,13 +3786,6 @@ function orderNet(nodes, mode) {
   else sorted.sort((a, b) => rank(a) - rank(b) || byName(a, b));
   return sorted;
 }
-// A word after a number: Georgian keeps the singular ("3 პროექტი"), English needs the plural ("3 projects"): a separate dictionary entry for the plural, which Georgian does not have.
-function netCount(n, word) {
-  const tr = window.__i18nTr || (w => w), one = tr(word);
-  if (n === 1) return `${n} ${one}`;
-  const plural = tr(word + ' (მრ.)');
-  return `${n} ${plural === word + ' (მრ.)' ? one : plural}`;
-}
 // ══ THE CHORDS ("ქორდები"): HIERARCHICAL EDGE BUNDLING ══
 // The same nodes and the same ties as the network (buildNetData: the boxes, who may see whom), but on a CIRCLE: the nodes stand in groups round it (the projects, then the kinds of people, then the
 // companies; every one a ball of the same size, its name beside it, turned along the radius), and every tie is a curve that is pulled towards the group it leaves and the group it reaches (a tree:
@@ -3836,7 +3824,6 @@ function renderChords(projects, opts) {
   const link = g.append('g').selectAll('path').data(ties).join('path').attr('class', 'chord-link').attr('fill', 'none').attr('stroke', l => l.color).attr('stroke-opacity', 0.42).attr('stroke-width', 1.2);
   const node = g.append('g').selectAll('g').data(leaves).join('g').attr('class', 'chord-node').attr('data-node-id', l => l.data.id);
   const d0 = l => l.data, TAU = 2 * Math.PI, norm = x => ((x % TAU) + TAU) % TAU;
-  node.append('title').text(l => { const d = d0(l); return d.kind === 'project' ? `${d.name} · ${netCount(d.degree, 'კავშირი')}` : `${d.name} · ${[...new Set(d.roles.length ? d.roles : [d.group])].map(k => tr(NET_LABEL[k])).join(', ')}${d.degree ? ` · ${netCount(d.degree, 'პროექტი')}` : ''}`; });
   node.append('rect').attr('x', -4).attr('y', -GAP / 2).attr('width', labelW + OUT + DOT + 14).attr('height', GAP).attr('fill', 'transparent');   // (the whole name answers the mouse)
   node.append('circle').attr('r', DOT).attr('fill', l => d0(l).color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
   node.append('text').attr('dy', '0.31em').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(l => d0(l).name);
@@ -3914,7 +3901,6 @@ function renderNetwork(projects, opts) {
   const arc = l => arcBetween(Y(l.source), Y(l.target));
   const link = svg.append('g').selectAll('path').data(data.links).join('path').attr('class', 'net-link').attr('d', arc).attr('fill', 'none').attr('stroke', d => d.color).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4);
   const node = svg.append('g').selectAll('g').data(nodes).join('g').attr('class', 'net-node').attr('data-node-id', d => d.id);
-  node.append('title').text(d => d.kind === 'project' ? `${d.name} · ${netCount(d.degree, 'კავშირი')}` : `${d.name} · ${[...new Set(d.roles.length ? d.roles : [d.group])].map(k => tr(NET_LABEL[k])).join(', ')}${d.degree ? ` · ${netCount(d.degree, 'პროექტი')}` : ''}`);
   node.append('rect').attr('x', 0).attr('y', d => Y(d.id) - STEP / 2).attr('width', x0 + 12).attr('height', STEP).attr('fill', 'transparent');   // (the whole row answers the mouse)
   node.append('circle').attr('cx', x0).attr('cy', d => Y(d.id)).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
   node.append('text').attr('x', x0 - 9).attr('y', d => Y(d.id)).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(d => d.name);
