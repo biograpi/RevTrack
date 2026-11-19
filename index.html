@@ -76,6 +76,10 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .view-toggle-btn{border:none;background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-family:inherit;padding:6px 16px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s}
 .view-toggle-btn:hover{color:#fff}
 .view-toggle-btn.active{background:rgba(255,255,255,.18);color:#fff;font-weight:600}
+@media (max-width:520px){   /* five views in the switch: on a phone the buttons are closer, and if they still do not fit they go to a second row (the switch used to run past the edge of the screen) */
+  .main-view-toggle{flex-wrap:wrap;justify-content:center;max-width:100%}
+  .view-toggle-btn{padding:6px 9px;font-size:12px}
+}
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
 .projects-grid-4col{grid-template-columns:repeat(4,1fr)}
 .activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 32px;background:transparent}
@@ -399,7 +403,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .fg-link{fill:none;stroke-linecap:round;transition:opacity .15s}
 .fg-node{cursor:default;transition:opacity .15s}
 .fg-dim{opacity:.12}
-.net-link,.net-node{transition:opacity .15s ease}
+.net-link,.net-node,.chord-link,.chord-node{transition:opacity .15s ease}
+#chordsSvg{display:block}
 .net-head{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;color:rgba(255,255,255,.7)}
 .net-head select{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 8px;font-family:inherit;font-size:12px;cursor:pointer}
 .net-head select option{color:#1b161d}
@@ -802,6 +807,7 @@ body.has-footer .site-footer{display:flex}
     <button class="view-toggle-btn" id="mainViewToggleChart" onclick="chooseMainListView('chart')">გრაფიკი</button>
     <button class="view-toggle-btn" id="mainViewToggleForce" onclick="chooseMainListView('force')">კავშირები</button>
 <button class="view-toggle-btn" id="mainViewToggleNet" onclick="chooseMainListView('net')">ქსელი</button>
+<button class="view-toggle-btn" id="mainViewToggleChords" onclick="chooseMainListView('chords')">ქორდები</button>
   </div>
   <div class="projects-grid" id="projectsGrid"></div>
   <div class="activity-chart-wrap" id="reviewerManagerChartWrap" style="display:none;position:relative">
@@ -827,6 +833,9 @@ body.has-footer .site-footer{display:flex}
 <div class="activity-chart-wrap" id="networkWrap" style="display:none;position:relative">
 <div class="net-head"><label for="netOrder">დალაგება:</label><select id="netOrder" onchange="setNetOrder(this.value)"><option value="group">ჯგუფის მიხედვით</option><option value="name">სახელის მიხედვით</option><option value="degree">კავშირების რაოდენობით</option></select></div>
 <svg id="networkSvg"></svg>
+</div>
+<div class="activity-chart-wrap" id="chordsWrap" style="display:none;position:relative;overflow-x:auto">
+<svg id="chordsSvg"></svg>
 </div>
   <div class="activity-chart-wrap" id="activityChartWrap" style="display:none">
     <div class="activity-chart-head">
@@ -1573,6 +1582,7 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"ქორდები": "Chords",
 "კავშირი": "tie",
 "კავშირი (მრ.)": "ties",
 "პროექტი (მრ.)": "projects",
@@ -2992,7 +3002,7 @@ const SANKEY_BOX_IDS = ['chkSankeyDm', 'chkSankeyInterior', 'chkSankeyPm', 'chkS
 const SANKEY_BOX_COLORS = { chkSankeyDm: SANKEY_MANAGER_PALETTE[0], chkSankeyInterior: SANKEY_INTERIOR_PALETTE[0], chkSankeyPm: SANKEY_PM_PALETTE[0], chkSankeySite: SANKEY_SITE_PALETTE[0], chkSankeyQc: SANKEY_QC_PALETTE[0], chkSankeyArch: SANKEY_ARCH_PALETTE[0], chkSankeyStruct: SANKEY_STRUCT_PALETTE[0], chkSankeyMp: SANKEY_MEP_PALETTE[0], chkSankeyElec: SANKEY_ELEC_PALETTE[0], chkSankeyReviewer: SANKEY_REVIEWER_PALETTE[0] };
 Object.entries(SANKEY_BOX_COLORS).forEach(([id, c]) => { const label = document.getElementById(id).closest('label'); label.classList.add('has-colour'); label.style.setProperty('--box-color', c); });
 // The diagram and the graph of connections each keep THEIR OWN boxes: switching from one to the other brings back the boxes the person left there (the first time: all on).
-const boxesSaved = { chart: null, force: null, net: null };
+const boxesSaved = { chart: null, force: null, net: null, chords: null };
 const BOXES_ALL_ON = { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true };
 const boxesNow = () => ({ dm: sankeyManagerTypes.dm, interior: sankeyManagerTypes.interior, pm: sankeyManagerTypes.pm, site: sankeyManagerTypes.site, qc: sankeyManagerTypes.qc, arch: sankeyDisciplines.arch, struct: sankeyDisciplines.struct, mp: sankeyDisciplines.mp, elec: sankeyDisciplines.elec, reviewer: sankeyShowReviewer });
 function applyBoxes(st) {
@@ -3011,13 +3021,13 @@ function syncSankeyChecks() {
   document.querySelectorAll('#sankeyControlsRow label').forEach(l => { const box = l.querySelector('input'); l.classList.toggle('is-hidden', box.id === 'chkSankeyAll' ? on === 0 : !box.checked); });
 }
 // The "all" box: switches every box above the diagram on or off at once, then the diagram is drawn once.
-function setAllSankeyBoxes(on) {
+function setAllSankeyBoxes(on, animate = true) {   // animate: false when it is only the first showing of a view (the boxes are set to "all" under it): then nothing moves
   SANKEY_BOX_IDS.forEach(id => { document.getElementById(id).checked = on; });
   sankeyManagerTypes.dm = sankeyManagerTypes.interior = sankeyManagerTypes.pm = sankeyManagerTypes.site = sankeyManagerTypes.qc = on;
   sankeyDisciplines.arch = sankeyDisciplines.struct = sankeyDisciplines.mp = sankeyDisciplines.elec = on;
   sankeyShowReviewer = on;
   syncSankeyChecks();
-  redrawMainChart();
+  redrawMainChart(animate);
 }
 window.toggleSankeyAll = function() { setAllSankeyBoxes(document.getElementById('chkSankeyAll').checked); };
 
@@ -3712,9 +3722,9 @@ function renderForceGraph(projects) {
   return svgEl.__fg;
 }
 // Draws whichever of the two charts is shown (the boxes above them are shared).
-function redrawMainChart() {
+function redrawMainChart(animate = true) {
   if (!lastChartProjects) return;
-  if (mainListView === 'force') renderForceGraph(lastChartProjects); else if (mainListView === 'net') renderNetwork(lastChartProjects); else renderReviewerManagerChart(lastChartProjects);
+  if (mainListView === 'force') renderForceGraph(lastChartProjects); else if (mainListView === 'net') renderNetwork(lastChartProjects, { animate }); else if (mainListView === 'chords') renderChords(lastChartProjects); else renderReviewerManagerChart(lastChartProjects);
 }
 
 // ══ THE NETWORK ("ქსელი"): an ARC DIAGRAM of everybody and every project ══
@@ -3788,9 +3798,60 @@ function netCount(n, word) {
   const plural = tr(word + ' (მრ.)');
   return `${n} ${plural === word + ' (მრ.)' ? one : plural}`;
 }
-window.setNetOrder = v => { netOrder = v; if (mainListView === 'net' && lastChartProjects) renderNetwork(lastChartProjects); };
-function renderNetwork(projects) {
+// ══ THE CHORDS ("ქორდები"): HIERARCHICAL EDGE BUNDLING ══
+// The same nodes and the same ties as the network (buildNetData: the boxes, who may see whom), but on a CIRCLE: the nodes stand in groups round it (the projects, then the kinds of people, then the
+// companies; every one a ball of the same size, its name beside it, turned along the radius), and every tie is a curve that is pulled towards the group it leaves and the group it reaches (a tree:
+// the centre, the groups, the nodes) so that the ties between the same two groups run together as one bundle. The centre and the radius do not depend on the boxes (they follow ALL the nodes),
+// so ticking a box never moves the circle; only the nodes that appear or go change the places on it.
+function renderChords(projects) {
+  const svgEl = document.getElementById('chordsSvg'), wrap = document.getElementById('chordsWrap');
+  svgEl.innerHTML = '';
+  const tr = window.__i18nTr || (w => w);
+  const showUnconnected = isAdminLike();
+  const data = buildNetData(projects || [], allUsers, undefined, { showUnconnected }), nodes = data.nodes;
+  const svg = d3.select(svgEl), FS = 10, DOT = 3, GAP = 13.5, OUT = 6;
+  const cs = getComputedStyle(wrap), inner = (wrap.clientWidth || 900) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  if (!nodes.length) { svg.attr('viewBox', [0, 0, 400, 120]); svgEl.style.width = '100%'; svg.append('text').attr('x', 200).attr('y', 60).attr('text-anchor', 'middle').attr('fill', 'rgba(255,255,255,.5)').attr('font-size', 13).text(tr('პროექტები არ არის')); return null; }
+  // the size of the circle: from EVERY node there can be (all the boxes ticked), not from the ones shown now
+  const every = buildNetData(projects || [], allUsers, { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true }, { showUnconnected }).nodes;
+  const kinds = NET_ORDER_KINDS.filter(k => every.some(d => d.group === k));
+  const labelW = Math.min(220, Math.max(...every.map(d => measureLabelWidth(d.name, FS))));
+  const R = Math.max(110, Math.round(((every.length + 0.8 * kinds.length) * GAP) / (2 * Math.PI))), W = 2 * (R + labelW + OUT + DOT + 14);
+  // the tree: the centre, the groups, the nodes (the groups in the order of the columns, the nodes of a group by name)
+  const byName = (a, b) => a.name.localeCompare(b.name, 'ka', { numeric: true }), byGroup = new Map();
+  nodes.forEach(d => { if (!byGroup.has(d.group)) byGroup.set(d.group, []); byGroup.get(d.group).push(d); });
+  const root = d3.hierarchy({ name: 'root', children: kinds.filter(k => byGroup.has(k)).map(k => ({ name: k, children: byGroup.get(k).sort(byName).map(d => ({ ...d })) })) });
+  d3.cluster().size([2 * Math.PI, R]).separation((a, b) => a.parent === b.parent ? 1 : 1.8)(root);
+  const leaves = root.leaves(), byId = new Map(leaves.map(l => [l.data.id, l]));
+  const ties = data.links.map(l => ({ ...l, s: byId.get(l.source), t: byId.get(l.target) })).filter(l => l.s && l.t);
+  svg.attr('viewBox', [0, 0, W, W]);
+  const target = W <= inner * 1.15 ? Math.min(W, inner) : W;   // as it is (it scrolls sideways on a phone), or a little smaller to fit
+  svgEl.style.width = Math.round(target) + 'px'; svgEl.style.margin = '0 auto'; svgEl.style.display = 'block';
+  svg.append('rect').attr('width', W).attr('height', W).attr('fill', '#1a1120');
+  const g = svg.append('g').attr('transform', `translate(${W / 2},${W / 2})`);
+  const line = d3.lineRadial().curve(d3.curveBundle.beta(0.85)).radius(d => d.y).angle(d => d.x);
+  const link = g.append('g').selectAll('path').data(ties).join('path').attr('class', 'chord-link').attr('d', l => line(l.s.path(l.t))).attr('fill', 'none').attr('stroke', l => l.color).attr('stroke-opacity', 0.42).attr('stroke-width', 1.2);
+  const node = g.append('g').selectAll('g').data(leaves).join('g').attr('class', 'chord-node').attr('data-node-id', l => l.data.id).attr('transform', l => `rotate(${(l.x * 180) / Math.PI - 90}) translate(${l.y},0)`);
+  const d0 = l => l.data;
+  node.append('title').text(l => { const d = d0(l); return d.kind === 'project' ? `${d.name} · ${netCount(d.degree, 'კავშირი')}` : `${d.name} · ${[...new Set(d.roles.length ? d.roles : [d.group])].map(k => tr(NET_LABEL[k])).join(', ')}${d.degree ? ` · ${netCount(d.degree, 'პროექტი')}` : ''}`; });
+  node.append('rect').attr('x', -4).attr('y', -GAP / 2).attr('width', labelW + OUT + DOT + 14).attr('height', GAP).attr('fill', 'transparent');   // (the whole name answers the mouse)
+  node.append('circle').attr('r', DOT).attr('fill', l => d0(l).color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+  node.append('text').attr('x', l => (l.x < Math.PI ? 1 : -1) * (DOT + OUT)).attr('dy', '0.31em').attr('text-anchor', l => (l.x < Math.PI ? 'start' : 'end')).attr('transform', l => (l.x >= Math.PI ? 'rotate(180)' : null))
+    .attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(l => d0(l).name);
+  // hover: the node, what it is tied to and the curves between (everything else fades; his own curves are lit and thicker)
+  const highlight = l => { const id = l.data.id, mine = ties.filter(t => t.source === id || t.target === id), keep = new Set([id]); mine.forEach(t => { keep.add(t.source); keep.add(t.target); }); node.classed('fg-dim', m => !keep.has(m.data.id)); link.classed('fg-dim', t => !mine.includes(t)).attr('stroke-opacity', t => mine.includes(t) ? 0.95 : 0.42).attr('stroke-width', t => mine.includes(t) ? 2.2 : 1.2); };
+  const clear = () => { node.classed('fg-dim', false); link.classed('fg-dim', false).attr('stroke-opacity', 0.42).attr('stroke-width', 1.2); };
+  node.on('mouseenter', (e, l) => highlight(l)).on('mouseleave', clear);
+  svgEl.__chords = { leaves, ties, R, W, highlight, clear };
+  return svgEl.__chords;
+}
+window.setNetOrder = v => { netOrder = v; if (mainListView === 'net' && lastChartProjects) renderNetwork(lastChartProjects, { animate: true }); };
+function renderNetwork(projects, opts) {
   const svgEl = document.getElementById('networkSvg'), wrap = document.getElementById('networkWrap');
+  // A redraw because the ORDER (or a box) changed (opts.animate) starts from the picture that is there (also one that is still moving): the balls glide to their new places
+  const old = opts && opts.animate && svgEl.__net && svgEl.__net.cur ? svgEl.__net : null;
+  const oldY = old ? new Map(old.nodes.map(d => [d.id, old.cur.get(d.id)])) : null;
+  if (svgEl.__netTimer) { svgEl.__netTimer.stop(); svgEl.__netTimer = null; }
   svgEl.innerHTML = '';
   const sel = document.getElementById('netOrder'); if (sel && sel.value !== netOrder) sel.value = netOrder;
   const tr = window.__i18nTr || (w => w);
@@ -3803,22 +3864,53 @@ function renderNetwork(projects) {
   const labelW = Math.min(300, Math.max(...everyNode.map(d => measureLabelWidth(d.name, FS))));
   const x0 = Math.round(labelW + 26), maxArc = ((n - 1) * STEP) / 2;   // the highest arc is as wide as half the line is long, if the width allows
   const bulge = Math.max(60, Math.min(maxArc, Math.round(inner) - x0 - 14)), width = x0 + bulge + 14, height = TOP + (n - 1) * STEP + 22;
-  const y = new Map(nodes.map((d, i) => [d.id, TOP + i * STEP]));
+  const y = new Map(nodes.map((d, i) => [d.id, TOP + i * STEP])), cur = new Map(y), Y = id => cur.get(id);   // y: where each node ends; cur: where it stands now (they differ only while it moves)
   svg.attr('viewBox', [0, 0, width, height]); svgEl.style.width = Math.min(width, Math.max(inner, 320)) + 'px'; svgEl.style.margin = '0';   // (as wide as it needs, fixed at the left of the block)
   svg.append('rect').attr('width', width).attr('height', height).attr('fill', '#1a1120');
   // an arc between two nodes: a half-ellipse to the right of the line; as high as the distance, as wide as the distance allows (never out of the picture)
-  const arc = l => { const y1 = y.get(l.source), y2 = y.get(l.target), r = Math.abs(y2 - y1) / 2; return `M${x0},${y1}A${Math.min(r, bulge)},${r} 0 0,${y1 < y2 ? 1 : 0} ${x0},${y2}`; };
+  const arcBetween = (y1, y2) => { const r = Math.abs(y2 - y1) / 2; return `M${x0},${y1}A${Math.min(r, bulge)},${r} 0 0,${y1 < y2 ? 1 : 0} ${x0},${y2}`; };
+  const arc = l => arcBetween(Y(l.source), Y(l.target));
   const link = svg.append('g').selectAll('path').data(data.links).join('path').attr('class', 'net-link').attr('d', arc).attr('fill', 'none').attr('stroke', d => d.color).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4);
   const node = svg.append('g').selectAll('g').data(nodes).join('g').attr('class', 'net-node').attr('data-node-id', d => d.id);
   node.append('title').text(d => d.kind === 'project' ? `${d.name} · ${netCount(d.degree, 'კავშირი')}` : `${d.name} · ${[...new Set(d.roles.length ? d.roles : [d.group])].map(k => tr(NET_LABEL[k])).join(', ')}${d.degree ? ` · ${netCount(d.degree, 'პროექტი')}` : ''}`);
-  node.append('rect').attr('x', 0).attr('y', d => y.get(d.id) - STEP / 2).attr('width', x0 + 12).attr('height', STEP).attr('fill', 'transparent');   // (the whole row answers the mouse)
-  node.append('circle').attr('cx', x0).attr('cy', d => y.get(d.id)).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
-  node.append('text').attr('x', x0 - 9).attr('y', d => y.get(d.id)).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(d => d.name);
+  node.append('rect').attr('x', 0).attr('y', d => Y(d.id) - STEP / 2).attr('width', x0 + 12).attr('height', STEP).attr('fill', 'transparent');   // (the whole row answers the mouse)
+  node.append('circle').attr('cx', x0).attr('cy', d => Y(d.id)).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+  node.append('text').attr('x', x0 - 9).attr('y', d => Y(d.id)).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(d => d.name);
   // hover: the node, what it is tied to and the arcs between (everything else fades)
   const highlight = d => { const mine = data.links.filter(l => l.source === d.id || l.target === d.id), keep = new Set([d.id]); mine.forEach(l => { keep.add(l.source); keep.add(l.target); }); node.classed('fg-dim', m => !keep.has(m.id)); link.classed('fg-dim', l => !mine.includes(l)).attr('stroke-opacity', l => mine.includes(l) ? 0.95 : 0.55).attr('stroke-width', l => mine.includes(l) ? 2.2 : 1.4); };   // (his own arcs are lit and thicker)
   const clear = () => { node.classed('fg-dim', false); link.classed('fg-dim', false).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4); };
   node.on('mouseenter', (e, d) => highlight(d)).on('mouseleave', clear);
-  svgEl.__net = { nodes, links: data.links, highlight, clear, width, height, x0, y };
+  const place = () => { node.select('rect').attr('y', d => Y(d.id) - STEP / 2); node.select('circle').attr('cy', d => Y(d.id)); node.select('text').attr('y', d => Y(d.id)); link.attr('d', arc); };   // the elements follow `cur`
+  // THE MOVEMENT (0.65 s): a ball that was there glides from where it stood to its new place (and its arcs bend with it); a new one fades in; one that goes stays where it was and fades out
+  const animate = !!oldY && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let ghostLayer = null;
+  const finishMove = () => {
+    if (!svgEl.__netTimer) return;
+    svgEl.__netTimer.stop(); svgEl.__netTimer = null;
+    nodes.forEach(d => cur.set(d.id, y.get(d.id))); node.attr('opacity', null); link.attr('opacity', null); if (ghostLayer) ghostLayer.remove(); place();
+  };
+  if (animate) {
+    const from = new Map(nodes.map(d => [d.id, oldY.has(d.id) ? oldY.get(d.id) : y.get(d.id)])), isNew = new Set(nodes.filter(d => !oldY.has(d.id)).map(d => d.id));
+    const oldKeys = new Set(old.links.map(l => l.source + '|' + l.target)), newKeys = new Set(data.links.map(l => l.source + '|' + l.target)), linkIsNew = l => !oldKeys.has(l.source + '|' + l.target);
+    const goneNodes = old.nodes.filter(d => !y.has(d.id)), goneLinks = old.links.filter(l => !newKeys.has(l.source + '|' + l.target));
+    ghostLayer = svg.insert('g', 'g').attr('class', 'net-gone');
+    const yOf = id => (y.has(id) ? Y(id) : oldY.get(id));   // (what stays moves, what goes does not)
+    const gLink = ghostLayer.append('g').selectAll('path').data(goneLinks).join('path').attr('fill', 'none').attr('stroke', d => d.color).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4);
+    const gNode = ghostLayer.append('g').selectAll('g').data(goneNodes).join('g');
+    gNode.append('circle').attr('cx', x0).attr('cy', d => oldY.get(d.id)).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+    gNode.append('text').attr('x', x0 - 9).attr('y', d => oldY.get(d.id)).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(d => d.name);
+    const ghostPlace = () => gLink.attr('d', l => arcBetween(yOf(l.source), yOf(l.target)));
+    nodes.forEach(d => cur.set(d.id, from.get(d.id))); node.attr('opacity', d => (isNew.has(d.id) ? 0 : null)); link.attr('opacity', l => (linkIsNew(l) ? 0 : null)); place(); ghostPlace();
+    const D = 650, ease = d3.easeCubicInOut;
+    svgEl.__netTimer = d3.timer(elapsed => {
+      const k = Math.min(1, elapsed / D), e = ease(k);
+      nodes.forEach(d => { const a = from.get(d.id), b = y.get(d.id); cur.set(d.id, a + (b - a) * e); });
+      place(); ghostPlace();
+      node.filter(d => isNew.has(d.id)).attr('opacity', e); link.filter(linkIsNew).attr('opacity', e); gNode.attr('opacity', 1 - e); gLink.attr('opacity', 1 - e);
+      if (k >= 1) finishMove();
+    });
+  }
+  svgEl.__net = { nodes, links: data.links, highlight, clear, width, height, x0, y, cur };
   return svgEl.__net;
 }
 
@@ -4403,13 +4495,13 @@ window.downloadSankeyAsPdf = function() {
 window.chooseMainListView = function(view) {
   const toChart = view !== 'grid' && mainListView === 'grid';
   setMainListView(view);
-  if (toChart) setAllSankeyBoxes(true);
+  if (toChart) setAllSankeyBoxes(true, false);
 };
 window.setMainListView = function(view) {
   const prev = mainListView;
-  mainListView = view;   // 'grid' | 'chart' | 'force' | 'net'
+  mainListView = view;   // 'grid' | 'chart' | 'force' | 'net' | 'chords'
   // each chart keeps its own boxes: leaving one saves them, going straight to another brings back the ones it had
-  const isChart = v => v === 'chart' || v === 'force' || v === 'net';
+  const isChart = v => v === 'chart' || v === 'force' || v === 'net' || v === 'chords';
   if (prev !== view && isChart(prev)) boxesSaved[prev] = boxesNow();
   const between = prev !== view && isChart(prev) && isChart(view);
   if (between) applyBoxes(boxesSaved[view] || BOXES_ALL_ON);
@@ -4418,14 +4510,16 @@ window.setMainListView = function(view) {
   $('reviewerManagerChartWrap').style.display = view === 'chart' ? 'block' : 'none';
   $('forceGraphWrap').style.display = view === 'force' ? 'block' : 'none';
   $('networkWrap').style.display = view === 'net' ? 'block' : 'none';
+  $('chordsWrap').style.display = view === 'chords' ? 'block' : 'none';
   $('mainViewToggleGrid').classList.toggle('active', view === 'grid');
   $('mainViewToggleChart').classList.toggle('active', view === 'chart');
   $('mainViewToggleForce').classList.toggle('active', view === 'force');
   $('mainViewToggleNet').classList.toggle('active', view === 'net');
+  $('mainViewToggleChords').classList.toggle('active', view === 'chords');
   // the row of boxes stands above whichever chart is shown
-  const row = $('sankeyControlsRow'), host = $(view === 'force' ? 'forceGraphWrap' : view === 'net' ? 'networkWrap' : 'reviewerManagerChartWrap');
+  const row = $('sankeyControlsRow'), host = $(view === 'force' ? 'forceGraphWrap' : view === 'net' ? 'networkWrap' : view === 'chords' ? 'chordsWrap' : 'reviewerManagerChartWrap');
   if (view !== 'grid' && row.parentElement !== host) host.insertBefore(row, host.firstChild);
-  if (view === 'force') { if (lastChartProjects) renderForceGraph(lastChartProjects); } else if (view === 'net') { stopForceGraph(); if (lastChartProjects) renderNetwork(lastChartProjects); } else { stopForceGraph(); if (between && lastChartProjects) renderReviewerManagerChart(lastChartProjects); }   // (back to the diagram: it is drawn with ITS boxes)
+  if (view === 'force') { if (lastChartProjects) renderForceGraph(lastChartProjects); } else if (view === 'net') { stopForceGraph(); if (lastChartProjects) renderNetwork(lastChartProjects); } else if (view === 'chords') { stopForceGraph(); if (lastChartProjects) renderChords(lastChartProjects); } else { stopForceGraph(); if (between && lastChartProjects) renderReviewerManagerChart(lastChartProjects); }   // (back to the diagram: it is drawn with ITS boxes)
 };
 
 // The project list screen. Admins, reviewers, design managers and Users see every project; contractors only the projects
