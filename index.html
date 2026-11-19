@@ -3742,13 +3742,16 @@ function buildNetData(projects, users, st, opts) {
   const nodes = new Map(), links = new Map(), tied = new Map();   // tied: uid -> Map(kind -> number of projects), over ALL ties (the group of a person does not depend on the boxes)
   projects.forEach(p => {
     nodes.set(`p:${p.id}`, { id: `p:${p.id}`, kind: 'project', group: 'project', name: projLabel(p.name), color: p.color || DEFAULT_CARD_COLOR, degree: 0, roles: [] });
-    const ties = [['r', p.createdBy ? [p.createdBy] : []], ['m', p.managerUid ? [p.managerUid] : []], ['in', p.interiorUid ? [p.interiorUid] : []],
-      ['pm', projectPmEntries(p).map(e => e.uid).filter(Boolean)], ['sm', projectSiteManagerEntries(p).map(e => e.uid).filter(Boolean)], ['qc', p.qcUid ? [p.qcUid] : []],
-      ['ca', Object.entries(p.members || {}).filter(([, role]) => role === 'contractor').map(([uid]) => uid)]];
-    ties.forEach(([kind, uids]) => [...new Set(uids)].forEach(uid => {
+    // [the kind of the tie, the users, is it shown by the boxes that are ticked now]. The MP and the Electrical reviewer (picked from the registered users: mpReviewerUid / elecReviewerUid) are REVIEWERS
+    // (red); as in the diagram they show with the reviewers' box AND the box of their own discipline (a typed-by-hand name or the old single "MEP reviewer" text is no registered user: no node).
+    const ties = [['r', p.createdBy ? [p.createdBy] : [], boxOn('r')], ['m', p.managerUid ? [p.managerUid] : [], boxOn('m')], ['in', p.interiorUid ? [p.interiorUid] : [], boxOn('in')],
+      ['pm', projectPmEntries(p).map(e => e.uid).filter(Boolean), boxOn('pm')], ['sm', projectSiteManagerEntries(p).map(e => e.uid).filter(Boolean), boxOn('sm')], ['qc', p.qcUid ? [p.qcUid] : [], boxOn('qc')],
+      ['ca', Object.entries(p.members || {}).filter(([, role]) => role === 'contractor').map(([uid]) => uid), boxOn('ca')],
+      ['r', p.mpReviewerUid ? [p.mpReviewerUid] : [], !!(st.reviewer && st.mp)], ['r', p.elecReviewerUid ? [p.elecReviewerUid] : [], !!(st.reviewer && st.elec)]];
+    ties.forEach(([kind, uids, shown]) => [...new Set(uids)].forEach(uid => {
       if (!byUid.has(uid)) return;   // not a registered, approved user (deleted, waiting, or typed by hand): no node
       const m = tied.get(uid) || new Map(); m.set(kind, (m.get(kind) || 0) + 1); tied.set(uid, m);
-      if (!boxOn(kind)) return;
+      if (!shown) return;
       const key = `${uid}|${p.id}`, l = links.get(key) || { source: `u:${uid}`, target: `p:${p.id}`, projectId: p.id, kinds: [] };
       if (!l.kinds.includes(kind)) l.kinds.push(kind); links.set(key, l);
     }));
