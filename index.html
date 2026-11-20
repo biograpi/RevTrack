@@ -8693,7 +8693,7 @@ document.getElementById('btnRegister').addEventListener('click', async () => {
 // projects/{pid}/reports/{rid} = { type ('weekly' | 'daily' | 'quality'; missing = weekly), number, date, authorId, authorName, info (the object's name and address, copied from the project), photos [{url, path,
 // caption}], completed / ongoing / planned [text] }. Site managers (User accounts with the "write reports" right) and admins write them;
 // everybody but contractors reads them. A report can be downloaded as an A4 PDF (renderReportPdf, further below).
-const REPORT_SLOTS = 3, REPORT_MAX_PHOTOS = 12;
+const REPORT_SLOTS = 3, REPORT_MAX_PHOTOS = 20;   // the weekly and the daily report: at most 20 photos (it was 12). Only the page counts them: the database rules and the storage rules do not
 const reportMinSlots = () => reportFormType === 'daily' ? 1 : REPORT_SLOTS;   // a daily report begins with ONE place for a photo and its comment, the weekly one with three            // photo places that are always there / the most photos in one report
 const REPORT_GROUPS = [['completed', 'შესრულებული სამუშაოები'], ['ongoing', 'მიმდინარე სამუშაოები'], ['planned', 'დაგეგმილი სამუშაოები']];
 // Three kinds of report, numbered separately: weekly (with a PDF), daily (no PDF; nothing in the form is required) and quality (numbered issues, with a PDF: see THE QUALITY REPORT below).
@@ -9198,7 +9198,7 @@ window.setWorkChartRange = r => {
 //   fixes:  [{ issueId, photos: [{ url, path, caption }], at (ISO time), by (uid), byName }]    ← "defect corrected": photos with comments, added to an issue
 // The report is edited like any other during its first 24 hours (the author; an admin at any time). After that the issues are closed, but anybody who may write reports on the project
 // (and an admin) can still add "defect corrected" entries (the form then opens in a limited way: reportFixOnly); the database rules let only the field "fixes" change.
-const REPORT_MAX_ISSUES = 40, REPORT_ISSUE_PHOTOS = 6;
+const REPORT_MAX_ISSUES = 40, REPORT_ISSUE_PHOTOS = 20;   // the quality report: at most 40 issues, and at most 20 photos in an issue and 20 in its "defect corrected" entry (it was 6)
 let qIssues = [], qPick = null, reportFixOnly = false;
 const qNum = i => String(i + 1).padStart(2, '0');
 const qNewId = () => 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
