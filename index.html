@@ -71,7 +71,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-header{height:52px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:var(--primary);gap:16px;position:sticky;top:0;z-index:100}
 .projects-logo{font-family:'Noto Sans Georgian','Inter',sans-serif;font-size:16px;font-weight:700;letter-spacing:.01em;color:white}
 .projects-user{font-size:13px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
-.main-view-toggle{display:flex;width:max-content;margin:24px auto 0;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px}
+.main-view-toggle{display:flex;width:max-content;margin:0 auto;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px}
 .sankey-size-toggle{display:flex;justify-content:center;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px;width:fit-content;margin:0 auto 10px}
 .view-toggle-btn{border:none;background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-family:inherit;padding:6px 16px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s}
 .view-toggle-btn:hover{color:#fff}
@@ -83,6 +83,7 @@ body{font-family:'Noto Sans Georgian','Inter',sans-serif;background:var(--bg);co
 .projects-grid{padding:32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;max-width:900px;margin:0 auto}
 .projects-grid-4col{grid-template-columns:repeat(4,1fr)}
 .activity-chart-wrap{max-width:900px;margin:0 auto 32px;padding:20px 32px;background:transparent}
+#reviewerManagerChartWrap,#forceGraphWrap,#networkWrap,#chordsWrap{max-width:none}   /* the four charts (the diagram, the connections, the network, the chords) take the whole width of the page; the grid of cards keeps its 900 px */
 .activity-chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .activity-chart-head h3{font-size:14px;font-weight:600;color:#fff}
 .activity-view-toggle{display:flex;background:rgba(0,0,0,.2);border-radius:8px;padding:3px;gap:2px}
@@ -419,7 +420,7 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .fg-dim{opacity:.12}
 .net-link,.net-node,.chord-link,.chord-node{transition:opacity .15s ease}
 #chordsSvg{display:block}
-.net-head{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;color:rgba(255,255,255,.7)}
+.net-head{display:flex;justify-content:center;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;color:rgba(255,255,255,.7)}
 .net-head select{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 8px;font-family:inherit;font-size:12px;cursor:pointer}
 .net-head select option{color:#1b161d}
 .net-layout{display:inline-flex;margin-right:14px;border:1px solid rgba(255,255,255,.2);border-radius:6px;overflow:hidden}
@@ -4014,7 +4015,11 @@ function renderChords(projects, opts) {
   const leaves = root.leaves(), byId = new Map(leaves.map(l => [l.data.id, l]));
   const ties = data.links.map(l => ({ ...l, s: byId.get(l.source), t: byId.get(l.target) })).filter(l => l.s && l.t);
   svg.attr('viewBox', [0, 0, W, W]);
-  const target = W <= inner * 1.15 ? Math.min(W, inner) : W;   // as it is (it scrolls sideways on a phone), or a little smaller to fit
+  // THE CIRCLE ALWAYS FITS THE WINDOW (no scrolling, down or sideways): as large as it naturally is, but not wider than the block and not higher than the window leaves room for (under it only a little space);
+  // when it has to be smaller, the whole picture, the names too, is made smaller (not below 55% of its natural size: below that the page scrolls)
+  wrap.style.paddingBottom = '6px'; wrap.style.marginBottom = '0';
+  const top = svgEl.getBoundingClientRect().top + window.scrollY, availH = Math.max(260, window.innerHeight - top - 34 - 6 - 4);   // (the footer, the little space under the circle, a little air)
+  const target = Math.max(W * 0.55, Math.min(W, inner, availH));
   svgEl.style.width = Math.round(target) + 'px'; svgEl.style.margin = '0 auto'; svgEl.style.display = 'block';
   svg.append('rect').attr('width', W).attr('height', W).attr('fill', '#1a1120');
   const g = svg.append('g').attr('transform', `translate(${W / 2},${W / 2})`);
@@ -4075,7 +4080,7 @@ function renderChords(projects, opts) {
 window.setNetOrder = v => { netOrder = v; if (mainListView === 'net' && lastChartProjects) renderNetwork(lastChartProjects, { animate: true }); };
 let netLayout = 'v';   // 'v': the balls in a column, the arcs to the right (half-ellipses that never leave the picture); 'h': the balls in a ROW, the arcs above it, true half-circles (as high as they need to be)
 let netResizeTimer = null;
-window.addEventListener('resize', () => { clearTimeout(netResizeTimer); netResizeTimer = setTimeout(() => { if (mainListView === 'net' && netLayout === 'h' && lastChartProjects) renderNetwork(lastChartProjects); }, 200); });   // (a row is made to fit the window: when the window changes, so does the row)
+window.addEventListener('resize', () => { clearTimeout(netResizeTimer); netResizeTimer = setTimeout(() => { if (mainListView === 'net' && netLayout === 'h' && lastChartProjects) renderNetwork(lastChartProjects); else if (mainListView === 'chords' && lastChartProjects) renderChords(lastChartProjects); }, 200); });   // (a row is made to fit the window: when the window changes, so does the row)
 window.setNetLayout = v => { netLayout = v; if (mainListView === 'net' && lastChartProjects) renderNetwork(lastChartProjects); };
 function renderNetwork(projects, opts) {
   const svgEl = document.getElementById('networkSvg'), wrap = document.getElementById('networkWrap');
@@ -4087,7 +4092,7 @@ function renderNetwork(projects, opts) {
   svgEl.innerHTML = '';
   const sel = document.getElementById('netOrder'); if (sel && sel.value !== netOrder) sel.value = netOrder;
   document.getElementById('netLayoutV').classList.toggle('active', !H); document.getElementById('netLayoutH').classList.toggle('active', H);
-  wrap.style.maxWidth = H ? 'none' : ''; wrap.style.overflowX = H ? 'auto' : '';   // (a row wants the whole width of the page; if it is still too long it scrolls inside its block)
+  wrap.style.overflowX = 'auto';   // (the block takes the whole width of the page (the style sheet); if the picture is still wider, it scrolls inside the block)
   wrap.style.paddingBottom = H ? '6px' : ''; wrap.style.marginBottom = H ? '0' : '';   // (and under it only a little room: the row is made to fit the window, so that the page needs no scrolling down)
   const tr = window.__i18nTr || (w => w);
   const data = buildNetData(projects || [], allUsers, undefined, {}), nodes = orderNet(data.nodes, netOrder), n = nodes.length;
@@ -4099,7 +4104,7 @@ function renderNetwork(projects, opts) {
   let FSz = FS, labelW, x0 = 0, bulge = 0, width, height, AY = 0, S = STEP, maxR = 0, flat = 1;   // flat: how high the arcs of a row are, as a part of a true half-circle (1 = a half-circle)
   if (!H) {
     labelW = Math.min(300, Math.max(...everyNode.map(d => measureLabelWidth(d.name, FS))));
-    x0 = Math.round(labelW + 26); const maxArc = ((n - 1) * STEP) / 2;   // the highest arc is as wide as half the line is long, if the width allows
+    x0 = Math.round(labelW + 26); const maxArc = ((everyNode.length - 1) * STEP) / 2;   // the highest arc is as wide as half the line is long (of the line with ALL the balls: so the picture keeps its width, and stays in the middle, when a box is ticked)
     bulge = Math.max(60, Math.min(maxArc, Math.round(inner) - x0 - 14)); width = x0 + bulge + 14; height = TOP + (n - 1) * STEP + 22;
   } else {
     // A ROW THAT FITS THE WINDOW (no scrolling down): the balls are packed along the width; the names stand under them, turned; the arcs above are half-circles.
@@ -4119,7 +4124,7 @@ function renderNetwork(projects, opts) {
     maxR = arcsH(S, flat); AY = 10 + maxR + 2; width = Math.ceil(12 + (N - 1) * S + 12); height = Math.ceil(AY + R + 6 + labelW + 12);
   }
   const y = new Map(nodes.map((d, i) => [d.id, H ? 12 + i * S : TOP + i * STEP])), cur = new Map(y), Y = id => cur.get(id);   // y: where each ball ends on the line; cur: where it stands now (they differ only while it moves)
-  svg.attr('viewBox', [0, 0, width, height]); svgEl.style.width = (H ? width : Math.min(width, Math.max(inner, 320))) + 'px'; svgEl.style.margin = '0';   // (as wide as it needs, fixed at the left of the block)
+  svg.attr('viewBox', [0, 0, width, height]); svgEl.style.width = (H ? width : Math.min(width, Math.max(inner, 320))) + 'px'; svgEl.style.margin = '0 auto'; svgEl.style.display = 'block';   // (as wide as it needs, in the middle of the block; its width does not depend on what is ticked, so it does not move)
   svg.append('rect').attr('width', width).attr('height', height).attr('fill', '#1a1120');
   // an arc between two balls. column: a half-ellipse to the right of the line (as high as the distance, as wide as the distance allows). row: a half-circle above the line.
   const arcBetween = (t1, t2) => { const r = Math.abs(t2 - t1) / 2; return H ? `M${t1},${AY}A${r},${r * flat} 0 0,${t1 < t2 ? 1 : 0} ${t2},${AY}` : `M${x0},${t1}A${Math.min(r, bulge)},${r} 0 0,${t1 < t2 ? 1 : 0} ${x0},${t2}`; };
