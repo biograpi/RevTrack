@@ -251,6 +251,8 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .ifc-check-btn{position:absolute;z-index:2;top:14px;right:64px;height:34px;padding:0 14px;border:none;border-radius:17px;background:rgba(255,255,255,.14);color:#fff;font-family:inherit;font-size:12px;cursor:pointer}
 .ifc-check-btn:hover{background:rgba(255,255,255,.26)}
 .ifcchk{font-size:13px;line-height:1.5}
+.ifcchk .ck-status{margin:0 0 12px;padding:8px 12px;border-radius:8px;background:#fff3d6;color:#7a5200;font-size:12.5px}
+.ifcchk .ck-status.done{background:#e4f6ea;color:#14532d}
 .ifcchk .ck-h{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-light);margin:16px 0 6px;padding-top:10px;border-top:1px solid var(--rule)}
 .ifcchk .ck-h:first-child{margin-top:0;padding-top:0;border-top:none}
 .ifcchk .ck-l{display:flex;gap:8px;padding:2px 0;word-break:break-word}
@@ -420,6 +422,10 @@ select.fsel{border:1px solid var(--rule);border-radius:var(--r);padding:7px 9px;
 .net-head{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:0 0 10px;font-size:12px;color:rgba(255,255,255,.7)}
 .net-head select{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 8px;font-family:inherit;font-size:12px;cursor:pointer}
 .net-head select option{color:#1b161d}
+.net-layout{display:inline-flex;margin-right:14px;border:1px solid rgba(255,255,255,.2);border-radius:6px;overflow:hidden}
+.net-layout button{background:transparent;color:rgba(255,255,255,.7);border:none;padding:4px 10px;font-family:inherit;font-size:12px;cursor:pointer}
+.net-layout button+button{border-left:1px solid rgba(255,255,255,.2)}
+.net-layout button.active{background:rgba(255,255,255,.18);color:#fff}
 #networkSvg{display:block}
 /* the tick boxes above the diagrams are painted in the colours of their columns: they work the boxes AND say what the colours mean */
 #sankeyControlsRow .activity-legend-item input[type=checkbox]{width:13px;height:13px}
@@ -686,6 +692,7 @@ body.on-main-list .projects-header .hdr-home{display:none}   /* on the main list
 #projectsGrid.is-loading,#reviewerManagerChartWrap.is-loading{opacity:.55;pointer-events:none;cursor:progress;transition:opacity .15s}
 :root{--footer-h:0px}
 body.has-footer{--footer-h:34px;box-sizing:border-box;padding-bottom:var(--footer-h)}
+body.screen-dark{background:var(--soft-black)}   /* behind a dark screen (the project list and the project's sections) the page is dark too: when the content is longer than the window a white strip used to show between its end and the footer */
 .site-footer{display:none;position:fixed;left:0;right:0;bottom:0;height:34px;box-sizing:border-box;padding:0 32px;align-items:center;justify-content:flex-end;background:var(--soft-black);border-top:1px solid rgba(255,255,255,.55);font-size:12px;color:rgba(255,255,255,.6);z-index:90}   /* below the windows (200) and the IFC viewer, above the page */
 body.has-footer .site-footer{display:flex}
 .site-footer a{color:rgba(255,255,255,.85);text-decoration:none}
@@ -843,7 +850,7 @@ body.has-footer .site-footer{display:flex}
     <svg id="forceGraphSvg"></svg>
       </div>
 <div class="activity-chart-wrap" id="networkWrap" style="display:none;position:relative">
-<div class="net-head"><label for="netOrder">დალაგება:</label><select id="netOrder" onchange="setNetOrder(this.value)"><option value="group">ჯგუფის მიხედვით</option><option value="name">სახელის მიხედვით</option><option value="degree">კავშირების რაოდენობით</option></select></div>
+<div class="net-head"><div class="net-layout" role="group"><button type="button" id="netLayoutV" class="active" onclick="setNetLayout('v')">↕ ვერტიკალური</button><button type="button" id="netLayoutH" onclick="setNetLayout('h')">↔ ჰორიზონტალური</button></div><label for="netOrder">დალაგება:</label><select id="netOrder" onchange="setNetOrder(this.value)"><option value="group">ჯგუფის მიხედვით</option><option value="name">სახელის მიხედვით</option><option value="degree">კავშირების რაოდენობით</option></select></div>
 <svg id="networkSvg"></svg>
 </div>
 <div class="activity-chart-wrap" id="chordsWrap" style="display:none;position:relative;overflow-x:auto">
@@ -1604,6 +1611,8 @@ body.has-footer .site-footer{display:flex}
 
   var INNER = {"სახელი არ არის": "no name", "სახელი 200 ასოზე გრძელია": "the name is longer than 200 characters", "წილი 0-ზე მეტი და 100-მდე უნდა იყოს": "the share must be above 0 and at most 100", "გეგმის დაწყება და დასრულება უნდა იყოს მითითებული": "the planned start and end must be given", "გეგმის დასრულება დაწყებამდეა": "the planned end is before the start", "ფაქტიური დასრულება დაწყების გარეშე": "an actual end without a start", "ფაქტიური დასრულება დაწყებამდეა": "the actual end is before the start", "ფაქტიური დაწყების თარიღი არასწორია": "the actual start date is not valid", "ფაქტიური დასრულების თარიღი არასწორია": "the actual end date is not valid", "შესრულება 0-დან 100-მდე უნდა იყოს": "progress must be between 0 and 100", "ფაქტიური დაწყება დღევანდელზე გვიანია, ის დაუწყებლად ითვლება": "the actual start is later than today, so it counts as not started", "ფაქტიური დასრულება მომავალშია, ეტაპი მიმდინარედ ითვლება": "the actual end is in the future, so the stage counts as in progress", "გეგმის დასრულება წინა ეტაპის დასრულებაზე ადრეა ან ტოლია, ამიტომ გრაფიკზე ერთი დღით გვიან ჩაითვლება": "the planned end is before or the same as the previous stage's end, so on the chart it counts one day later"};
   var D = {
+"↕ ვერტიკალური": "↕ Vertical",
+"↔ ჰორიზონტალური": "↔ Horizontal",
 "წავშალო ეს კომენტარი? მისი ფოტოებიც წაიშლება.": "Delete this comment? Its photos will be deleted too.",
 "კომენტარის რედაქტირება და წაშლა მხოლოდ გამოქვეყნებიდან 24 საათის განმავლობაშია შესაძლებელი.": "A comment can be edited or deleted only within 24 hours of posting it.",
 "IFC ფაილების შემოწმება": "Check the IFC files",
@@ -2719,23 +2728,24 @@ window.ifcCheckClose = () => { ifcCheckRun++; if (ifcCheckCtl) ifcCheckCtl.abort
 window.runIfcCheck = async () => {
   const myRun = ++ifcCheckRun; if (ifcCheckCtl) ifcCheckCtl.abort();
   const ctl = ifcCheckCtl = new AbortController(), alive = () => myRun === ifcCheckRun && !ctl.signal.aborted;
-  const body = document.getElementById('ifcCheckBody'), rows = [];   // rows: { id, level: 'ok'|'warn'|'bad'|'info'|'head'|'verdict', text, extra }
+  const body = document.getElementById('ifcCheckBody'), rows = [], state = { done: false, step: 'იწყება' };   // rows: { id, level: 'ok'|'warn'|'bad'|'info'|'head'|'verdict', text, extra }
   const ICON = { ok: '✓', warn: '!', bad: '✗', info: '·' };
   const draw = () => {
-    body.innerHTML = rows.map(r => r.level === 'head' ? `<div class="ck-h">${esc(r.text)}</div>`
+    const status = state.done ? '<div class="ck-status done">✓ შემოწმება დასრულდა: დასკვნა ქვემოთაა</div>' : `<div class="ck-status">⏳ მიმდინარეობს: ${esc(state.step)}... (შეიძლება 1–3 წუთი გასტანოს; დაელოდე „დასკვნას“ და მხოლოდ მერე დააკოპირე)</div>`;
+    body.innerHTML = status + rows.map(r => r.level === 'head' ? `<div class="ck-h">${esc(r.text)}</div>`
       : r.level === 'verdict' ? `<div class="ck-verdict ${r.kind || ''}"><b>${esc(r.title)}</b>${esc(r.text)}${r.extra ? `<pre>${esc(r.extra)}</pre>` : ''}</div>`
       : `<div class="ck-l ck-${r.level}"><span class="ck-i">${ICON[r.level]}</span><span>${esc(r.text)}</span></div>`).join('');
   };
   const add = (level, text) => { const r = { level, text }; rows.push(r); draw(); return r; };
   const head = text => { rows.push({ level: 'head', text }); draw(); };
   const mb = n => (n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(n >= 10485760 ? 1 : 2) + ' MB'), sec = n => (n < 10 ? n.toFixed(1) : Math.round(n)) + ' წმ';
-  const flags = { corsBlocked: [], netFailed: [], notFound: [], empty: [], slow: null, slowWarn: null, hostsDown: [], appBad: false, noWebgl: false, softGl: false, bigTotal: 0, lowMem: false, filesOk: 0 };
+  const flags = { corsBlocked: [], netFailed: [], notFound: [], empty: [], appSlow: false, slow: null, slowWarn: null, hostsDown: [], appBad: false, noWebgl: false, softGl: false, bigTotal: 0, lowMem: false, filesOk: 0 };
   document.getElementById('ifcCheckAgain').onclick = () => runIfcCheck();
   document.getElementById('ifcCheckCopy').onclick = async () => {
-    const txt = [`IFC ფაილების შემოწმება — ${new Date().toLocaleString('ka-GE')}`, `გვერდი: ${location.href}`, `პროექტი: ${currentProjectData?.name || ''} (${currentProjectData?.id || ''})`, `ბრაუზერი: ${navigator.userAgent}`, '']
+    const txt = [`IFC ფაილების შემოწმება — ${new Date().toLocaleString('ka-GE')}${state.done ? '' : ' — !!! შემოწმება ჯერ არ დასრულებულა, ანგარიში არასრულია (მიმდინარეობდა: ' + state.step + ')'}`, `გვერდი: ${location.href}`, `პროექტი: ${currentProjectData?.name || ''} (${currentProjectData?.id || ''})`, `ბრაუზერი: ${navigator.userAgent}`, '']
       .concat(rows.map(r => r.level === 'head' ? `\n== ${r.text} ==` : r.level === 'verdict' ? `\n>> ${r.title}\n${r.text}${r.extra ? '\n' + r.extra : ''}` : `${ICON[r.level]} ${r.text}`)).join('\n');
     try { await navigator.clipboard.writeText(txt); } catch (e) { const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
-    showToast('ანგარიში დაკოპირდა');
+    showToast(state.done ? 'ანგარიში დაკოპირდა' : 'დაკოპირდა, მაგრამ შემოწმება ჯერ არ დასრულებულა: ანგარიში არასრულია');
   };
   om('ifcCheckModal');
   // a request that must not be left hanging: ends after `ms` (and when the window is closed)
@@ -2744,7 +2754,7 @@ window.runIfcCheck = async () => {
   const probe = async (url, ms = 9000) => { const w = withTimeout(ms), t0 = performance.now(); try { const sep = url.includes('?') ? '&' : '?'; const r = await fetch(url + sep + '_ck=' + Date.now(), { mode: 'no-cors', cache: 'no-store', signal: w.signal }); w.done(); return { ok: true, ms: performance.now() - t0 }; } catch (e) { w.done(); return { ok: false, ms: performance.now() - t0, timeout: e.name === 'AbortError' && alive() }; } };
   try {
     // ═ 1. THE DEVICE
-    head('1. კომპიუტერი და ბრაუზერი');
+    state.step = 'კომპიუტერის შემოწმება'; head('1. კომპიუტერი და ბრაუზერი');
     const nc = navigator.connection;
     if (nc) add('info', `ბრაუზერის აზრით ქსელი: ${nc.effectiveType || '?'}, ~${nc.downlink || '?'} Mbps, დაყოვნება ${nc.rtt ?? '?'} მს${nc.saveData ? ', ტრაფიკის დაზოგვა ჩართულია' : ''}`);
     add('info', `პროცესორის ბირთვები: ${navigator.hardwareConcurrency || '?'}${navigator.deviceMemory ? `, მეხსიერება დაახლ. ${navigator.deviceMemory} GB` : ''}`);
@@ -2760,7 +2770,7 @@ window.runIfcCheck = async () => {
     } catch (e) { add('warn', 'WebGL-ის შემოწმება ვერ მოხერხდა: ' + e.message); }
     if (!alive()) return;
     // ═ 2. THE VIEWER ITSELF AND WHAT ITS PROGRAM LOADS
-    head('2. viewer-ის გვერდი და რასაც ის ტვირთავს');
+    state.step = 'viewer-ის გვერდი'; head('2. viewer-ის გვერდი და რასაც ის ტვირთავს');
     const baseUrl = new URL(IFC_VIEWER_URL), externals = new Map(), relatives = new Set();
     try {
       const w = withTimeout(15000), t0 = performance.now(), r = await fetch(IFC_VIEWER_URL + '?_ck=' + Date.now(), { cache: 'no-store', signal: w.signal }); const html = await r.text(); w.done();
@@ -2772,10 +2782,12 @@ window.runIfcCheck = async () => {
         for (const u of assets.slice(0, 8)) {
           if (!alive()) return;
           if (u.origin !== baseUrl.origin) { externals.set(u.href, 'viewer-ის გვერდი'); continue; }
+          const fname = u.pathname.split('/').pop(); state.step = `viewer-ის ფაილის ჩამოტვირთვა (${fname})`;
+          const line = add('info', `${fname}: იტვირთება...`);
           try { const w2 = withTimeout(30000), t1 = performance.now(), a = await fetch(u.href, { cache: 'no-store', signal: w2.signal }); const txt = await a.text(); w2.done(); const secs = (performance.now() - t1) / 1000, bytes = new Blob([txt]).size;
-            add(a.ok ? 'ok' : 'bad', `${u.pathname.split('/').pop()}: ${a.ok ? mb(bytes) + ', ' + sec(secs) : 'პასუხი ' + a.status}`); if (!a.ok) flags.appBad = true;
-            if (a.ok && /\.m?js$/.test(u.pathname) && (!biggest || bytes > biggest.bytes)) biggest = { txt, bytes, name: u.pathname.split('/').pop() };
-          } catch (e) { flags.appBad = true; add('bad', `${u.pathname.split('/').pop()} ვერ ჩამოიტვირთა: ${e.name === 'AbortError' ? 'ძალიან დიდხანს გრძელდებოდა' : e.message}`); }
+            line.level = a.ok ? 'ok' : 'bad'; line.text = `${fname}: ${a.ok ? mb(bytes) + ', ' + sec(secs) + (bytes > 262144 ? ', ' + (bytes * 8 / Math.max(secs, 0.001) / 1e6).toFixed(1) + ' Mbps' : '') : 'პასუხი ' + a.status}`; draw(); if (!a.ok) flags.appBad = true;
+            if (a.ok && /\.m?js$/.test(u.pathname) && (!biggest || bytes > biggest.bytes)) biggest = { txt, bytes, name: fname };
+          } catch (e) { if (!alive()) return; if (e.name === 'AbortError') { flags.appSlow = true; line.level = 'bad'; line.text = `${fname} ვერ ჩამოიტვირთა 30 წამში: ძალიან ნელა იტვირთება`; } else { flags.appBad = true; line.level = 'bad'; line.text = `${fname} ვერ ჩამოიტვირთა: ${e.message}`; } draw(); }
         }
         if (biggest) {   // what does the program itself reach for? (addresses of workers, wasm and scripts that are written in it)
           for (const m of biggest.txt.matchAll(/https?:\/\/[A-Za-z0-9._~:\/%@!$&'()*+,;=-]+?\.(?:wasm|mjs|js|json)(?=["'`\s)\\?#])/g)) { const u = m[0]; if (!/w3\.org|reactjs\.org|github\.com\/|mozilla\.org|example\.com|schema\.org|localhost/.test(u) && new URL(u).origin !== baseUrl.origin) externals.set(u, biggest.name); }
@@ -2791,7 +2803,7 @@ window.runIfcCheck = async () => {
     }
     if (!alive()) return;
     // ═ 3. THE PLACES THE VIEWER TAKES THINGS FROM
-    head('3. გარე წყაროები (viewer მათგან იღებს სკრიპტებს)');
+    state.step = 'გარე წყაროების შემოწმება'; head('3. გარე წყაროები (viewer მათგან იღებს სკრიპტებს)');
     const hostList = new Map([['https://unpkg.com/', 'unpkg.com'], ['https://cdn.jsdelivr.net/', 'cdn.jsdelivr.net'], ['https://thatopen.github.io/', 'thatopen.github.io'], ['https://cdnjs.cloudflare.com/', 'cdnjs.cloudflare.com'], ['https://firebasestorage.googleapis.com/', 'firebasestorage.googleapis.com (ფაილების საცავი)']]);
     // (an address in the viewer's program: its status and size are read when the place allows it, otherwise only whether it answers)
     const probeFull = async (url) => { const w = withTimeout(12000), t0 = performance.now(); try { const r = await fetch(url, { cache: 'no-store', signal: w.signal }); const ms = performance.now() - t0, len = +r.headers.get('content-length') || 0, st = r.status; w.done(); w.abort(); return { ok: true, status: st, len, ms, detail: true }; } catch (e) { w.done(); return probe(url, 10000); } };   // (only the answer is wanted: the body is not downloaded, w.abort())
@@ -2810,6 +2822,7 @@ window.runIfcCheck = async () => {
     const speeds = []; let totalBytes = 0;
     for (const f of files) {
       if (!alive()) return;
+      state.step = `ფაილის გაზომვა (${f.name})`;
       const line = add('info', `${f.name}: მოწმდება...`);
       const set = (level, text) => { line.level = level; line.text = `${f.name}: ${text}`; draw(); };
       if (!/\.frag$/i.test(f.name)) add('warn', `ფაილის სახელი არ მთავრდება „.frag“-ით (${f.name}): viewer-ს .frag სჭირდება, არა .ifc`);
@@ -2851,6 +2864,7 @@ window.runIfcCheck = async () => {
     if (flags.netFailed.length && !flags.corsBlocked.length) causes.push({ t: 'ფაილი ამ ქსელიდან ვერ იხსნება.', d: 'ეს ინტერნეტია ან firewall: სცადე სხვა ქსელი (მობილური ინტერნეტი).' });
     if (flags.hostsDown.length) causes.push({ t: 'viewer-ის გარე წყაროებიდან ზოგი ამ ქსელიდან არ იხსნება.', d: `${flags.hostsDown.join('; ')}. თუ viewer მათგან იღებს სკრიპტს (worker ან wasm), ის სამუდამოდ „იტვირთება“. სცადე სხვა ქსელი ან სთხოვე IT-ს ამ მისამართების გახსნა; გრძელვადიანად ეს ფაილები viewer-ის საქაღალდეში უნდა ინახებოდეს.` });
     if (flags.appBad) causes.push({ t: 'viewer-ის საკუთარი ფაილები ვერ იხსნება.', d: 'ზემოთ (მე-2 ნაწილი) წითლადაა ნაჩვენები რომელი.' });
+    if (flags.appSlow) causes.push({ t: 'viewer-ის საკუთარი ფაილები ძალიან ნელა იტვირთება (30 წამში ვერ ჩამოვიდა).', d: 'ეს ინტერნეტის სიჩქარეა (ან GitHub Pages-ზე ფაილი ძალიან დიდია): viewer-ის გახსნისას ყოველ ჯერზე ეს ფაილები ჯერ ჩამოდის, მოდელის ჩამოტვირთვამდე.' });
     if (flags.noWebgl) causes.push({ t: 'ბრაუზერში WebGL არ მუშაობს.', d: 'ჩართე ჰარდვერული აჩქარება და განაახლე გრაფიკის დრაივერი.' });
     if (flags.softGl) causes.push({ t: 'ბრაუზერი 3D-ს პროცესორით ხატავს და არა ვიდეოკარტით.', d: 'დიდი მოდელი ამ დროს წუთობით იტვირთება. ჩართე ჰარდვერული აჩქარება.' });
     if (flags.slow) causes.push({ t: `ინტერნეტი ნელია (≈ ${flags.slow.toFixed(1)} Mbps).`, d: `ყველა ფაილის ჩამოტვირთვას დაახლოებით ${sec(flags.bigTotal * 8 / (flags.slow * 1e6))} სჭირდება, მხოლოდ ჩამოტვირთვას, მოდელის გახსნის წინ.` });
@@ -2859,8 +2873,8 @@ window.runIfcCheck = async () => {
     head('დასკვნა');
     if (!causes.length) { rows.push({ level: 'verdict', kind: 'ok', title: 'ქსელი, ფაილები და გარე წყაროები რიგზეა.', text: files.length ? 'მაშინ ჩამოტვირთვა პრობლემა არ არის და მიზეზი viewer-ის კოდშია: ბიბლიოთეკის ვერსიის შეუსაბამობა .frag ფაილთან, ან ფაილის შიგთავსი. გახსენი viewer-ში F12 → Console და გამომიგზავნე წითელი ტექსტი, ან ეს ანგარიში (📋 ღილაკი) და ifcviewer-ის კოდი.' : 'ფაილი ატვირთული არ არის, ამიტომ viewer-ს ჩასატვირთი არაფერი აქვს.' }); }
     else causes.forEach((c, i) => rows.push({ level: 'verdict', kind: 'bad', title: `${causes.length > 1 ? (i + 1) + '. ' : ''}${c.t}`, text: c.d, extra: c.extra }));
-    draw();
-  } catch (e) { if (alive()) add('bad', 'შემოწმებას შეცდომა შეექმნა: ' + e.message); }
+    state.done = true; draw();
+  } catch (e) { if (alive()) { state.done = true; add('bad', 'შემოწმებას შეცდომა შეექმნა: ' + e.message); } }
 };
 window.closeIfcViewer = () => {
   cm('ifcViewerModal');
@@ -4059,40 +4073,79 @@ function renderChords(projects, opts) {
   return svgEl.__chords;
 }
 window.setNetOrder = v => { netOrder = v; if (mainListView === 'net' && lastChartProjects) renderNetwork(lastChartProjects, { animate: true }); };
+let netLayout = 'v';   // 'v': the balls in a column, the arcs to the right (half-ellipses that never leave the picture); 'h': the balls in a ROW, the arcs above it, true half-circles (as high as they need to be)
+let netResizeTimer = null;
+window.addEventListener('resize', () => { clearTimeout(netResizeTimer); netResizeTimer = setTimeout(() => { if (mainListView === 'net' && netLayout === 'h' && lastChartProjects) renderNetwork(lastChartProjects); }, 200); });   // (a row is made to fit the window: when the window changes, so does the row)
+window.setNetLayout = v => { netLayout = v; if (mainListView === 'net' && lastChartProjects) renderNetwork(lastChartProjects); };
 function renderNetwork(projects, opts) {
   const svgEl = document.getElementById('networkSvg'), wrap = document.getElementById('networkWrap');
-  // A redraw because the ORDER (or a box) changed (opts.animate) starts from the picture that is there (also one that is still moving): the balls glide to their new places
-  const old = opts && opts.animate && svgEl.__net && svgEl.__net.cur ? svgEl.__net : null;
+  const H = netLayout === 'h';
+  // A redraw because the ORDER (or a box) changed (opts.animate) starts from the picture that is there (also one that is still moving): the balls glide to their new places (along the line: down it in a column, along it in a row)
+  const old = opts && opts.animate && svgEl.__net && svgEl.__net.cur && svgEl.__net.layout === netLayout ? svgEl.__net : null;
   const oldY = old ? new Map(old.nodes.map(d => [d.id, old.cur.get(d.id)])) : null;
   if (svgEl.__netTimer) { svgEl.__netTimer.stop(); svgEl.__netTimer = null; }
   svgEl.innerHTML = '';
   const sel = document.getElementById('netOrder'); if (sel && sel.value !== netOrder) sel.value = netOrder;
+  document.getElementById('netLayoutV').classList.toggle('active', !H); document.getElementById('netLayoutH').classList.toggle('active', H);
+  wrap.style.maxWidth = H ? 'none' : ''; wrap.style.overflowX = H ? 'auto' : '';   // (a row wants the whole width of the page; if it is still too long it scrolls inside its block)
+  wrap.style.paddingBottom = H ? '6px' : ''; wrap.style.marginBottom = H ? '0' : '';   // (and under it only a little room: the row is made to fit the window, so that the page needs no scrolling down)
   const tr = window.__i18nTr || (w => w);
   const data = buildNetData(projects || [], allUsers, undefined, {}), nodes = orderNet(data.nodes, netOrder), n = nodes.length;
-  const svg = d3.select(svgEl), R = 3, FS = 10, STEP = 14, TOP = 12;   // the ball's radius, the size of the names, the distance between two rows
+  const svg = d3.select(svgEl), R = 3, FS = 10, STEP = 14, TOP = 12;   // the ball's radius, the size of the names, the distance between two balls in a column
   const cs = getComputedStyle(wrap), inner = (wrap.clientWidth || 900) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
   if (!n) { svg.attr('viewBox', [0, 0, 400, 120]); svgEl.style.width = '100%'; svg.append('text').attr('x', 200).attr('y', 60).attr('text-anchor', 'middle').attr('fill', 'rgba(255,255,255,.5)').attr('font-size', 13).text(tr('პროექტები არ არის')); return null; }
-  // The line of balls stands at the same place whatever is ticked: the width of the names is that of the WIDEST name of all (all the boxes ticked), not of the ones shown now.
-  const everyNode = buildNetData(projects || [], allUsers, { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true }, {}).nodes;
-  const labelW = Math.min(300, Math.max(...everyNode.map(d => measureLabelWidth(d.name, FS))));
-  const x0 = Math.round(labelW + 26), maxArc = ((n - 1) * STEP) / 2;   // the highest arc is as wide as half the line is long, if the width allows
-  const bulge = Math.max(60, Math.min(maxArc, Math.round(inner) - x0 - 14)), width = x0 + bulge + 14, height = TOP + (n - 1) * STEP + 22;
-  const y = new Map(nodes.map((d, i) => [d.id, TOP + i * STEP])), cur = new Map(y), Y = id => cur.get(id);   // y: where each node ends; cur: where it stands now (they differ only while it moves)
-  svg.attr('viewBox', [0, 0, width, height]); svgEl.style.width = Math.min(width, Math.max(inner, 320)) + 'px'; svgEl.style.margin = '0';   // (as wide as it needs, fixed at the left of the block)
+  // The size of the picture follows EVERY node there can be (all the boxes ticked), not the ones shown now: ticking a box never moves the line of balls nor changes the spacing.
+  const every = buildNetData(projects || [], allUsers, { dm: true, interior: true, pm: true, site: true, qc: true, arch: true, struct: true, mp: true, elec: true, reviewer: true }, {}), everyNode = every.nodes;
+  let FSz = FS, labelW, x0 = 0, bulge = 0, width, height, AY = 0, S = STEP, maxR = 0, flat = 1;   // flat: how high the arcs of a row are, as a part of a true half-circle (1 = a half-circle)
+  if (!H) {
+    labelW = Math.min(300, Math.max(...everyNode.map(d => measureLabelWidth(d.name, FS))));
+    x0 = Math.round(labelW + 26); const maxArc = ((n - 1) * STEP) / 2;   // the highest arc is as wide as half the line is long, if the width allows
+    bulge = Math.max(60, Math.min(maxArc, Math.round(inner) - x0 - 14)); width = x0 + bulge + 14; height = TOP + (n - 1) * STEP + 22;
+  } else {
+    // A ROW THAT FITS THE WINDOW (no scrolling down): the balls are packed along the width; the names stand under them, turned; the arcs above are half-circles.
+    // The window decides how much room there is, and what does not fit is made smaller in this order: 1. the spacing (and with it the names, down to 7 px) while the arcs stay true half-circles;
+    // 2. only then the arcs are flattened (half-ellipses), as little as it takes; if even that is not enough the page scrolls, as it must.
+    const N = everyNode.length, FSMIN = 7, SMIN = FSMIN + 1.5;
+    const ordAll = orderNet(everyNode, netOrder), idx = new Map(ordAll.map((d, i) => [d.id, i]));
+    const maxSpan = Math.max(0, ...every.links.map(l => Math.abs(idx.get(l.source) - idx.get(l.target))));
+    const label10 = Math.min(300, Math.max(...everyNode.map(d => measureLabelWidth(d.name, 10)))), labelAt = fs => label10 * fs / 10, fontOf = sp => Math.max(FSMIN, Math.min(FS, sp - 1.5));
+    const top = svgEl.getBoundingClientRect().top + window.scrollY, availH = Math.max(300, window.innerHeight - top - 34 - 6 - 6);   // (the footer, the little room under the row, a little air)
+    const fixedH = sp => 10 + 2 + R + 6 + labelAt(fontOf(sp)) + 12, arcsH = (sp, fl) => fl * maxSpan * sp / 2;
+    const sTop = Math.max(SMIN, Math.min(26, (inner - 24) / N));   // the widest spacing the width allows
+    S = sTop; for (; S > SMIN; S -= 0.25) if (arcsH(S, 1) + fixedH(S) <= availH) break;   // the largest spacing at which true half-circles fit under the window's top
+    S = Math.max(SMIN, S);
+    flat = arcsH(S, 1) + fixedH(S) <= availH ? 1 : Math.max(0.4, (availH - fixedH(S)) / Math.max(1, arcsH(S, 1)));
+    FSz = fontOf(S); labelW = labelAt(FSz);
+    maxR = arcsH(S, flat); AY = 10 + maxR + 2; width = Math.ceil(12 + (N - 1) * S + 12); height = Math.ceil(AY + R + 6 + labelW + 12);
+  }
+  const y = new Map(nodes.map((d, i) => [d.id, H ? 12 + i * S : TOP + i * STEP])), cur = new Map(y), Y = id => cur.get(id);   // y: where each ball ends on the line; cur: where it stands now (they differ only while it moves)
+  svg.attr('viewBox', [0, 0, width, height]); svgEl.style.width = (H ? width : Math.min(width, Math.max(inner, 320))) + 'px'; svgEl.style.margin = '0';   // (as wide as it needs, fixed at the left of the block)
   svg.append('rect').attr('width', width).attr('height', height).attr('fill', '#1a1120');
-  // an arc between two nodes: a half-ellipse to the right of the line; as high as the distance, as wide as the distance allows (never out of the picture)
-  const arcBetween = (y1, y2) => { const r = Math.abs(y2 - y1) / 2; return `M${x0},${y1}A${Math.min(r, bulge)},${r} 0 0,${y1 < y2 ? 1 : 0} ${x0},${y2}`; };
+  // an arc between two balls. column: a half-ellipse to the right of the line (as high as the distance, as wide as the distance allows). row: a half-circle above the line.
+  const arcBetween = (t1, t2) => { const r = Math.abs(t2 - t1) / 2; return H ? `M${t1},${AY}A${r},${r * flat} 0 0,${t1 < t2 ? 1 : 0} ${t2},${AY}` : `M${x0},${t1}A${Math.min(r, bulge)},${r} 0 0,${t1 < t2 ? 1 : 0} ${x0},${t2}`; };
   const arc = l => arcBetween(Y(l.source), Y(l.target));
+  const FONT = "'Noto Sans Georgian','Inter',sans-serif", LBL_Y = AY + R + 6;
   const link = svg.append('g').selectAll('path').data(data.links).join('path').attr('class', 'net-link').attr('d', arc).attr('fill', 'none').attr('stroke', d => d.color).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4);
   const node = svg.append('g').selectAll('g').data(nodes).join('g').attr('class', 'net-node').attr('data-node-id', d => d.id);
-  node.append('rect').attr('x', 0).attr('y', d => Y(d.id) - STEP / 2).attr('width', x0 + 12).attr('height', STEP).attr('fill', 'transparent');   // (the whole row answers the mouse)
-  node.append('circle').attr('cx', x0).attr('cy', d => Y(d.id)).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
-  node.append('text').attr('x', x0 - 9).attr('y', d => Y(d.id)).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(d => d.name);
+  if (!H) {
+    node.append('rect').attr('x', 0).attr('width', x0 + 12).attr('height', STEP).attr('fill', 'transparent');   // (the whole row answers the mouse)
+    node.append('circle').attr('cx', x0).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+    node.append('text').attr('x', x0 - 9).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', FONT).text(d => d.name);
+  } else {
+    node.append('rect').attr('y', AY - R - 4).attr('width', S).attr('height', R + 4 + 6 + labelW + 6).attr('fill', 'transparent');   // (the whole column of ball and name answers the mouse)
+    node.append('circle').attr('cy', AY).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+    node.append('text').attr('y', LBL_Y).attr('dy', '0.35em').attr('text-anchor', 'start').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FSz).attr('font-family', FONT).text(d => d.name);
+  }
   // hover: the node, what it is tied to and the arcs between (everything else fades)
   const highlight = d => { const mine = data.links.filter(l => l.source === d.id || l.target === d.id), keep = new Set([d.id]); mine.forEach(l => { keep.add(l.source); keep.add(l.target); }); node.classed('fg-dim', m => !keep.has(m.id)); link.classed('fg-dim', l => !mine.includes(l)).attr('stroke-opacity', l => mine.includes(l) ? 0.95 : 0.55).attr('stroke-width', l => mine.includes(l) ? 2.2 : 1.4); };   // (his own arcs are lit and thicker)
   const clear = () => { node.classed('fg-dim', false); link.classed('fg-dim', false).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4); };
   node.on('mouseenter', (e, d) => highlight(d)).on('mouseleave', clear);
-  const place = () => { node.select('rect').attr('y', d => Y(d.id) - STEP / 2); node.select('circle').attr('cy', d => Y(d.id)); node.select('text').attr('y', d => Y(d.id)); link.attr('d', arc); };   // the elements follow `cur`
+  const place = () => {   // the elements follow `cur`
+    if (H) { node.select('rect').attr('x', d => Y(d.id) - S / 2); node.select('circle').attr('cx', d => Y(d.id)); node.select('text').attr('x', d => Y(d.id)).attr('transform', d => `rotate(90,${Y(d.id)},${LBL_Y})`); }
+    else { node.select('rect').attr('y', d => Y(d.id) - STEP / 2); node.select('circle').attr('cy', d => Y(d.id)); node.select('text').attr('y', d => Y(d.id)); }
+    link.attr('d', arc);
+  };
+  place();
   // THE MOVEMENT (0.65 s): a ball that was there glides from where it stood to its new place (and its arcs bend with it); a new one fades in; one that goes stays where it was and fades out
   const animate = !!oldY;   // (not held back by the system's "reduce motion": it is a short, small movement that the owner asked for)
   let ghostLayer = null;
@@ -4109,8 +4162,13 @@ function renderNetwork(projects, opts) {
     const yOf = id => (y.has(id) ? Y(id) : oldY.get(id));   // (what stays moves, what goes does not)
     const gLink = ghostLayer.append('g').selectAll('path').data(goneLinks).join('path').attr('fill', 'none').attr('stroke', d => d.color).attr('stroke-opacity', 0.55).attr('stroke-width', 1.4);
     const gNode = ghostLayer.append('g').selectAll('g').data(goneNodes).join('g');
-    gNode.append('circle').attr('cx', x0).attr('cy', d => oldY.get(d.id)).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
-    gNode.append('text').attr('x', x0 - 9).attr('y', d => oldY.get(d.id)).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', "'Noto Sans Georgian','Inter',sans-serif").text(d => d.name);
+    if (!H) {
+      gNode.append('circle').attr('cx', x0).attr('cy', d => oldY.get(d.id)).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+      gNode.append('text').attr('x', x0 - 9).attr('y', d => oldY.get(d.id)).attr('dy', '0.35em').attr('text-anchor', 'end').attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FS).attr('font-family', FONT).text(d => d.name);
+    } else {
+      gNode.append('circle').attr('cx', d => oldY.get(d.id)).attr('cy', AY).attr('r', R).attr('fill', d => d.color).attr('stroke', 'rgba(255,255,255,.35)').attr('stroke-width', 1);
+      gNode.append('text').attr('x', d => oldY.get(d.id)).attr('y', LBL_Y).attr('dy', '0.35em').attr('text-anchor', 'start').attr('transform', d => `rotate(90,${oldY.get(d.id)},${LBL_Y})`).attr('fill', 'rgba(255,255,255,.85)').attr('font-size', FSz).attr('font-family', FONT).text(d => d.name);
+    }
     const ghostPlace = () => gLink.attr('d', l => arcBetween(yOf(l.source), yOf(l.target)));
     nodes.forEach(d => cur.set(d.id, from.get(d.id))); node.attr('opacity', d => (isNew.has(d.id) ? 0 : null)); link.attr('opacity', l => (linkIsNew(l) ? 0 : null)); place(); ghostPlace();
     const D = 650, ease = d3.easeCubicInOut;
@@ -4122,7 +4180,7 @@ function renderNetwork(projects, opts) {
       if (k >= 1) finishMove();
     });
   }
-  svgEl.__net = { nodes, links: data.links, highlight, clear, width, height, x0, y, cur };
+  svgEl.__net = { nodes, links: data.links, highlight, clear, width, height, x0, y, cur, layout: netLayout, AY, S, maxR, flat, fontPx: FSz };
   return svgEl.__net;
 }
 
@@ -10289,10 +10347,13 @@ document.getElementById('saveNewProj').addEventListener('click', async () => {
 <script>
 // The footer shows on every screen except the sign-in / registration page (the IFC viewer's window covers it). A small script of its own: it does not depend on the rest of the page.
 (function () {
-  var auth = document.getElementById('authScreen');
-  function sync() { document.body.classList.toggle('has-footer', !auth || getComputedStyle(auth).display === 'none'); }
+  var auth = document.getElementById('authScreen'), proj = document.getElementById('projectsScreen');
+  function sync() {
+    document.body.classList.toggle('has-footer', !auth || getComputedStyle(auth).display === 'none');
+    document.body.classList.toggle('screen-dark', !!proj && getComputedStyle(proj).display !== 'none');   // the page behind the dark project screen is dark as well
+  }
   sync();
-  if (auth && window.MutationObserver) new MutationObserver(sync).observe(auth, { attributes: true, attributeFilter: ['style', 'class'] });
+  if (window.MutationObserver) { var mo = new MutationObserver(sync); ['authScreen', 'projectsScreen', 'appScreen', 'reportsScreen'].forEach(function (id) { var el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['style', 'class'] }); }); }
 })();
 </script>
 </body>
