@@ -7899,44 +7899,34 @@ function renderPersonSelect(selected, preferDisc = document.getElementById('fDis
   sel.innerHTML = html;
 }
 const PERSON_MANUAL = '__manual__', PERSON_MAX = 100;
-const personManual = () => !isInternalLike(currentSection) && document.getElementById('fPerson').value === PERSON_MANUAL;
+const personManual = () => document.getElementById('fPerson').value === PERSON_MANUAL;
 // The names that were typed by hand in this project's issues of this section (not the project's own performers), the most used first: offered while a name is typed, so one person is not written two ways.
 function fillPersonSuggestions() {
   const inList = new Set(contractorOptions().map(o => o.value)), counts = new Map();
   Object.values(issues).forEach(i => { const n = String(i.person || '').trim(); if (n && !inList.has(n)) counts.set(n, (counts.get(n) || 0) + 1); });
   document.getElementById('fPersonList').innerHTML = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ka')).map(([n]) => `<option value="${esc(n)}"></option>`).join('');
 }
-// The Responsible as it will be saved: the chosen performer, or (the "type by hand" choice) the typed text: one line, at most 100 letters; the internal section is free text as before.
+// The Responsible as it will be saved: the chosen performer, or (the "type by hand" choice) the typed text: one line, at most 100 letters. The same in ALL FOUR sections (review, MEP, DM, interior).
 function personFieldValue() {
   const raw = document.getElementById('fPersonText').value;
-  if (isInternalLike(currentSection)) return raw.trim();
   if (personManual()) return raw.replace(/\s+/g, ' ').trim().slice(0, PERSON_MAX);
   return document.getElementById('fPerson').value.trim();
 }
-// Internal section = free text; review section = dropdown of assigned contractors.
-// In the review and MEP sections Responsible is a dropdown; in the DM (internal) section it is free text.
+// In every section (review, MEP, DM, interior) the Responsible is a dropdown of the project's performers with a "type by hand" choice at the end.
 function setPersonField(selected) {
   const sel = document.getElementById('fPerson');
   const txt = document.getElementById('fPersonText');
-  if (isInternalLike(currentSection)) {
-    sel.style.display = 'none';
-    txt.style.display = 'block';
-    txt.value = selected || '';
-    txt.removeAttribute('maxlength'); txt.removeAttribute('list');
-  } else {
-    sel.style.display = 'block';
-    txt.maxLength = PERSON_MAX; txt.setAttribute('list', 'fPersonList');
-    const inList = contractorOptions().some(o => o.value === selected);
-    if (selected && !inList) {   // typed by hand (or an old entry that is no longer in the project's list): shown as typed text
-      renderPersonSelect(''); sel.value = PERSON_MANUAL; txt.style.display = 'block'; txt.value = selected;
-    } else { renderPersonSelect(selected); txt.style.display = 'none'; txt.value = ''; }
-    fillPersonSuggestions();
-  }
+  sel.style.display = 'block';
+  txt.maxLength = PERSON_MAX; txt.setAttribute('list', 'fPersonList');
+  const inList = contractorOptions().some(o => o.value === selected);
+  if (selected && !inList) {   // typed by hand (or an old entry that is no longer in the project's list): shown as typed text
+    renderPersonSelect(''); sel.value = PERSON_MANUAL; txt.style.display = 'block'; txt.value = selected;
+  } else { renderPersonSelect(selected); txt.style.display = 'none'; txt.value = ''; }
+  fillPersonSuggestions();
 }
 // Choosing a discipline suggests the matching contractor as Responsible (if the one already selected fits that discipline too —
 // e.g. one company doing both mechanical and electrical — that company stays, shown under the choice that matches the discipline)...
 document.getElementById('fDisc').addEventListener('change', () => {
-  if (isInternalLike(currentSection)) return; // free-text field in the DM and interior sections — no contractor auto-suggest
   if (personManual()) return;                // typed by hand: the discipline stays what it is chosen, the person stays what was typed
   const disc = document.getElementById('fDisc').value;
   const fitting = contractorOptions().filter(o => o.discs.includes(disc));
@@ -7946,7 +7936,6 @@ document.getElementById('fDisc').addEventListener('change', () => {
 });
 // ...and choosing a contractor sets the discipline of THAT choice (kept if it already fits; only disciplines that exist in the list count).
 document.getElementById('fPerson').addEventListener('change', () => {
-  if (isInternalLike(currentSection)) return; // fPerson isn't used in these sections
   const txt = document.getElementById('fPersonText');
   if (personManual()) { txt.style.display = 'block'; txt.value = ''; txt.focus(); return; }   // "type by hand": an empty line opens, the discipline is not touched
   txt.style.display = 'none';
@@ -8024,12 +8013,10 @@ async function openAdd() {
   document.getElementById('fVisibleField').style.display = 'block';
   setupVisibilityField('everyone');
   updateNumFieldForVisibility();
-  // Default responsible party: the project's chosen architect in the review
-  // section, its MEP contractor in the MEP section (if any). The internal
-  // section's responsible field is free text for internal people, so it's
-  // left empty there.
+  // Default responsible party: the project's chosen architect in the review, DM and interior sections (the same in all three),
+  // its MEP contractor in the MEP section (if any).
   const projContractors = (currentProjectData && currentProjectData.contractors) || {};
-  const defaultResponsible = isInternalLike(currentSection) ? '' : (currentSection === 'mep' ? (projContractors.mp || projContractors.mep || '') : (projContractors.arch || ''));
+  const defaultResponsible = currentSection === 'mep' ? (projContractors.mp || projContractors.mep || '') : (projContractors.arch || '');
   setPersonField(defaultResponsible);
   renderLinks(); renderPhotoThumbs(); applyStatusOptionState(null);
 }
